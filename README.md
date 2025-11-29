@@ -88,17 +88,13 @@ flutter run --dart-define API_BASE_URL=http://10.0.2.2:3000 --dart-define USE_RE
 ## Сделать бекап базы данных
 
 ```powershell
-/mnt/d/atx_wallet/server/backup.sh
-```
-Быстрая проверка результата
+# Бекап
+mongodump --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?authSource=atx_wallet' \
+  --db 'atx_wallet' \
+  --out '/mnt/d/atx_wallet/server/db_backup_$(date +%F_%H-%M-%S)'
 
-Команда:
-
-```powershell
-Get-ChildItem -Path "d:\atx_wallet\server" -Filter "db_backup_*"
-```
-Восстановление
-
-```powershell
-mongorestore --uri "mongodb://localhost:27017" --db atx_wallet "/mnt/d/atx_wallet/server/db_backup_YYYY-MM-DD_HH-MM-SS/atx_wallet"
+# Восстановление (пример для конкретной папки)
+mongorestore --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?authSource=atx_wallet' \
+  --db 'atx_wallet' \
+  '/mnt/d/atx_wallet/server/db_backup_YYYY-MM-DD_HH-MM-SS/atx_wallet'
 ```
