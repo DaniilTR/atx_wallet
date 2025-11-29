@@ -3,100 +3,142 @@
 <head>
 	<meta charset="UTF-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-	<title>ATX Wallet</title>
+	<title>ATX Wallet — Dashboard</title>
 	<link rel="stylesheet" href="style.css" />
 	<link rel="preconnect" href="https://fonts.googleapis.com">
 	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 </head>
 <body>
-	<main class="screen">
-		<div class="bg-orb orb-1"></div>
-		<div class="bg-orb orb-2"></div>
-		<header class="branding">
-			<div class="logo">
-				<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-					<circle cx="16" cy="16" r="14" stroke="url(#grad)" stroke-width="2"/>
-					<path d="M9 17.5L16 8l7 9.5-7 6-7-6z" fill="url(#grad)"/>
+	<div class="page-bg"></div>
+	<main class="phone">
+		<header class="topbar">
+			<button class="avatar" aria-label="Профиль">
+				<svg width="28" height="28" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<circle cx="12" cy="12" r="10" fill="url(#g1)"/>
+					<path d="M12 12a3.2 3.2 0 1 0 0-6.4 3.2 3.2 0 0 0 0 6.4Zm0 2c-3.2 0-6 1.6-6 4v.6c2.1 1.8 4.6 2.8 7 2.8s4.9-1 7-2.8V18c0-2.4-2.8-4-6-4Z" fill="rgba(255,255,255,.35)"/>
 					<defs>
-						<linearGradient id="grad" x1="0" y1="0" x2="32" y2="32" gradientUnits="userSpaceOnUse">
-							<stop stop-color="#7C3AED"/>
-							<stop offset="0.5" stop-color="#06B6D4"/>
-							<stop offset="1" stop-color="#22C55E"/>
-						</linearGradient>
+						<radialGradient id="g1" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(7 5) rotate(45) scale(18)">
+							<stop stop-color="#8B5CF6"/>
+							<stop offset="0.6" stop-color="#5B21B6"/>
+							<stop offset="1" stop-color="#0EA5E9"/>
+						</radialGradient>
 					</defs>
 				</svg>
+			</button>
+			<div class="wallet-title">
+				<span class="name">Wallet 1</span>
+				<svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="#b6b8c3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
 			</div>
-			<div class="brand-text">
-				<h1>ATX Wallet</h1>
-				<p>Безопасный вход в криптокошелёк</p>
-			</div>
+			<div class="spacer"></div>
 		</header>
 
-		<section class="card glass" role="dialog" aria-labelledby="form-title">
-			<nav class="tabs" role="tablist" aria-label="Тип формы">
-				<button class="tab active" role="tab" aria-selected="true" data-target="login">Вход</button>
-				<button class="tab" role="tab" aria-selected="false" data-target="signup">Регистрация</button>
-			</nav>
-
-			<form id="login-form" class="form active" autocomplete="on" novalidate>
-				<h2 id="form-title">Войдите в кошелёк</h2>
-				<div class="input-group">
-					<label for="login-email">E-mail или юзернейм</label>
-					<input id="login-email" name="identifier" type="text" inputmode="email" placeholder="user@domain.com" required />
+		<section class="balance">
+			<div class="balance-card">
+				<div class="balance-top">
+					<span class="label">Total balance</span>
+					<span class="chip up" aria-label="Рост 15%">+15%</span>
 				</div>
-				<div class="input-group with-action">
-					<label for="login-password">Пароль</label>
-					<div class="password-wrap">
-						<input id="login-password" name="password" type="password" placeholder="••••••••" required />
-						<button type="button" class="icon-btn" aria-label="Показать пароль" data-action="toggle-password" data-target="login-password">
-							<span class="eye"></span>
-						</button>
+				<div class="amount">$13450.00</div>
+				<div class="address-row">
+					<div class="addr">
+						<span class="addr-label">Your address</span>
+						<span class="addr-value" id="addr-value">0xF09...67c445fg84</span>
 					</div>
+					<button id="copy-btn" class="circle-btn" aria-label="Скопировать адрес">
+						<svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 9V6a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2h-3" stroke="#CBD5E1" stroke-width="2" stroke-linecap="round"/><rect x="3" y="9" width="12" height="12" rx="2" stroke="#CBD5E1" stroke-width="2"/></svg>
+					</button>
 				</div>
-				<div class="actions">
-					<button type="submit" class="primary">Войти</button>
-					<button type="button" class="text-link" id="forgot-btn">Забыли пароль?</button>
-				</div>
-				<div class="alt">
-					<div class="divider"><span>или</span></div>
-					<button type="button" class="secondary" id="wallet-connect">Подключить кошелёк</button>
-				</div>
-			</form>
-
-			<form id="signup-form" class="form" autocomplete="on" novalidate hidden>
-				<h2>Создайте аккаунт</h2>
-				<div class="input-group">
-					<label for="signup-username">Юзернейм</label>
-					<input id="signup-username" name="username" type="text" placeholder="yourname" required />
-				</div>
-				<div class="input-group">
-					<label for="signup-email">E-mail</label>
-					<input id="signup-email" name="email" type="email" placeholder="user@domain.com" required />
-				</div>
-				<div class="input-group with-action">
-					<label for="signup-password">Пароль</label>
-					<div class="password-wrap">
-						<input id="signup-password" name="password" type="password" placeholder="Минимум 8 символов" required />
-						<button type="button" class="icon-btn" aria-label="Показать пароль" data-action="toggle-password" data-target="signup-password">
-							<span class="eye"></span>
-						</button>
-					</div>
-				</div>
-				<div class="input-group">
-					<label for="signup-confirm">Подтверждение пароля</label>
-					<input id="signup-confirm" name="confirm" type="password" placeholder="Повторите пароль" required />
-				</div>
-				<div class="actions">
-					<button type="submit" class="primary">Зарегистрироваться</button>
-				</div>
-				<p class="note">Продолжая, вы соглашаетесь с <a href="#" class="text-link">условиями</a>.</p>
-			</form>
+			</div>
 		</section>
 
-		<footer class="safe-area">
-			<p class="foot-note">v1.0 • Не храните seed-фразу в облаке</p>
-		</footer>
+		<section class="quick-actions" aria-label="Быстрые действия">
+			<button class="qa"><span class="qa-icon ">
+				<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/></svg>
+			</span><span class="qa-text">Sent</span></button>
+			<button class="qa">
+				<span class="qa-icon">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round"/></svg>
+				</span><span class="qa-text">Receive</span>
+			</button>
+			<button class="qa">
+				<span class="qa-icon">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="6" stroke="#E2E8F0" stroke-width="2"/><path d="M12 8v8M9 10h6M9 14h6" stroke="#E2E8F0" stroke-width="2"/></svg>
+				</span><span class="qa-text">Loan</span>
+			</button>
+			<button class="qa">
+				<span class="qa-icon">
+					<svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M12 19V5M12 5l4 4M12 5L8 9" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+				</span><span class="qa-text">Topup</span>
+			</button>
+		</section>
+
+		<section class="trends">
+			<div class="trends-head">
+				<h2>Trends</h2>
+				<button class="view-all">view all</button>
+			</div>
+			<ul class="coin-list">
+				<li class="coin">
+					<div class="coin-left">
+						<span class="coin-icon blue">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 2a10 10 0 1 0 .001 20.001A10 10 0 0 0 12 2Zm1 5v2h2v2h-2v2h2v2h-2v2h-2v-2H9v-2h2v-2H9V9h2V7h2Z" fill="#0EA5E9"/></svg>
+						</span>
+						<div class="coin-meta">
+							<span class="coin-name">Litecoin</span>
+							<span class="coin-ticker">LTE</span>
+						</div>
+					</div>
+					<div class="coin-mid"><span class="spark spark-blue" aria-hidden="true"></span></div>
+					<div class="coin-right">3457.00</div>
+				</li>
+				<li class="coin">
+					<div class="coin-left">
+						<span class="coin-icon teal">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#22D3EE"/><path d="M8 12h8M10 8l4 8" stroke="#0F172A" stroke-width="2" stroke-linecap="round"/></svg>
+						</span>
+						<div class="coin-meta">
+							<span class="coin-name">Dogecoin</span>
+							<span class="coin-ticker">DOGE</span>
+						</div>
+					</div>
+					<div class="coin-mid"><span class="spark spark-teal" aria-hidden="true"></span></div>
+					<div class="coin-right">4457.00</div>
+				</li>
+				<li class="coin">
+					<div class="coin-left">
+						<span class="coin-icon yellow">
+							<svg width="18" height="18" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" fill="#FBBF24"/><path d="M9 15l3-6 3 6" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+						</span>
+						<div class="coin-meta">
+							<span class="coin-name">Levcoin</span>
+							<span class="coin-ticker">LEV</span>
+						</div>
+					</div>
+					<div class="coin-mid"><span class="spark spark-yellow" aria-hidden="true"></span></div>
+					<div class="coin-right">512.00</div>
+				</li>
+			</ul>
+		</section>
+
+		<nav class="dock" aria-label="Навигация">
+			<button class="dock-btn active" aria-label="Дом">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M3 11l9-7 9 7v9a2 2 0 0 1-2 2h-4v-6H9v6H5a2 2 0 0 1-2-2v-9Z" stroke="#cbd5e1" stroke-width="2" stroke-linejoin="round"/></svg>
+			</button>
+			<button class="dock-btn" aria-label="Статистика">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M4 13h4v7H4v-7Zm6-6h4v13h-4V7Zm6 3h4v10h-4V10Z" fill="#cbd5e1"/></svg>
+			</button>
+			<button class="scan-btn" aria-label="Сканер">
+				<span class="glow"></span>
+				<svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M7 4H5a1 1 0 0 0-1 1v2M17 4h2a1 1 0 0 1 1 1v2M7 20H5a1 1 0 0 1-1-1v-2M17 20h2a1 1 0 0 0 1-1v-2M8 12h8" stroke="#ffffff" stroke-width="2" stroke-linecap="round"/></svg>
+			</button>
+			<button class="dock-btn" aria-label="Настройки">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" stroke="#cbd5e1" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1c-.5-.5-1.3-.7-2-.4a1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.1c0-.7-.4-1.3-1-1.6-.6-.3-1.5-.2-2 .4l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1c.5-.5.7-1.3.4-2A1.7 1.7 0 0 0 3 12.6V12a2 2 0 1 1 4 0v.1c0 .7.4 1.3 1 1.6.6.3 1.5.2 2-.4l.1-.1c.5-.5 1.3-.7 2-.4.6.3 1 1 .9 1.7Z" stroke="#cbd5e1" stroke-width="2" stroke-linecap="round"/></svg>
+			</button>
+			<button class="dock-btn" aria-label="Меню">
+				<svg width="22" height="22" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="4" rx="1" fill="#cbd5e1"/><rect x="4" y="10" width="16" height="4" rx="1" fill="#cbd5e1"/><rect x="4" y="16" width="16" height="4" rx="1" fill="#cbd5e1"/></svg>
+			</button>
+		</nav>
 	</main>
 
 	<script src="main.js"></script>

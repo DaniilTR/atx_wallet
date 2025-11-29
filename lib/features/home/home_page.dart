@@ -39,7 +39,7 @@ class _HomePageState extends State<HomePage> {
               Navigator.pushReplacementNamed(context, '/login');
             },
             icon: const Icon(Icons.logout),
-          )
+          ),
         ],
       ),
       body: Container(
@@ -56,9 +56,13 @@ class _HomePageState extends State<HomePage> {
             children: [
               _BalanceCard(
                 onCopy: () async {
-                  await Clipboard.setData(const ClipboardData(text: '0xF09...67c445fg84'));
+                  await Clipboard.setData(
+                    const ClipboardData(text: '0xF09...67c445fg84'),
+                  );
                   if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Address copied')));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Address copied')),
+                    );
                   }
                 },
               ),
@@ -68,16 +72,36 @@ class _HomePageState extends State<HomePage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Trends', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
+                  Text(
+                    'Trends',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   TextButton(onPressed: () {}, child: const Text('view all')),
                 ],
               ),
               const SizedBox(height: 8),
-              const _TrendTile(name: 'Litecoin', ticker: 'LTE', color: Color(0xFF4D7CFE), price: '3457.00'),
+              const _TrendTile(
+                name: 'Litecoin',
+                ticker: 'LTE',
+                color: Color(0xFF4D7CFE),
+                price: '3457.00',
+              ),
               const SizedBox(height: 12),
-              const _TrendTile(name: 'Dogecoin', ticker: 'DOGE', color: Color(0xFF00D1B2), price: '4457.00'),
+              const _TrendTile(
+                name: 'Dogecoin',
+                ticker: 'DOGE',
+                color: Color(0xFF00D1B2),
+                price: '4457.00',
+              ),
               const SizedBox(height: 12),
-              const _TrendTile(name: 'Levcoin', ticker: 'LEV', color: Color(0xFFFFE600), price: '512.00'),
+              const _TrendTile(
+                name: 'Levcoin',
+                ticker: 'LEV',
+                color: Color(0xFFFFE600),
+                price: '512.00',
+              ),
             ],
           ),
         ),
@@ -86,7 +110,13 @@ class _HomePageState extends State<HomePage> {
       floatingActionButton: Container(
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          boxShadow: [BoxShadow(color: Color(0x80131A2B), blurRadius: 18, spreadRadius: 2)],
+          boxShadow: [
+            BoxShadow(
+              color: Color(0x80131A2B),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
         ),
         child: FloatingActionButton(
           onPressed: () {},
@@ -109,7 +139,6 @@ class _BalanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -120,7 +149,11 @@ class _BalanceCard extends StatelessWidget {
           colors: [Color(0xFF2A2F46), Color(0xFF1A2032)],
         ),
         boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.4), blurRadius: 24, offset: const Offset(0, 12)),
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
         ],
       ),
       child: Column(
@@ -129,14 +162,19 @@ class _BalanceCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('Total balance', style: Theme.of(context).textTheme.bodyMedium),
+              Text(
+                'Total balance',
+                style: Theme.of(context).textTheme.bodyMedium,
+              ),
               const _GrowthPill(value: '+15%'),
             ],
           ),
           const SizedBox(height: 10),
           Text(
             '\$13450.00',
-            style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
           Container(
@@ -151,9 +189,19 @@ class _BalanceCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Your address', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.white70)),
+                      Text(
+                        'Your address',
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                      ),
                       const SizedBox(height: 6),
-                      Text('0xF09...67c445fg84', style: Theme.of(context).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600)),
+                      Text(
+                        '0xF09...67c445fg84',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -168,10 +216,10 @@ class _BalanceCard extends StatelessWidget {
                     ),
                     child: const Icon(Icons.copy_rounded, size: 18),
                   ),
-                )
+                ),
               ],
             ),
-          )
+          ),
         ],
       ),
     );
@@ -182,20 +230,20 @@ class _ActionsRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget action(IconData icon, String label) => Column(
-          children: [
-            Container(
-              height: 48,
-              width: 48,
-              decoration: BoxDecoration(
-                color: const Color(0xFF222943),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon),
-            ),
-            const SizedBox(height: 8),
-            Text(label, style: Theme.of(context).textTheme.bodySmall),
-          ],
-        );
+      children: [
+        Container(
+          height: 48,
+          width: 48,
+          decoration: BoxDecoration(
+            color: const Color(0xFF222943),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Icon(icon),
+        ),
+        const SizedBox(height: 8),
+        Text(label, style: Theme.of(context).textTheme.bodySmall),
+      ],
+    );
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -210,7 +258,12 @@ class _ActionsRow extends StatelessWidget {
 }
 
 class _TrendTile extends StatelessWidget {
-  const _TrendTile({required this.name, required this.ticker, required this.color, required this.price});
+  const _TrendTile({
+    required this.name,
+    required this.ticker,
+    required this.color,
+    required this.price,
+  });
   final String name;
   final String ticker;
   final Color color;
@@ -251,7 +304,9 @@ class _TrendTile extends StatelessWidget {
             height: 24,
             width: 80,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [color.withOpacity(.2), color.withOpacity(.05)]),
+              gradient: LinearGradient(
+                colors: [color.withOpacity(.2), color.withOpacity(.05)],
+              ),
               borderRadius: BorderRadius.circular(6),
             ),
           ),
@@ -302,7 +357,10 @@ class _GrowthPill extends StatelessWidget {
         children: [
           Icon(Icons.trending_up, size: 16, color: cs.primary),
           const SizedBox(width: 4),
-          Text(value, style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+          ),
         ],
       ),
     );
@@ -327,20 +385,40 @@ class _BottomNav extends StatelessWidget {
           children: [
             IconButton(
               onPressed: () => onChanged(0),
-              icon: Icon(Icons.home_rounded, color: index == 0 ? Theme.of(context).colorScheme.primary : Colors.white70),
+              icon: Icon(
+                Icons.home_rounded,
+                color: index == 0
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white70,
+              ),
             ),
             IconButton(
               onPressed: () => onChanged(1),
-              icon: Icon(Icons.account_balance_wallet_rounded, color: index == 1 ? Theme.of(context).colorScheme.primary : Colors.white70),
+              icon: Icon(
+                Icons.account_balance_wallet_rounded,
+                color: index == 1
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white70,
+              ),
             ),
             const SizedBox(width: 48), // space for FAB
             IconButton(
               onPressed: () => onChanged(2),
-              icon: Icon(Icons.settings_rounded, color: index == 2 ? Theme.of(context).colorScheme.primary : Colors.white70),
+              icon: Icon(
+                Icons.settings_rounded,
+                color: index == 2
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white70,
+              ),
             ),
             IconButton(
               onPressed: () => onChanged(3),
-              icon: Icon(Icons.list_alt_rounded, color: index == 3 ? Theme.of(context).colorScheme.primary : Colors.white70),
+              icon: Icon(
+                Icons.list_alt_rounded,
+                color: index == 3
+                    ? Theme.of(context).colorScheme.primary
+                    : Colors.white70,
+              ),
             ),
           ],
         ),
