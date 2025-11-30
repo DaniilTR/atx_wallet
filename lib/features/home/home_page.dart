@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../../services/auth_scope.dart';
 
 class HomePage extends StatefulWidget {
@@ -14,20 +16,33 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final auth = AuthScope.of(context);
-
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
+        toolbarHeight: 76,
+        elevation: 0,
+        titleSpacing: 0,
         title: Row(
-          children: const [
-            _NeonAvatar(),
-            SizedBox(width: 12),
-            Text('Wallet 1'),
-            SizedBox(width: 6),
-            Icon(Icons.keyboard_arrow_down_rounded),
+          children: [
+            const SizedBox(width: 20),
+            const _NeonAvatar(),
+            const SizedBox(width: 12),
+            Text(
+              'Wallet 1',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: Color(0xFFB3B8D7),
+            ),
+            const SizedBox(width: 20),
           ],
         ),
         actions: [
@@ -38,7 +53,7 @@ class _HomePageState extends State<HomePage> {
               if (!mounted) return;
               Navigator.pushReplacementNamed(context, '/login');
             },
-            icon: const Icon(Icons.logout),
+            icon: const Icon(Icons.logout_rounded, color: Color(0xFFB3B8D7)),
           ),
         ],
       ),
@@ -47,87 +62,84 @@ class _HomePageState extends State<HomePage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF151A29), Color(0xFF141826)],
+            colors: [Color(0xFF1D1B32), Color(0xFF101537)],
           ),
         ),
         child: SafeArea(
           child: ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 160),
             children: [
               _BalanceCard(
                 onCopy: () async {
                   await Clipboard.setData(
                     const ClipboardData(text: '0xF09...67c445fg84'),
                   );
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Address copied')),
-                    );
-                  }
+                  if (!mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      backgroundColor: const Color(0xFF1C1F33),
+                      content: Text(
+                        'Address copied',
+                        style: GoogleFonts.inter(color: Colors.white),
+                      ),
+                    ),
+                  );
                 },
               ),
-              const SizedBox(height: 16),
-              _ActionsRow(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 28),
+              const _ActionsRow(),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
                     'Trends',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  TextButton(onPressed: () {}, child: const Text('view all')),
+                  TextButton(
+                    onPressed: () {},
+                    child: Text(
+                      'view all',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: const Color(0xFFB0BBCE),
+                      ),
+                    ),
+                  ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               const _TrendTile(
                 name: 'Litecoin',
                 ticker: 'LTE',
-                color: Color(0xFF4D7CFE),
+                color: Color.fromARGB(136, 77, 124, 254),
                 price: '3457.00',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               const _TrendTile(
                 name: 'Dogecoin',
                 ticker: 'DOGE',
-                color: Color(0xFF00D1B2),
+                color: Color.fromARGB(134, 0, 209, 178),
                 price: '4457.00',
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 14),
               const _TrendTile(
                 name: 'Levcoin',
                 ticker: 'LEV',
-                color: Color(0xFFFFE600),
+                color: Color.fromARGB(129, 255, 201, 51),
                 price: '512.00',
               ),
             ],
           ),
         ),
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Color(0x80131A2B),
-              blurRadius: 18,
-              spreadRadius: 2,
-            ),
-          ],
-        ),
-        child: FloatingActionButton(
-          onPressed: () {},
-          shape: const CircleBorder(),
-          backgroundColor: cs.primary,
-          child: const Icon(Icons.qr_code_scanner_rounded, size: 28),
-        ),
-      ),
       bottomNavigationBar: _BottomNav(
         index: _tab,
-        onChanged: (i) => setState(() => _tab = i),
+        onChanged: (value) => setState(() => _tab = value),
       ),
     );
   }
@@ -140,19 +152,24 @@ class _BalanceCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(18),
+      margin: const EdgeInsets.symmetric(horizontal: 2),
+      padding: const EdgeInsets.fromLTRB(23, 15, 23, 24),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF2A2F46), Color(0xFF1A2032)],
+          colors: [
+            Color.fromARGB(179, 51, 34, 97),
+            Color.fromARGB(179, 51, 33, 83),
+          ],
         ),
-        boxShadow: [
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: const Color(0x1AFFFFFF)),
+        boxShadow: const [
           BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 24,
-            offset: const Offset(0, 12),
+            color: Color(0x700F0725),
+            blurRadius: 40,
+            offset: Offset(0, 24),
           ),
         ],
       ),
@@ -164,24 +181,41 @@ class _BalanceCard extends StatelessWidget {
             children: [
               Text(
                 'Total balance',
-                style: Theme.of(context).textTheme.bodyMedium,
+                style: GoogleFonts.inter(
+                  color: const Color(0xFFE8DEFF),
+                  fontSize: 14,
+                ),
               ),
               const _GrowthPill(value: '+15%'),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           Text(
             '\$13450.00',
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontSize: 38,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: const Color(0xFF212845),
-              borderRadius: BorderRadius.circular(16),
+              gradient: const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF2D1143), Color(0xFF1B0B27)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: const Color(0x33FFFFFF)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x44000000),
+                  blurRadius: 16,
+                  offset: Offset(0, 10),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -191,14 +225,18 @@ class _BalanceCard extends StatelessWidget {
                     children: [
                       Text(
                         'Your address',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.white70),
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFC7CCF1),
+                          fontSize: 12,
+                          letterSpacing: .2,
+                        ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         '0xF09...67c445fg84',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -207,14 +245,27 @@ class _BalanceCard extends StatelessWidget {
                 ),
                 InkWell(
                   onTap: onCopy,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                   child: Container(
-                    padding: const EdgeInsets.all(10),
+                    width: 44,
+                    height: 44,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF2A3154),
-                      borderRadius: BorderRadius.circular(12),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF4F1D7A), Color(0xFF2D0A46)],
+                      ),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0x26FFFFFF)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x4D000000),
+                          blurRadius: 12,
+                          offset: Offset(0, 6),
+                        ),
+                      ],
                     ),
-                    child: const Icon(Icons.copy_rounded, size: 18),
+                    child: const Icon(Icons.copy_rounded, color: Colors.white),
                   ),
                 ),
               ],
@@ -227,34 +278,66 @@ class _BalanceCard extends StatelessWidget {
 }
 
 class _ActionsRow extends StatelessWidget {
+  const _ActionsRow();
+
+  static const List<_ActionData> _items = [
+    _ActionData(Icons.north_east_rounded, 'Sent'),
+    _ActionData(Icons.south_rounded, 'Receive'),
+    _ActionData(Icons.attach_money_rounded, 'Loan'),
+    _ActionData(Icons.upload_rounded, 'Topup'),
+  ];
+
   @override
   Widget build(BuildContext context) {
-    Widget action(IconData icon, String label) => Column(
-      children: [
-        Container(
-          height: 48,
-          width: 48,
-          decoration: BoxDecoration(
-            color: const Color(0xFF222943),
-            borderRadius: BorderRadius.circular(14),
-          ),
-          child: Icon(icon),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: Theme.of(context).textTheme.bodySmall),
-      ],
-    );
-
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        action(Icons.north_east_rounded, 'Sent'),
-        action(Icons.south_rounded, 'Receive'),
-        action(Icons.attach_money_rounded, 'Loan'),
-        action(Icons.upload_rounded, 'Topup'),
-      ],
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: _items
+          .map(
+            (item) => Column(
+              children: [
+                Container(
+                  height: 60,
+                  width: 60,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(30),
+                    gradient: const LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [Color(0xFF2F3561), Color(0xFF1A1F3C)],
+                    ),
+                    border: Border.all(color: const Color(0x26FFFFFF)),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Color(0x55090F25),
+                        blurRadius: 20,
+                        offset: Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Icon(item.icon, color: const Color(0xFFEFF2FF)),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  item.label,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: .1,
+                    color: const Color(0xFFCAD0E4),
+                  ),
+                ),
+              ],
+            ),
+          )
+          .toList(),
     );
   }
+}
+
+class _ActionData {
+  const _ActionData(this.icon, this.label);
+  final IconData icon;
+  final String label;
 }
 
 class _TrendTile extends StatelessWidget {
@@ -264,6 +347,7 @@ class _TrendTile extends StatelessWidget {
     required this.color,
     required this.price,
   });
+
   final String name;
   final String ticker;
   final Color color;
@@ -272,59 +356,146 @@ class _TrendTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 17),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [color.withOpacity(.10), const Color(0xFF1A2030)],
+          colors: [color.withOpacity(.55), const Color(0xFF10132C)],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0x26FFFFFF)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x55090F23),
+            blurRadius: 36,
+            offset: Offset(0, 22),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: color.withOpacity(.2),
-            child: Icon(Icons.currency_bitcoin_rounded, color: color),
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [color, color.withOpacity(.45)],
+              ),
+              border: Border.all(color: const Color(0x26FFFFFF)),
+              boxShadow: [
+                BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
+              ],
+            ),
+            child: const Icon(
+              Icons.currency_bitcoin_rounded,
+              color: Colors.white,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(name, style: const TextStyle(fontWeight: FontWeight.w700)),
-                const SizedBox(height: 2),
-                Text(ticker, style: const TextStyle(color: Colors.white60)),
+                Text(
+                  name,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  ticker,
+                  style: GoogleFonts.inter(color: const Color(0xFF9FB3D8)),
+                ),
               ],
             ),
           ),
-          // Placeholder mini chart
-          Container(
-            height: 24,
-            width: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [color.withOpacity(.2), color.withOpacity(.05)],
-              ),
-              borderRadius: BorderRadius.circular(6),
+          SizedBox(
+            width: 110,
+            height: 34,
+            child: CustomPaint(painter: _SparkPainter(color)),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            price,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
             ),
           ),
-          const SizedBox(width: 12),
-          Text(price, style: const TextStyle(fontWeight: FontWeight.w700)),
         ],
       ),
     );
   }
 }
 
+class _SparkPainter extends CustomPainter {
+  const _SparkPainter(this.color);
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final base = Path()
+      ..moveTo(0, size.height * .75)
+      ..cubicTo(
+        size.width * .12,
+        size.height * .55,
+        size.width * .2,
+        size.height * .85,
+        size.width * .32,
+        size.height * .4,
+      )
+      ..cubicTo(
+        size.width * .42,
+        size.height * .15,
+        size.width * .55,
+        size.height * .9,
+        size.width * .68,
+        size.height * .5,
+      )
+      ..cubicTo(
+        size.width * .8,
+        size.height * .2,
+        size.width * .88,
+        size.height * .65,
+        size.width,
+        size.height * .35,
+      );
+
+    final glow = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 4
+      ..color = color.withOpacity(.35)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+
+    final line = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+
+    canvas.drawPath(base, glow);
+    canvas.drawPath(base, line);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 class _NeonAvatar extends StatelessWidget {
   const _NeonAvatar();
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 32,
-      height: 32,
+      width: 38,
+      height: 38,
       decoration: const BoxDecoration(
         shape: BoxShape.circle,
         gradient: LinearGradient(
@@ -332,10 +503,13 @@ class _NeonAvatar extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        boxShadow: [
+          BoxShadow(color: Color(0x804B46FF), blurRadius: 16, spreadRadius: 2),
+        ],
       ),
       child: const CircleAvatar(
         backgroundColor: Color(0xFF1B2032),
-        child: Icon(Icons.person, size: 18),
+        child: Icon(Icons.person, size: 18, color: Colors.white),
       ),
     );
   }
@@ -344,22 +518,34 @@ class _NeonAvatar extends StatelessWidget {
 class _GrowthPill extends StatelessWidget {
   const _GrowthPill({required this.value});
   final String value;
+
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
       decoration: BoxDecoration(
-        color: cs.primary.withOpacity(.18),
-        borderRadius: BorderRadius.circular(30),
+        gradient: const LinearGradient(
+          colors: [Color(0xFF8DF2FF), Color(0xFF62D4F3)],
+        ),
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x408CF0FF),
+            blurRadius: 16,
+            offset: Offset(0, 8),
+          ),
+        ],
       ),
       child: Row(
         children: [
-          Icon(Icons.trending_up, size: 16, color: cs.primary),
+          const Icon(Icons.trending_up, size: 16, color: Color(0xFF16273E)),
           const SizedBox(width: 4),
           Text(
             value,
-            style: TextStyle(color: cs.primary, fontWeight: FontWeight.w700),
+            style: GoogleFonts.inter(
+              fontWeight: FontWeight.w700,
+              color: const Color(0xFF16273E),
+            ),
           ),
         ],
       ),
@@ -369,59 +555,129 @@ class _GrowthPill extends StatelessWidget {
 
 class _BottomNav extends StatelessWidget {
   const _BottomNav({required this.index, required this.onChanged});
+
   final int index;
   final ValueChanged<int> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return BottomAppBar(
-      color: const Color(0xFF141826),
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            IconButton(
-              onPressed: () => onChanged(0),
-              icon: Icon(
-                Icons.home_rounded,
-                color: index == 0
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white70,
+    return Stack(
+      children: [
+        Container(height: 110, decoration: const BoxDecoration()),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Image.asset(
+                'lib/features/home/Vector 12.png',
+                height: 115,
+                width: double.infinity,
+                fit: BoxFit.cover,
               ),
             ),
-            IconButton(
-              onPressed: () => onChanged(1),
-              icon: Icon(
-                Icons.account_balance_wallet_rounded,
-                color: index == 1
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white70,
-              ),
-            ),
-            const SizedBox(width: 48), // space for FAB
-            IconButton(
-              onPressed: () => onChanged(2),
-              icon: Icon(
-                Icons.settings_rounded,
-                color: index == 2
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white70,
-              ),
-            ),
-            IconButton(
-              onPressed: () => onChanged(3),
-              icon: Icon(
-                Icons.list_alt_rounded,
-                color: index == 3
-                    ? Theme.of(context).colorScheme.primary
-                    : Colors.white70,
-              ),
-            ),
-          ],
+          ),
         ),
+        BottomAppBar(
+          color: Colors.transparent,
+          elevation: 0,
+          shape: const CircularNotchedRectangle(),
+          notchMargin: 10,
+          child: SizedBox(
+            height: 84,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _NavIcon(
+                        icon: Icons.home_rounded,
+                        active: index == 0,
+                        onTap: () => onChanged(0),
+                        activeColor: Colors.white,
+                      ),
+                      _NavIcon(
+                        icon: Icons.pie_chart_rounded,
+                        active: index == 1,
+                        onTap: () => onChanged(1),
+                        activeColor: Colors.white,
+                      ),
+                      const SizedBox(width: 64),
+                      _NavIcon(
+                        icon: Icons.settings_rounded,
+                        active: index == 2,
+                        onTap: () => onChanged(2),
+                        activeColor: Colors.white,
+                      ),
+                      _NavIcon(
+                        icon: Icons.table_rows_rounded,
+                        active: index == 3,
+                        onTap: () => onChanged(3),
+                        activeColor: Colors.white,
+                      ),
+                    ],
+                  ),
+                ),
+                GestureDetector(
+                  onTap: () {},
+                  child: Container(
+                    width: 66,
+                    height: 66,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [Color(0xFFDBC5FF), Color(0xFFB89BFF)],
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Color(0xAA433071),
+                          blurRadius: 30,
+                          spreadRadius: 4,
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.qr_code_scanner_rounded,
+                      size: 30,
+                      color: Color(0xFF1A1034),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _NavIcon extends StatelessWidget {
+  const _NavIcon({
+    required this.icon,
+    required this.active,
+    required this.onTap,
+    required this.activeColor,
+  });
+
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+  final Color activeColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      icon: Icon(
+        icon,
+        color: active ? activeColor : const Color(0xFFD2D8F6),
+        size: 26,
       ),
     );
   }

@@ -27,4 +27,17 @@ document.addEventListener('DOMContentLoaded', () => {
     dockButtons.forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
   }));
+
+  // Debug grid overlay toggle (press 'g')
+  let grid = document.querySelector('.grid-overlay');
+  if(!grid){
+    grid = document.createElement('div');
+    grid.className = 'grid-overlay';
+    document.body.appendChild(grid);
+  }
+  window.addEventListener('keydown', (e) => {
+    if(e.key.toLowerCase() === 'g'){
+      grid.classList.toggle('active');
+    }
+  });
 });
