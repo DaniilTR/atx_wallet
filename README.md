@@ -4,18 +4,11 @@ Express + MongoDB (Mongoose). Минимальные эндпоинты ауте
 ```bash
 D:\Wallet\flutter\bin\flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
 ```
-## Требования
-- WSL (Ubuntu)
-- MongoDB в WSL (служба `mongod` запущена)
-- Node.js 18+ (в WSL)
 
 ## Запуск бекенда
 ```bash
 # 1) Перейти в проект
 cd /mnt/d/atx_wallet/server
-
-# 2) Создать .env
-cp -n .env.example .env
 
 # 3) Установить зависимости и запустить dev-сервер
 npm install
@@ -76,14 +69,6 @@ curl -X POST http://localhost:3000/api/auth/login \
 	-d '{"login":"tester","password":"123456"}'
 ```
 
-## Подключение Flutter
-По умолчанию `API_BASE_URL=http://localhost:3000`. Для Android‑эмулятора используйте `http://10.0.2.2:3000`.
-```powershell
-flutter run --dart-define API_BASE_URL=http://10.0.2.2:3000 --dart-define USE_REMOTE_AUTH=true
-```
-
-## Примечание по WSL
-Сервер слушает `0.0.0.0`, поэтому доступен из Windows по `http://localhost:3000`. Если порт занят — измените `PORT` в `.env` и перезапустите.
 
 ## Сделать бекап базы данных
 
@@ -96,5 +81,5 @@ mongodump --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?aut
 # Восстановление (пример для конкретной папки)
 mongorestore --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?authSource=atx_wallet' \
   --db 'atx_wallet' \
-  '/mnt/d/atx_wallet/server/db_backup_YYYY-MM-DD_HH-MM-SS/atx_wallet'
+  '/mnt/d/atx_wallet/server/db_backup/atx_wallet'
 ```
