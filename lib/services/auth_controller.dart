@@ -1,3 +1,5 @@
+// lib/services/auth_controller.dart
+// Контроллер аутентификации, выбирающий между удалённым и локальным хранилищем
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_client.dart';
@@ -7,8 +9,8 @@ import 'config.dart';
 
 class AuthController {
   AuthController()
-      : _repo = AuthRepository(ApiClient(), const FlutterSecureStorage()),
-        _memory = AuthService();
+    : _repo = AuthRepository(ApiClient(), const FlutterSecureStorage()),
+      _memory = AuthService();
 
   final AuthRepository _repo;
   final AuthService _memory;
@@ -17,10 +19,18 @@ class AuthController {
   String? get currentUsername => _username;
   bool get isAuthenticated => _username != null;
 
-  Future<void> register({required String username, required String password, String? email}) async {
+  Future<void> register({
+    required String username,
+    required String password,
+    String? email,
+  }) async {
     if (kUseRemoteAuth) {
       try {
-        await _repo.register(username: username, password: password, email: email);
+        await _repo.register(
+          username: username,
+          password: password,
+          email: email,
+        );
         _username = username;
         return;
       } catch (e) {
@@ -28,7 +38,11 @@ class AuthController {
         debugPrint('Remote register failed: $e');
       }
     }
-    await _memory.register(username: username, password: password, email: email);
+    await _memory.register(
+      username: username,
+      password: password,
+      email: email,
+    );
     _username = username;
   }
 

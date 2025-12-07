@@ -1,3 +1,5 @@
+// lib/services/auth_service.dart
+// Локальный сервис аутентификации (in-memory)
 class AuthService {
   // Dummy in-memory users. Key: username, Value: password.
   final Map<String, String> _users = {};
@@ -6,7 +8,11 @@ class AuthService {
   bool get isAuthenticated => _currentUsername != null;
   String? get currentUsername => _currentUsername;
 
-  Future<void> register({required String username, required String password, String? email}) async {
+  Future<void> register({
+    required String username,
+    required String password,
+    String? email,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     if (_users.containsKey(username)) {
       throw AuthException('Пользователь с таким никнеймом уже существует');

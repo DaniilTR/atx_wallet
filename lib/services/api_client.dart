@@ -1,3 +1,5 @@
+// lib/services/api_client.dart
+// HTTP клиент для взаимодействия с API сервера аутентификации
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'config.dart';
@@ -8,7 +10,11 @@ class ApiClient {
 
   Uri _uri(String path) => Uri.parse(kApiBaseUrl + path);
 
-  Future<Map<String, dynamic>> postJson(String path, Map<String, dynamic> body, {String? token}) async {
+  Future<Map<String, dynamic>> postJson(
+    String path,
+    Map<String, dynamic> body, {
+    String? token,
+  }) async {
     final res = await _client.post(
       _uri(path),
       headers: {

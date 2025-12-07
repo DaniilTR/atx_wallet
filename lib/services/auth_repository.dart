@@ -1,3 +1,5 @@
+// lib/services/auth_repository.dart
+// Удалённый репозиторий аутентификации (через API)
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'api_client.dart';
 
@@ -9,7 +11,11 @@ class AuthRepository {
   static const _tokenKey = 'auth_token';
   static const _usernameKey = 'user_username';
 
-  Future<void> register({required String username, required String password, String? email}) async {
+  Future<void> register({
+    required String username,
+    required String password,
+    String? email,
+  }) async {
     final res = await _api.postJson('/api/auth/register', {
       'username': username,
       if (email != null) 'email': email,

@@ -1,3 +1,5 @@
+// lib/services/auth_scope.dart
+// Контекст аутентификации для виджетов Flutter
 import 'package:flutter/widgets.dart';
 import 'auth_controller.dart';
 
