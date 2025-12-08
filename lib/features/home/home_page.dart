@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import 'home_route_args.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +19,11 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
+    final wallet = WalletScope.of(context);
+    final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
+    final profile = wallet.activeProfile ?? args?.devProfile;
+    final address = profile?.addressHex;
+    final username = auth.currentUser?.username ?? 'Wallet';
     return Scaffold(
       extendBody: true,
       appBar: AppBar(
@@ -30,7 +37,7 @@ class _HomePageState extends State<HomePage> {
             const _NeonAvatar(),
             const SizedBox(width: 12),
             Text(
-              'Wallet 1',
+              username,
               style: GoogleFonts.inter(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -49,6 +56,7 @@ class _HomePageState extends State<HomePage> {
           IconButton(
             tooltip: 'Выйти',
             onPressed: () async {
+              wallet.clearDevProfile();
               await auth.logout();
               if (!mounted) return;
               Navigator.pushReplacementNamed(context, '/login');
@@ -70,10 +78,22 @@ class _HomePageState extends State<HomePage> {
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 160),
             children: [
               _BalanceCard(
+                address: address,
                 onCopy: () async {
-                  await Clipboard.setData(
-                    const ClipboardData(text: '0xF09...67c445fg84'),
-                  );
+                  if (address == null) {
+                    if (!mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        backgroundColor: const Color(0xFF1C1F33),
+                        content: Text(
+                          'Address is not ready yet',
+                          style: GoogleFonts.inter(color: Colors.white),
+                        ),
+                      ),
+                    );
+                    return;
+                  }
+                  await Clipboard.setData(ClipboardData(text: address));
                   if (!mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -146,11 +166,17 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.onCopy});
+  const _BalanceCard({required this.onCopy, this.address});
   final VoidCallback onCopy;
+  final String? address;
 
   @override
   Widget build(BuildContext context) {
+    final displayAddress = address == null
+        ? null
+        : address!.length > 12
+        ? '${address!.substring(0, 6)}...${address!.substring(address!.length - 4)}'
+        : address!;
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 2),
       padding: const EdgeInsets.fromLTRB(23, 15, 23, 24),
@@ -233,7 +259,7 @@ class _BalanceCard extends StatelessWidget {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '0xF09...67c445fg84',
+                        displayAddress ?? '—',
                         style: GoogleFonts.inter(
                           fontSize: 16,
                           color: Colors.white,
@@ -281,10 +307,10 @@ class _ActionsRow extends StatelessWidget {
   const _ActionsRow();
 
   static const List<_ActionData> _items = [
-    _ActionData(Icons.north_east_rounded, 'Sent'),
-    _ActionData(Icons.south_rounded, 'Receive'),
-    _ActionData(Icons.attach_money_rounded, 'Loan'),
-    _ActionData(Icons.upload_rounded, 'Topup'),
+    _ActionData(Icons.north_east_rounded, 'Отправить'),
+    _ActionData(Icons.south_rounded, 'Получить'),
+    _ActionData(Icons.attach_money_rounded, 'Купить'),
+    _ActionData(Icons.swap_horiz_rounded, 'Обменять'),
   ];
 
   @override

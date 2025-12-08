@@ -7,18 +7,20 @@ import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/home/home_page.dart';
 import 'providers/wallet_provider.dart';
+import 'providers/wallet_scope.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Один раз при старте выводим в консоль сид, приватный ключ и адрес (только для отладки!).
-  final walletProvider = WalletProvider();
-  await walletProvider.logDemoKeysToConsole();
 
-  runApp(const AtxWalletApp());
+  final walletProvider = WalletProvider(devEnabled: kEnableDevWalletStorage);
+
+  runApp(AtxWalletApp(walletProvider: walletProvider));
 }
 
 class AtxWalletApp extends StatelessWidget {
-  const AtxWalletApp({super.key});
+  const AtxWalletApp({required this.walletProvider, super.key});
+
+  final WalletProvider walletProvider;
 
   @override
   Widget build(BuildContext context) {
@@ -67,7 +69,9 @@ class AtxWalletApp extends StatelessWidget {
         '/register': (_) => const RegisterPage(),
         '/home': (_) => const HomePage(),
       },
-      builder: (context, child) => AuthScope(child: child!),
+      builder: (context, child) => AuthScope(
+        child: WalletScope(controller: walletProvider, child: child!),
+      ),
     );
   }
 }

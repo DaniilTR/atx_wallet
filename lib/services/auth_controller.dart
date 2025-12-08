@@ -2,9 +2,11 @@
 // Контроллер аутентификации, выбирающий между удалённым и локальным хранилищем
 import 'package:flutter/foundation.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'api_client.dart';
 import 'auth_repository.dart';
 import 'auth_service.dart';
+import 'auth_user.dart';
 import 'config.dart';
 
 class AuthController {
@@ -15,49 +17,55 @@ class AuthController {
   final AuthRepository _repo;
   final AuthService _memory;
 
-  String? _username;
-  String? get currentUsername => _username;
-  bool get isAuthenticated => _username != null;
+  AuthUser? _user;
+  AuthUser? get currentUser => _user;
+  String? get currentUsername => _user?.username;
+  bool get isAuthenticated => _user != null;
 
-  Future<void> register({
+  Future<AuthUser> register({
     required String username,
     required String password,
     String? email,
   }) async {
     if (kUseRemoteAuth) {
       try {
-        await _repo.register(
+        final user = await _repo.register(
           username: username,
           password: password,
           email: email,
         );
-        _username = username;
-        return;
+        _user = user;
+        return user;
       } catch (e) {
         // если сервер недоступен — фолбэк
         debugPrint('Remote register failed: $e');
       }
     }
-    await _memory.register(
+    final user = await _memory.register(
       username: username,
       password: password,
       email: email,
     );
-    _username = username;
+    _user = user;
+    return user;
   }
 
-  Future<void> login({required String login, required String password}) async {
+  Future<AuthUser> login({
+    required String login,
+    required String password,
+  }) async {
     if (kUseRemoteAuth) {
       try {
-        await _repo.login(login: login, password: password);
-        _username = login;
-        return;
+        final user = await _repo.login(login: login, password: password);
+        _user = user;
+        return user;
       } catch (e) {
         debugPrint('Remote login failed: $e');
       }
     }
-    await _memory.login(login: login, password: password);
-    _username = login;
+    final user = await _memory.login(login: login, password: password);
+    _user = user;
+    return user;
   }
 
   Future<void> logout() async {
@@ -67,6 +75,6 @@ class AuthController {
       } catch (_) {}
     }
     await _memory.logout();
-    _username = null;
+    _user = null;
   }
 }

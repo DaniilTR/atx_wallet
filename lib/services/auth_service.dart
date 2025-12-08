@@ -1,14 +1,15 @@
 // lib/services/auth_service.dart
 // Локальный сервис аутентификации (in-memory)
+import 'auth_user.dart';
+
 class AuthService {
-  // Dummy in-memory users. Key: username, Value: password.
-  final Map<String, String> _users = {};
-  String? _currentUsername;
+  final Map<String, _UserRecord> _users = {};
+  AuthUser? _currentUser;
 
-  bool get isAuthenticated => _currentUsername != null;
-  String? get currentUsername => _currentUsername;
+  bool get isAuthenticated => _currentUser != null;
+  AuthUser? get currentUser => _currentUser;
 
-  Future<void> register({
+  Future<AuthUser> register({
     required String username,
     required String password,
     String? email,
@@ -17,22 +18,39 @@ class AuthService {
     if (_users.containsKey(username)) {
       throw AuthException('Пользователь с таким никнеймом уже существует');
     }
-    _users[username] = password;
-    _currentUsername = username;
+
+    final user = AuthUser(
+      id: 'local_${DateTime.now().microsecondsSinceEpoch}',
+      username: username,
+      email: email,
+    );
+    _users[username] = _UserRecord(user: user, password: password);
+    _currentUser = user;
+    return user;
   }
 
-  Future<void> login({required String login, required String password}) async {
+  Future<AuthUser> login({
+    required String login,
+    required String password,
+  }) async {
     await Future<void>.delayed(const Duration(milliseconds: 250));
     final stored = _users[login];
-    if (stored == null || stored != password) {
+    if (stored == null || stored.password != password) {
       throw AuthException('Неверный никнейм или пароль');
     }
-    _currentUsername = login;
+    _currentUser = stored.user;
+    return stored.user;
   }
 
   Future<void> logout() async {
-    _currentUsername = null;
+    _currentUser = null;
   }
+}
+
+class _UserRecord {
+  const _UserRecord({required this.user, required this.password});
+  final AuthUser user;
+  final String password;
 }
 
 class AuthException implements Exception {

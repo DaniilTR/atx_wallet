@@ -4,6 +4,9 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { promises as fs } from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const app = express();
 app.use(cors());
@@ -12,6 +15,21 @@ app.use(express.json());
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atx_wallet';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DEV_WALLET_DIR = path.resolve(__dirname, '../dev_wallets');
+
+const SAFE_ID_REGEXP = /[^a-zA-Z0-9_.@-]/g;
+
+async function ensureDevDir() {
+  await fs.mkdir(DEV_WALLET_DIR, { recursive: true });
+}
+
+function devWalletFile(userId) {
+  const safeId = String(userId ?? '').replace(SAFE_ID_REGEXP, '_');
+  return path.join(DEV_WALLET_DIR, `${safeId}.wallet.json`);
+}
 
 await mongoose.connect(MONGODB_URI);
 
@@ -67,6 +85,79 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
+
+app.put('/api/dev-wallets/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'UserId is required' });
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ message: 'Profile payload is required' });
+    }
+
+    await ensureDevDir();
+    const filePath = devWalletFile(userId);
+    await fs.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf8');
+    return res.status(204).end();
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/dev-wallets/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'UserId is required' });
+    const filePath = devWalletFile(userId);
+    try {
+      const data = await fs.readFile(filePath, 'utf8');
+      return res.status(200).json(JSON.parse(data));
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json({ message: 'Not found' });
+      throw err;
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.head('/api/dev-wallets/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).end();
+    const filePath = devWalletFile(userId);
+    try {
+      await fs.access(filePath);
+      return res.status(200).end();
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).end();
+      throw err;
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).end();
+  }
+});
+
+app.delete('/api/dev-wallets/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'UserId is required' });
+    const filePath = devWalletFile(userId);
+    try {
+      await fs.unlink(filePath);
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).end();
+      throw err;
+    }
+    return res.status(204).end();
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server listening on http://0.0.0.0:${PORT}`);

@@ -1,7 +1,9 @@
 // lib/services/auth_repository.dart
 // Удалённый репозиторий аутентификации (через API)
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
 import 'api_client.dart';
+import 'auth_user.dart';
 
 class AuthRepository {
   AuthRepository(this._api, this._storage);
@@ -11,7 +13,7 @@ class AuthRepository {
   static const _tokenKey = 'auth_token';
   static const _usernameKey = 'user_username';
 
-  Future<void> register({
+  Future<AuthUser> register({
     required String username,
     required String password,
     String? email,
@@ -24,10 +26,28 @@ class AuthRepository {
     final token = res['token'] as String?;
     if (token == null) throw Exception('Token not received');
     await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _usernameKey, value: username);
+    final String responseUsername =
+        (res['user']?['username'] as String?) ??
+        (res['username'] as String?) ??
+        username;
+    await _storage.write(key: _usernameKey, value: responseUsername);
+
+    final String resolvedUserId =
+        (res['userId'] as String?) ??
+        (res['user']?['id'] as String?) ??
+        responseUsername;
+    final responseEmail = res['user']?['email'] as String? ?? email;
+    return AuthUser(
+      id: resolvedUserId,
+      username: responseUsername,
+      email: responseEmail,
+    );
   }
 
-  Future<void> login({required String login, required String password}) async {
+  Future<AuthUser> login({
+    required String login,
+    required String password,
+  }) async {
     final res = await _api.postJson('/api/auth/login', {
       'login': login,
       'password': password,
@@ -35,7 +55,22 @@ class AuthRepository {
     final token = res['token'] as String?;
     if (token == null) throw Exception('Token not received');
     await _storage.write(key: _tokenKey, value: token);
-    await _storage.write(key: _usernameKey, value: login);
+    final String responseUsername =
+        (res['user']?['username'] as String?) ??
+        (res['username'] as String?) ??
+        login;
+    await _storage.write(key: _usernameKey, value: responseUsername);
+
+    final String resolvedUserId =
+        (res['userId'] as String?) ??
+        (res['user']?['id'] as String?) ??
+        responseUsername;
+    final responseEmail = res['user']?['email'] as String?;
+    return AuthUser(
+      id: resolvedUserId,
+      username: responseUsername,
+      email: responseEmail,
+    );
   }
 
   Future<void> logout() async {
