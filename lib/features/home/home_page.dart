@@ -8,6 +8,19 @@ import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'home_route_args.dart';
 
+part 'slides/sheet_container.dart';
+part 'slides/send_sheet.dart';
+part 'slides/receive_sheet.dart';
+part 'slides/buy_sheet.dart';
+part 'slides/swap_sheet.dart';
+part 'slides/popular_coins_sheet.dart';
+part 'slides/history_sheet.dart';
+part 'slides/qr_sheet.dart';
+part 'slides/labeled_field.dart';
+part 'slides/primary_button.dart';
+part 'slides/info_chip.dart';
+part 'slides/swap_card.dart';
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -17,6 +30,59 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _tab = 0;
+
+  Future<void> _showNeonSheet(Widget child) {
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 16,
+            right: 16,
+            top: 12,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openSendSheet() =>
+      _showNeonSheet(_SendSheet(address: _currentAddress));
+
+  Future<void> _openReceiveSheet() =>
+      _showNeonSheet(_ReceiveSheet(address: _currentAddress));
+
+  Future<void> _openBuySheet() => _showNeonSheet(const _BuySheet());
+
+  Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
+
+  Future<void> _openPopularSheet() =>
+      _showNeonSheet(const _PopularCoinsSheet());
+
+  Future<void> _openHistorySheet() => _showNeonSheet(const _HistorySheet());
+
+  Future<void> _openQrSheet() =>
+      _showNeonSheet(_QrSheet(address: _currentAddress));
+
+  String? get _currentAddress {
+    final wallet = WalletScope.of(context);
+    final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
+    final profile = wallet.activeProfile ?? args?.devProfile;
+    return profile?.addressHex;
+  }
+
+  void _handleTabChange(int value) {
+    setState(() => _tab = value);
+    if (value == 1) {
+      _openPopularSheet();
+    } else if (value == 3) {
+      _openHistorySheet();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,7 +192,12 @@ class _HomePageState extends State<HomePage> {
                   },
                 ),
                 const SizedBox(height: 22),
-                const _ActionsRow(),
+                _ActionsRow(
+                  onSend: _openSendSheet,
+                  onReceive: _openReceiveSheet,
+                  onBuy: _openBuySheet,
+                  onSwap: _openSwapSheet,
+                ),
                 const SizedBox(height: 20),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -183,7 +254,8 @@ class _HomePageState extends State<HomePage> {
       ),
       bottomNavigationBar: _BottomNav(
         index: _tab,
-        onChanged: (value) => setState(() => _tab = value),
+        onChanged: _handleTabChange,
+        onQrTap: _openQrSheet,
       ),
     );
   }
@@ -343,66 +415,99 @@ class _BalanceCard extends StatelessWidget {
 }
 
 class _ActionsRow extends StatelessWidget {
-  const _ActionsRow();
+  const _ActionsRow({
+    required this.onSend,
+    required this.onReceive,
+    required this.onBuy,
+    required this.onSwap,
+  });
 
-  static const List<_ActionData> _items = [
-    _ActionData(Icons.north_east_rounded, 'Отправить'),
-    _ActionData(Icons.south_rounded, 'Получить'),
-    _ActionData(Icons.attach_money_rounded, 'Купить'),
-    _ActionData(Icons.swap_horiz_rounded, 'Обменять'),
-  ];
+  final VoidCallback onSend;
+  final VoidCallback onReceive;
+  final VoidCallback onBuy;
+  final VoidCallback onSwap;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: _items
-          .map(
-            (item) => Column(
-              children: [
-                Container(
-                  height: 62,
-                  width: 62,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(31),
-                    gradient: const LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [Color(0xFF27305A), Color(0xFF171C33)],
-                    ),
-                    border: Border.all(color: const Color(0x33FFFFFF)),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Color(0x44090F25),
-                        blurRadius: 22,
-                        offset: Offset(0, 14),
-                      ),
-                    ],
-                  ),
-                  child: Icon(item.icon, color: const Color(0xFFEFF2FF)),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  item.label,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: .1,
-                    color: const Color(0xFFCAD0E4),
-                  ),
-                ),
-              ],
-            ),
-          )
-          .toList(),
+      children: [
+        _ActionButton(
+          icon: Icons.north_east_rounded,
+          label: 'Отправить',
+          onTap: onSend,
+        ),
+        _ActionButton(
+          icon: Icons.south_rounded,
+          label: 'Получить',
+          onTap: onReceive,
+        ),
+        _ActionButton(
+          icon: Icons.attach_money_rounded,
+          label: 'Купить',
+          onTap: onBuy,
+        ),
+        _ActionButton(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Обменять',
+          onTap: onSwap,
+        ),
+      ],
     );
   }
 }
 
-class _ActionData {
-  const _ActionData(this.icon, this.label);
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            height: 62,
+            width: 62,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(31),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF27305A), Color(0xFF171C33)],
+              ),
+              border: Border.all(color: const Color(0x33FFFFFF)),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x44090F25),
+                  blurRadius: 22,
+                  offset: Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: const Color(0xFFEFF2FF)),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              letterSpacing: .1,
+              color: const Color(0xFFCAD0E4),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _AssetTile extends StatelessWidget {
@@ -624,110 +729,91 @@ class _GrowthPill extends StatelessWidget {
 }
 
 class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.index, required this.onChanged});
+  const _BottomNav({
+    required this.index,
+    required this.onChanged,
+    required this.onQrTap,
+  });
 
   final int index;
   final ValueChanged<int> onChanged;
+  final VoidCallback onQrTap;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 1),
       child: Stack(
         children: [
           Container(
-            height: 120,
-            color: Colors.transparent,
+            height: 110,
             width: MediaQuery.of(context).size.width,
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF485ACD), Color(0xFF3A1C7C)],
+              ),
+            ),
           ),
           BottomAppBar(
             color: Colors.transparent,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
             shape: const CircularNotchedRectangle(),
-
             child: SizedBox(
-              height: 100,
               width: double.infinity,
+              height: 100,
               child: Stack(
                 clipBehavior: Clip.none,
                 alignment: Alignment.topCenter,
-
                 children: [
-                  Positioned(
-                    top: 20,
-                    left: 18,
-                    right: 18,
+                  Positioned.fill(
                     child: Container(
-                      height: 92,
-                      padding: const EdgeInsets.fromLTRB(30, 22, 30, 16),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [Color(0xFF485ACD), Color(0xFF3A1C7C)],
-                        ),
-                        borderRadius: BorderRadius.circular(40),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(.18),
-                        ),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x73111A3E),
-                            blurRadius: 32,
-                            offset: Offset(0, 22),
-                          ),
-                        ],
-                      ),
-                      child: Column(
+                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _NavIcon(
-                                      icon: Icons.home_rounded,
-                                      active: index == 0,
-                                      onTap: () => onChanged(0),
-                                      activeColor: Colors.white,
-                                    ),
-                                    const SizedBox(width: 20),
-                                    _NavIcon(
-                                      icon: Icons.pie_chart_rounded,
-                                      active: index == 1,
-                                      onTap: () => onChanged(1),
-                                      activeColor: Colors.white,
-                                    ),
-                                  ],
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _NavIcon(
+                                  icon: Icons.home_rounded,
+                                  active: index == 0,
+                                  onTap: () => onChanged(0),
+                                  activeColor: Colors.white,
                                 ),
-                              ),
-                              const SizedBox(width: 72),
-                              Expanded(
-                                child: Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceEvenly,
-                                  children: [
-                                    _NavIcon(
-                                      icon: Icons.settings_rounded,
-                                      active: index == 2,
-                                      onTap: () => onChanged(2),
-                                      activeColor: Colors.white,
-                                    ),
-                                    const SizedBox(width: 20),
-                                    _NavIcon(
-                                      icon: Icons.table_rows_rounded,
-                                      active: index == 3,
-                                      onTap: () => onChanged(3),
-                                      activeColor: Colors.white,
-                                    ),
-                                  ],
+                                const SizedBox(width: 20),
+                                _NavIcon(
+                                  icon: Icons.pie_chart_rounded,
+                                  active: index == 1,
+                                  onTap: () => onChanged(1),
+                                  activeColor: Colors.white,
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 80),
+                          Expanded(
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                _NavIcon(
+                                  icon: Icons.settings_rounded,
+                                  active: index == 2,
+                                  onTap: () => onChanged(2),
+                                  activeColor: Colors.white,
+                                ),
+                                const SizedBox(width: 20),
+                                _NavIcon(
+                                  icon: Icons.table_rows_rounded,
+                                  active: index == 3,
+                                  onTap: () => onChanged(3),
+                                  activeColor: Colors.white,
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -736,10 +822,10 @@ class _BottomNav extends StatelessWidget {
                   Positioned(
                     top: -8,
                     child: GestureDetector(
-                      onTap: () {},
+                      onTap: onQrTap,
                       child: Container(
-                        width: 72,
-                        height: 72,
+                        width: 55,
+                        height: 55,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           gradient: const LinearGradient(
