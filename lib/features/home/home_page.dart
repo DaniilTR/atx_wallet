@@ -130,7 +130,7 @@ class _HomePageState extends State<HomePage> {
         systemOverlayStyle: SystemUiOverlayStyle.light,
         backgroundColor: Colors.transparent,
         shadowColor: Colors.transparent,
-        toolbarHeight: 78,
+        toolbarHeight: 65,
         titleSpacing: 0,
         title: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -352,7 +352,7 @@ class _BalanceCard extends StatelessWidget {
             ),
             padding: const EdgeInsets.fromLTRB(
               0, // left
-              24, // top
+              22, // top
               0, // right
               0, // bottom
             ),
@@ -372,13 +372,17 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      _GrowthPill(value: loading ? 'Обновляем' : 'Live data'),
+                      _GrowthPill(
+                        value: loading
+                            ? 'Обновляем'
+                            : 'Обновлено: $updatedLabel',
+                      ),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -392,7 +396,7 @@ class _BalanceCard extends StatelessWidget {
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 3),
                       Text(
                         totalUsd == null
                             ? 'Без оценки в USD'
@@ -400,14 +404,6 @@ class _BalanceCard extends StatelessWidget {
                         style: GoogleFonts.inter(
                           color: const Color(0xFFB7C4EA),
                           fontSize: 13,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Обновлено: $updatedLabel',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: const Color(0xFF8B96B8),
                         ),
                       ),
                     ],
@@ -760,20 +756,6 @@ class _GrowthPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF8DF2FF), Color(0xFF62D4F3)],
-        ),
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x408CF0FF),
-            blurRadius: 16,
-            offset: Offset(0, 8),
-          ),
-        ],
-      ),
       child: Row(
         children: [
           const Icon(Icons.trending_up, size: 16, color: Color(0xFF16273E)),
@@ -782,7 +764,7 @@ class _GrowthPill extends StatelessWidget {
             value,
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w700,
-              color: const Color(0xFF16273E),
+              color: const Color.fromARGB(255, 76, 82, 90),
             ),
           ),
         ],
@@ -809,7 +791,7 @@ class _BottomNav extends StatelessWidget {
       child: Stack(
         children: [
           Container(
-            height: 110,
+            height: 100,
             width: MediaQuery.of(context).size.width,
             decoration: const BoxDecoration(
               gradient: LinearGradient(
