@@ -102,6 +102,11 @@ class AuthService {
     return stored.user;
   }
 
+  Future<AuthUser?> restore() async {
+    await _ensureLoaded();
+    return _currentUser;
+  }
+
   Future<void> logout() async {
     await _ensureLoaded();
     _currentUser = null;

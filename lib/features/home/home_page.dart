@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../providers/wallet_provider.dart';
@@ -51,8 +53,8 @@ class _HomePageState extends State<HomePage> {
     return WalletScope.read(context).refreshBalances();
   }
 
-  Future<void> _showNeonSheet(Widget child) {
-    return showModalBottomSheet<void>(
+  Future<T?> _showNeonSheet<T>(Widget child) {
+    return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
@@ -70,8 +72,9 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _openSendSheet() =>
-      _showNeonSheet(_SendSheet(address: _currentAddress));
+  Future<void> _openSendSheet({String? recipient}) => _showNeonSheet<void>(
+    _SendSheet(address: _currentAddress, initialRecipient: recipient),
+  );
 
   Future<void> _openReceiveSheet() =>
       _showNeonSheet(_ReceiveSheet(address: _currentAddress));
@@ -85,8 +88,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openHistorySheet() => _showNeonSheet(const _HistorySheet());
 
-  Future<void> _openQrSheet() =>
-      _showNeonSheet(_QrSheet(address: _currentAddress));
+  Future<void> _openQrSheet() async {
+    final scanned = await _showNeonSheet<String?>(
+      _QrSheet(address: _currentAddress),
+    );
+    if (!mounted) return;
+    if (scanned != null) {
+      await _openSendSheet(recipient: scanned);
+    }
+  }
 
   String? get _currentAddress {
     final wallet = WalletScope.of(context);

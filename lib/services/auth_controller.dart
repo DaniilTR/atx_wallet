@@ -68,6 +68,31 @@ class AuthController {
     return user;
   }
 
+  Future<AuthUser?> tryRestoreSession() async {
+    if (_user != null) return _user;
+    if (kUseRemoteAuth) {
+      try {
+        final restored = await _repo.restoreUser();
+        if (restored != null) {
+          _user = restored;
+          return restored;
+        }
+      } catch (e) {
+        debugPrint('Remote session restore failed: $e');
+      }
+    }
+    try {
+      final local = await _memory.restore();
+      if (local != null) {
+        _user = local;
+        return local;
+      }
+    } catch (e) {
+      debugPrint('Local session restore failed: $e');
+    }
+    return null;
+  }
+
   Future<void> logout() async {
     if (kUseRemoteAuth) {
       try {

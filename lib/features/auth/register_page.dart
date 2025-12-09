@@ -4,6 +4,7 @@ import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../home/home_route_args.dart';
 import 'widgets/animated_neon_background.dart';
+import 'widgets/auth_loading_view.dart';
 import 'widgets/glass_card.dart';
 
 class RegisterPage extends StatefulWidget {
@@ -23,6 +24,13 @@ class _RegisterPageState extends State<RegisterPage> {
   bool _obscure2 = true;
   bool _agree = true;
   bool _loading = false;
+  bool _checkingSession = true;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptAutoLogin());
+  }
 
   @override
   void dispose() {
@@ -31,6 +39,34 @@ class _RegisterPageState extends State<RegisterPage> {
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _attemptAutoLogin() async {
+    final auth = AuthScope.of(context);
+    final wallet = WalletScope.read(context);
+    try {
+      final user = await auth.tryRestoreSession();
+      if (!mounted) return;
+      if (user == null) {
+        setState(() => _checkingSession = false);
+        return;
+      }
+      DevWalletProfile? profile;
+      if (wallet.devEnabled) {
+        try {
+          profile = await wallet.loadDevProfile(user.id);
+        } catch (_) {}
+      }
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _checkingSession = false);
+    }
   }
 
   Future<void> _submit() async {
@@ -73,6 +109,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   Widget build(BuildContext context) {
+    if (_checkingSession) {
+      return const AuthLoadingView(message: 'Готовим аккаунт...');
+    }
     final cs = Theme.of(context).colorScheme;
     OutlineInputBorder _glassBorder(Color c) => OutlineInputBorder(
       borderRadius: BorderRadius.circular(14),

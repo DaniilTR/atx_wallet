@@ -1,9 +1,10 @@
 part of '../home_page.dart';
 
 class _SendSheet extends StatefulWidget {
-  const _SendSheet({required this.address});
+  const _SendSheet({required this.address, this.initialRecipient});
 
   final String? address;
+  final String? initialRecipient;
 
   @override
   State<_SendSheet> createState() => _SendSheetState();
@@ -15,6 +16,15 @@ class _SendSheetState extends State<_SendSheet> {
   final _amountCtrl = TextEditingController();
   TokenMetadata? _selectedToken;
   bool _sending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.initialRecipient;
+    if (initial != null && initial.isNotEmpty) {
+      _toCtrl.text = initial;
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -134,7 +144,7 @@ class _SendSheetState extends State<_SendSheet> {
               const SizedBox(height: 12),
             ],
             DropdownButtonFormField<TokenMetadata>(
-              value: token,
+              initialValue: token,
               decoration: InputDecoration(
                 labelText: 'Токен',
                 labelStyle: GoogleFonts.inter(color: const Color(0xFFB5BEDF)),

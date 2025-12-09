@@ -12,6 +12,8 @@ class AuthRepository {
 
   static const _tokenKey = 'auth_token';
   static const _usernameKey = 'user_username';
+  static const _userIdKey = 'user_id';
+  static const _userEmailKey = 'user_email';
 
   Future<AuthUser> register({
     required String username,
@@ -25,18 +27,22 @@ class AuthRepository {
     });
     final token = res['token'] as String?;
     if (token == null) throw Exception('Token not received');
-    await _storage.write(key: _tokenKey, value: token);
     final String responseUsername =
         (res['user']?['username'] as String?) ??
         (res['username'] as String?) ??
         username;
-    await _storage.write(key: _usernameKey, value: responseUsername);
 
     final String resolvedUserId =
         (res['userId'] as String?) ??
         (res['user']?['id'] as String?) ??
         responseUsername;
     final responseEmail = res['user']?['email'] as String? ?? email;
+    await _persistSession(
+      token: token,
+      username: responseUsername,
+      userId: resolvedUserId,
+      email: responseEmail,
+    );
     return AuthUser(
       id: resolvedUserId,
       username: responseUsername,
@@ -54,18 +60,22 @@ class AuthRepository {
     });
     final token = res['token'] as String?;
     if (token == null) throw Exception('Token not received');
-    await _storage.write(key: _tokenKey, value: token);
     final String responseUsername =
         (res['user']?['username'] as String?) ??
         (res['username'] as String?) ??
         login;
-    await _storage.write(key: _usernameKey, value: responseUsername);
 
     final String resolvedUserId =
         (res['userId'] as String?) ??
         (res['user']?['id'] as String?) ??
         responseUsername;
     final responseEmail = res['user']?['email'] as String?;
+    await _persistSession(
+      token: token,
+      username: responseUsername,
+      userId: resolvedUserId,
+      email: responseEmail,
+    );
     return AuthUser(
       id: resolvedUserId,
       username: responseUsername,
@@ -76,8 +86,35 @@ class AuthRepository {
   Future<void> logout() async {
     await _storage.delete(key: _tokenKey);
     await _storage.delete(key: _usernameKey);
+    await _storage.delete(key: _userIdKey);
+    await _storage.delete(key: _userEmailKey);
   }
 
   Future<String?> get token async => _storage.read(key: _tokenKey);
   Future<String?> get savedUsername async => _storage.read(key: _usernameKey);
+
+  Future<AuthUser?> restoreUser() async {
+    final token = await _storage.read(key: _tokenKey);
+    final username = await _storage.read(key: _usernameKey);
+    if (token == null || username == null) return null;
+    final userId = await _storage.read(key: _userIdKey) ?? username;
+    final email = await _storage.read(key: _userEmailKey);
+    return AuthUser(id: userId, username: username, email: email);
+  }
+
+  Future<void> _persistSession({
+    required String token,
+    required String username,
+    required String userId,
+    String? email,
+  }) async {
+    await _storage.write(key: _tokenKey, value: token);
+    await _storage.write(key: _usernameKey, value: username);
+    await _storage.write(key: _userIdKey, value: userId);
+    if (email != null) {
+      await _storage.write(key: _userEmailKey, value: email);
+    } else {
+      await _storage.delete(key: _userEmailKey);
+    }
+  }
 }
