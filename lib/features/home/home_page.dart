@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../providers/wallet_scope.dart';
+import '../../providers/wallet_provider.dart';
 import '../../services/auth_scope.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
@@ -21,6 +22,12 @@ part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
 part 'slides/swap_card.dart';
 
+const Map<String, Color> _tokenColors = <String, Color>{
+  'TBNB': Color(0xFF5782FF),
+  'ATX': Color(0xFF3DD5D0),
+  'LEV': Color(0xFFF7C344),
+};
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -30,6 +37,19 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   int _tab = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      WalletScope.read(context).refreshBalances(silent: true);
+    });
+  }
+
+  Future<void> _refreshBalances() {
+    return WalletScope.read(context).refreshBalances();
+  }
 
   Future<void> _showNeonSheet(Widget child) {
     return showModalBottomSheet<void>(
@@ -88,6 +108,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
     final wallet = WalletScope.of(context);
+    final balances = wallet.balances;
     final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
     final profile = wallet.activeProfile ?? args?.devProfile;
     final address = profile?.addressHex;
@@ -164,6 +185,7 @@ class _HomePageState extends State<HomePage> {
               children: [
                 _BalanceCard(
                   address: address,
+                  balances: balances,
                   onCopy: () async {
                     if (address == null) {
                       if (!mounted) return;
@@ -210,43 +232,50 @@ class _HomePageState extends State<HomePage> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        minimumSize: Size.zero,
-                        padding: EdgeInsets.zero,
-                      ),
-                      onPressed: () {},
-                      child: Text(
-                        'view all',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: const Color(0xFFB0BBCE),
-                        ),
-                      ),
+                    IconButton(
+                      splashRadius: 18,
+                      tooltip: 'Обновить баланс',
+                      onPressed: balances.isLoading
+                          ? null
+                          : () => _refreshBalances(),
+                      icon: balances.isLoading
+                          ? SizedBox(
+                              width: 18,
+                              height: 18,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: const AlwaysStoppedAnimation<Color>(
+                                  Color(0xFFB0BBCE),
+                                ),
+                              ),
+                            )
+                          : const Icon(Icons.refresh_rounded),
+                      color: const Color(0xFFB0BBCE),
                     ),
                   ],
                 ),
                 const SizedBox(height: 18),
-                const _AssetTile(
-                  name: 'Test BNB',
-                  ticker: 'BNB',
-                  color: Color(0xFF5782FF),
-                  price: '3457.00',
-                ),
-                const SizedBox(height: 14),
-                const _AssetTile(
-                  name: 'ATX coin',
-                  ticker: 'ATX',
-                  color: Color(0xFF3DD5D0),
-                  price: '4457.00',
-                ),
-                const SizedBox(height: 14),
-                const _AssetTile(
-                  name: 'Levcoin',
-                  ticker: 'LEV',
-                  color: Color(0xFFF7C344),
-                  price: '512.00',
-                ),
+                for (var i = 0; i < balances.assets.length; i++) ...[
+                  _AssetTile(
+                    balance: balances.assets[i],
+                    color:
+                        _tokenColors[balances.assets[i].token.symbol] ??
+                        const Color(0xFF4C6BFF),
+                    bnbUsdPrice: balances.bnbUsdPrice,
+                  ),
+                  if (i != balances.assets.length - 1)
+                    const SizedBox(height: 14),
+                ],
+                if (balances.error != null) ...[
+                  const SizedBox(height: 12),
+                  Text(
+                    'Не удалось обновить баланс: ${balances.error}',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFFF8F8F),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -262,8 +291,14 @@ class _HomePageState extends State<HomePage> {
 }
 
 class _BalanceCard extends StatelessWidget {
-  const _BalanceCard({required this.onCopy, this.address});
+  const _BalanceCard({
+    required this.onCopy,
+    required this.balances,
+    this.address,
+  });
+
   final VoidCallback onCopy;
+  final WalletBalances balances;
   final String? address;
 
   @override
@@ -274,6 +309,10 @@ class _BalanceCard extends StatelessWidget {
         ? '${address!.substring(0, 6)}...${address!.substring(address!.length - 4)}'
         : address!;
     final borderTint = Colors.white.withOpacity(0.22);
+    final totalUsd = balances.totalUsd;
+    final totalTbnb = balances.totalTbnb;
+    final loading = balances.isLoading;
+    final updatedLabel = _formatTimestamp(balances.updatedAt);
 
     return Align(
       child: ConstrainedBox(
@@ -323,20 +362,45 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      const _GrowthPill(value: '+15%'),
+                      _GrowthPill(value: loading ? 'Обновляем' : 'Live data'),
                     ],
                   ),
                 ),
                 const SizedBox(height: 12),
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Text(
-                    '\$13450.00',
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 26,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        totalUsd != null
+                            ? '\$${_formatNumber(totalUsd, precision: 2)}'
+                            : '${_formatNumber(totalTbnb, precision: 4)} TBNB',
+                        style: GoogleFonts.inter(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        totalUsd == null
+                            ? 'Без оценки в USD'
+                            : '≈ ${_formatNumber(totalTbnb, precision: 4)} TBNB',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFB7C4EA),
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Обновлено: $updatedLabel',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          color: const Color(0xFF8B96B8),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -512,19 +576,29 @@ class _ActionButton extends StatelessWidget {
 
 class _AssetTile extends StatelessWidget {
   const _AssetTile({
-    required this.name,
-    required this.ticker,
+    required this.balance,
     required this.color,
-    required this.price,
+    this.bnbUsdPrice,
   });
 
-  final String name;
-  final String ticker;
+  final AssetBalance balance;
   final Color color;
-  final String price;
+  final double? bnbUsdPrice;
 
   @override
   Widget build(BuildContext context) {
+    final amountLabel =
+        '${_formatNumber(balance.amount, precision: 6)} ${balance.token.symbol}';
+    final tbnbLabel =
+        '≈ ${_formatNumber(balance.tbnbValue, precision: 4)} TBNB';
+    final usdValue = bnbUsdPrice == null
+        ? null
+        : balance.tbnbValue * bnbUsdPrice!;
+    final valueLabel = usdValue == null
+        ? tbnbLabel
+        : '\$${_formatNumber(usdValue, precision: 2)}';
+    final secondaryLabel = usdValue == null ? amountLabel : tbnbLabel;
+
     return GlassCard(
       borderRadius: 24,
       padding: EdgeInsets.zero,
@@ -575,7 +649,7 @@ class _AssetTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    name,
+                    balance.token.name,
                     style: GoogleFonts.inter(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
@@ -583,25 +657,42 @@ class _AssetTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 3),
                   Text(
-                    ticker,
+                    balance.token.symbol,
                     style: GoogleFonts.inter(color: const Color(0xFF9FB3D8)),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    amountLabel,
+                    style: GoogleFonts.inter(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),
             ),
-            SizedBox(
-              width: 110,
-              height: 34,
-              child: CustomPaint(painter: _SparkPainter(color)),
-            ),
             const SizedBox(width: 16),
-            Text(
-              price,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-                fontSize: 16,
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  valueLabel,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  secondaryLabel,
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF9FB3D8),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -610,57 +701,19 @@ class _AssetTile extends StatelessWidget {
   }
 }
 
-class _SparkPainter extends CustomPainter {
-  const _SparkPainter(this.color);
-  final Color color;
+String _formatNumber(double value, {int precision = 2}) {
+  final text = value.toStringAsFixed(precision);
+  if (!text.contains('.')) return text;
+  return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+}
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final base = Path()
-      ..moveTo(0, size.height * .75)
-      ..cubicTo(
-        size.width * .12,
-        size.height * .55,
-        size.width * .2,
-        size.height * .85,
-        size.width * .32,
-        size.height * .4,
-      )
-      ..cubicTo(
-        size.width * .42,
-        size.height * .15,
-        size.width * .55,
-        size.height * .9,
-        size.width * .68,
-        size.height * .5,
-      )
-      ..cubicTo(
-        size.width * .8,
-        size.height * .2,
-        size.width * .88,
-        size.height * .65,
-        size.width,
-        size.height * .35,
-      );
-
-    final glow = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 4
-      ..color = color.withOpacity(.35)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
-
-    final line = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..strokeCap = StrokeCap.round
-      ..color = color;
-
-    canvas.drawPath(base, glow);
-    canvas.drawPath(base, line);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+String _formatTimestamp(DateTime? value) {
+  if (value == null) return '—';
+  final local = value.toLocal();
+  final hh = local.hour.toString().padLeft(2, '0');
+  final mm = local.minute.toString().padLeft(2, '0');
+  final ss = local.second.toString().padLeft(2, '0');
+  return '$hh:$mm:$ss';
 }
 
 class _NeonAvatar extends StatelessWidget {

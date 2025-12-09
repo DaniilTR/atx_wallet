@@ -19,6 +19,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atx_wa
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEV_WALLET_DIR = path.resolve(__dirname, '../dev_wallets');
+const DEV_HISTORY_DIR = DEV_WALLET_DIR;
 
 const SAFE_ID_REGEXP = /[^a-zA-Z0-9_.@-]/g;
 
@@ -29,6 +30,11 @@ async function ensureDevDir() {
 function devWalletFile(userId) {
   const safeId = String(userId ?? '').replace(SAFE_ID_REGEXP, '_');
   return path.join(DEV_WALLET_DIR, `${safeId}.wallet.json`);
+}
+
+function devHistoryFile(userId) {
+  const safeId = String(userId ?? '').replace(SAFE_ID_REGEXP, '_');
+  return path.join(DEV_HISTORY_DIR, `${safeId}.history.json`);
 }
 
 await mongoose.connect(MONGODB_URI);
@@ -152,6 +158,43 @@ app.delete('/api/dev-wallets/:userId', async (req, res) => {
       if (err.code === 'ENOENT') return res.status(404).end();
       throw err;
     }
+    return res.status(204).end();
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.get('/api/dev-wallet-history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'UserId is required' });
+    await ensureDevDir();
+    const filePath = devHistoryFile(userId);
+    try {
+      const data = await fs.readFile(filePath, 'utf8');
+      return res.status(200).json(JSON.parse(data));
+    } catch (err) {
+      if (err.code === 'ENOENT') return res.status(404).json([]);
+      throw err;
+    }
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+app.put('/api/dev-wallet-history/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!userId) return res.status(400).json({ message: 'UserId is required' });
+    const payload = req.body;
+    if (!Array.isArray(payload)) {
+      return res.status(400).json({ message: 'History payload must be an array' });
+    }
+    await ensureDevDir();
+    const filePath = devHistoryFile(userId);
+    await fs.writeFile(filePath, JSON.stringify(payload, null, 2), 'utf8');
     return res.status(204).end();
   } catch (e) {
     console.error(e);

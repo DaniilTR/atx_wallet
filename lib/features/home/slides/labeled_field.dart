@@ -5,11 +5,21 @@ class _LabeledField extends StatelessWidget {
     required this.label,
     required this.hint,
     required this.prefixIcon,
+    this.controller,
+    this.keyboardType,
+    this.validator,
+    this.textInputAction,
+    this.onChanged,
   });
 
   final String label;
   final String hint;
   final IconData prefixIcon;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final String? Function(String?)? validator;
+  final TextInputAction? textInputAction;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -24,7 +34,12 @@ class _LabeledField extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        TextField(
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          validator: validator,
+          textInputAction: textInputAction,
+          onChanged: onChanged,
           style: GoogleFonts.inter(color: Colors.white),
           decoration: InputDecoration(
             hintText: hint,

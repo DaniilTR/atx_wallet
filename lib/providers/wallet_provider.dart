@@ -1,10 +1,18 @@
-import 'package:flutter/foundation.dart';
-import 'package:bip39/bip39.dart' as bip39;
+import 'dart:async';
+import 'dart:collection';
+import 'dart:math' as math;
+
 import 'package:bip32/bip32.dart' as bip32;
+import 'package:bip39/bip39.dart' as bip39;
+import 'package:flutter/foundation.dart';
 import 'package:hex/hex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
+
+import '../dev/dev_transaction_storage.dart';
 import '../dev/dev_wallet_storage.dart';
+import '../models/transaction_record.dart';
+import '../services/blockchain_service.dart';
 
 // Интерфейс для сервиса генерации и получения ключей/адреса.
 abstract class WalletAddressService {
@@ -13,23 +21,176 @@ abstract class WalletAddressService {
   Future<EthereumAddress> getPublicKey(String privateKey);
 }
 
+class TokenMetadata {
+  const TokenMetadata({
+    required this.symbol,
+    required this.name,
+    required this.tbnbRate,
+    this.contractAddress,
+    this.decimalsHint = 18,
+    this.isNative = false,
+    this.fetchDecimalsFromChain = false,
+  }) : assert(
+         isNative || contractAddress != null,
+         'ERC-20 token requires a contract address',
+       );
+
+  final String symbol;
+  final String name;
+  final double tbnbRate; // отношение токена к TBNB
+  final String? contractAddress;
+  final int decimalsHint;
+  final bool isNative;
+  final bool fetchDecimalsFromChain;
+
+  bool get isErc20 => !isNative;
+}
+
+class AssetBalance {
+  const AssetBalance({
+    required this.token,
+    required this.raw,
+    required this.decimals,
+  });
+
+  final TokenMetadata token;
+  final BigInt raw;
+  final int decimals;
+
+  double get amount {
+    if (raw == BigInt.zero) return 0;
+    final divisor = math.pow(10, decimals).toDouble();
+    return raw.toDouble() / divisor;
+  }
+
+  double get tbnbValue => amount * token.tbnbRate;
+}
+
+class WalletBalances {
+  WalletBalances({
+    required List<AssetBalance> assets,
+    this.bnbUsdPrice,
+    this.updatedAt,
+    this.isLoading = false,
+    this.error,
+  }) : assets = List.unmodifiable(assets);
+
+  final List<AssetBalance> assets;
+  final double? bnbUsdPrice;
+  final DateTime? updatedAt;
+  final bool isLoading;
+  final String? error;
+
+  double get totalTbnb =>
+      assets.fold<double>(0, (prev, asset) => prev + asset.tbnbValue);
+
+  double? get totalUsd => bnbUsdPrice == null ? null : totalTbnb * bnbUsdPrice!;
+
+  WalletBalances copyWith({
+    List<AssetBalance>? assets,
+    double? bnbUsdPrice,
+    bool? isLoading,
+    bool clearError = false,
+    String? error,
+    DateTime? updatedAt,
+  }) {
+    return WalletBalances(
+      assets: assets ?? this.assets,
+      bnbUsdPrice: bnbUsdPrice ?? this.bnbUsdPrice,
+      isLoading: isLoading ?? this.isLoading,
+      error: clearError ? null : (error ?? this.error),
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  factory WalletBalances.initial(List<TokenMetadata> tokens) {
+    return WalletBalances(
+      assets: tokens
+          .map(
+            (token) => AssetBalance(
+              token: token,
+              raw: BigInt.zero,
+              decimals: token.decimalsHint,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
+  TokenMetadata(
+    symbol: 'TBNB',
+    name: 'Test BNB',
+    tbnbRate: 1,
+    decimalsHint: 18,
+    isNative: true,
+  ),
+  TokenMetadata(
+    symbol: 'ATX',
+    name: 'ATX coin',
+    contractAddress: '0x996Dbc052A2A4d128ddB2375A77608ff5cBc5Ff0',
+    tbnbRate: 0.001,
+    decimalsHint: 18,
+    fetchDecimalsFromChain: true,
+  ),
+  TokenMetadata(
+    symbol: 'LEV',
+    name: 'Levcoin',
+    contractAddress: '0x145753b98ECafDC1Fb60F57518598e9390B32af9',
+    tbnbRate: 0.01,
+    decimalsHint: 18,
+    fetchDecimalsFromChain: true,
+  ),
+];
+
 class WalletProvider extends ChangeNotifier implements WalletAddressService {
+  WalletProvider({
+    bool devEnabled = false,
+    BlockchainService? blockchainService,
+    DevWalletStorage? walletStorage,
+    DevTransactionStorage? transactionStorage,
+  }) : devStorage = walletStorage ?? DevWalletStorage(devEnabled: devEnabled),
+       devHistoryStorage =
+           transactionStorage ?? DevTransactionStorage(devEnabled: devEnabled),
+       blockchain = blockchainService ?? BlockchainService();
+
   // Храним приватный ключ в памяти (краткосрочно) для уведомлений UI.
   String? privateKey;
 
   // Стандартный путь BIP44 для EVM/BSC: m/44'/60'/0'/0/0.
   static const String _derivationPath = "m/44'/60'/0'/0/0";
+  static const Duration _autoRefreshInterval = Duration(seconds: 45);
 
-  // DEV storage (в проде devEnabled=false).
   final DevWalletStorage devStorage;
+  final DevTransactionStorage devHistoryStorage;
+  final BlockchainService blockchain;
 
   DevWalletProfile? _activeProfile;
   DevWalletProfile? get activeProfile => _activeProfile;
-
   bool get devEnabled => devStorage.devEnabled;
 
-  WalletProvider({bool devEnabled = false})
-    : devStorage = DevWalletStorage(devEnabled: devEnabled);
+  WalletBalances _balances = WalletBalances.initial(kTrackedTokens);
+  WalletBalances get balances => _balances;
+  List<TokenMetadata> get supportedTokens => kTrackedTokens;
+
+  Timer? _balanceTimer;
+  bool _hasBalanceSnapshot = false;
+
+  static const int _historyLimit = 100;
+  int _historyCounter = 0;
+
+  List<TransactionRecord> _history = const <TransactionRecord>[];
+  bool _historyLoading = false;
+  String? _historyError;
+
+  UnmodifiableListView<TransactionRecord> get history =>
+      UnmodifiableListView(_history);
+  bool get historyLoading => _historyLoading;
+  String? get historyError => _historyError;
+
+  bool get isWalletReady =>
+      _activeProfile?.addressHex != null && privateKey != null;
 
   // Загрузить приватный ключ из SharedPreferences (dev-сторона, без шифрования).
   Future<void> loadPrivateKey() async {
@@ -71,7 +232,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   Future<EthereumAddress> getPublicKey(String privateKey) async {
     // Создаём объект приватного ключа web3dart и извлекаем адрес (EIP-55 checksum).
     final private = EthPrivateKey.fromHex(privateKey);
-    final address = await private.address;
+    final address = private.address;
     return address;
   }
 
@@ -87,6 +248,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       _setActiveProfile(existing);
       if (existing != null) {
         privateKey = existing.privateKeyHex;
+        await refreshBalances(silent: true);
       }
       return existing;
     }
@@ -104,6 +266,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
     await devStorage.saveProfile(profile);
     _setActiveProfile(profile);
+    await refreshBalances(silent: true);
     return profile;
   }
 
@@ -114,6 +277,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _setActiveProfile(profile);
     if (profile != null) {
       privateKey = profile.privateKeyHex;
+      await refreshBalances(silent: true);
     }
     return profile;
   }
@@ -122,13 +286,297 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     if (_activeProfile == null) return;
     _activeProfile = null;
     privateKey = null;
+    _balances = WalletBalances.initial(kTrackedTokens);
+    _stopAutoRefresh();
+    _clearHistoryState();
+    _hasBalanceSnapshot = false;
     notifyListeners();
+  }
+
+  Future<void> refreshBalances({bool silent = false}) async {
+    final addressHex = _activeProfile?.addressHex;
+    if (addressHex == null) {
+      _balances = WalletBalances.initial(kTrackedTokens);
+      _hasBalanceSnapshot = false;
+      notifyListeners();
+      return;
+    }
+
+    if (!silent) {
+      _balances = _balances.copyWith(isLoading: true, clearError: true);
+      notifyListeners();
+    }
+
+    final previousAssets = _balances.assets;
+
+    try {
+      final owner = EthereumAddress.fromHex(addressHex);
+      final futures = kTrackedTokens
+          .map((token) => _fetchAssetBalance(token, owner))
+          .toList(growable: false);
+      final assetBalances = await Future.wait(futures);
+      await _detectIncomingTransfers(previousAssets, assetBalances);
+      final price = await blockchain.fetchBnbUsdPrice();
+      _balances = _balances.copyWith(
+        assets: assetBalances,
+        bnbUsdPrice: price ?? _balances.bnbUsdPrice,
+        isLoading: false,
+        clearError: true,
+        updatedAt: DateTime.now(),
+      );
+      _hasBalanceSnapshot = true;
+    } catch (e, st) {
+      debugPrint('Failed to refresh balances: $e\n$st');
+      _balances = _balances.copyWith(
+        isLoading: false,
+        error: e.toString(),
+        updatedAt: DateTime.now(),
+      );
+    }
+    notifyListeners();
+  }
+
+  Future<String> sendAsset({
+    required TokenMetadata token,
+    required String recipient,
+    required double amount,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError.value(
+        amount,
+        'amount',
+        'should be greater than zero',
+      );
+    }
+    final key = privateKey;
+    if (key == null) {
+      throw StateError('Private key is not initialized');
+    }
+    final to = EthereumAddress.fromHex(recipient);
+    String txHash;
+    if (token.isNative) {
+      final wei = _toBaseUnits(amount, token.decimalsHint);
+      txHash = await blockchain.sendNative(
+        privateKeyHex: key,
+        to: to,
+        amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+      );
+    } else {
+      final contract = EthereumAddress.fromHex(token.contractAddress!);
+      final decimals = token.fetchDecimalsFromChain
+          ? await blockchain.getTokenDecimals(contract)
+          : token.decimalsHint;
+      final raw = _toBaseUnits(amount, decimals);
+      txHash = await blockchain.sendToken(
+        privateKeyHex: key,
+        contract: contract,
+        to: to,
+        amount: raw,
+      );
+    }
+    await refreshBalances(silent: true);
+    final record = TransactionRecord(
+      id: _nextRecordId(),
+      tokenSymbol: token.symbol,
+      amount: amount,
+      incoming: false,
+      timestamp: DateTime.now(),
+      txHash: txHash,
+      note: '→ ${_shortenAddress(recipient)}',
+    );
+    await _appendHistory([record]);
+    return txHash;
+  }
+
+  double convertAmount({
+    required TokenMetadata from,
+    required TokenMetadata to,
+    required double amount,
+  }) {
+    if (amount <= 0) return 0;
+    final tbnbValue = amount * from.tbnbRate;
+    return tbnbValue / to.tbnbRate;
+  }
+
+  Future<void> refreshHistory() async {
+    await _loadHistoryFromStorage();
+  }
+
+  AssetBalance? balanceForSymbol(String symbol) {
+    for (final asset in _balances.assets) {
+      if (asset.token.symbol == symbol) return asset;
+    }
+    return null;
+  }
+
+  void _clearHistoryState() {
+    _history = const <TransactionRecord>[];
+    _historyLoading = false;
+    _historyError = null;
+  }
+
+  Future<void> _loadHistoryFromStorage({bool silent = false}) async {
+    final profile = _activeProfile;
+    if (profile == null) return;
+    if (!silent) {
+      _historyLoading = true;
+      notifyListeners();
+    }
+    try {
+      final records = await devHistoryStorage.loadHistory(profile.userId);
+      _history = List.unmodifiable(records);
+      _historyError = null;
+    } catch (e, st) {
+      debugPrint('Failed to load history: $e\n$st');
+      _historyError = e.toString();
+    } finally {
+      _historyLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _appendHistory(List<TransactionRecord> entries) async {
+    if (entries.isEmpty) return;
+    final updated = <TransactionRecord>[...entries, ..._history]
+      ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+    if (updated.length > _historyLimit) {
+      updated.removeRange(_historyLimit, updated.length);
+    }
+    _history = List.unmodifiable(updated);
+    notifyListeners();
+    await _persistHistory();
+  }
+
+  Future<void> _persistHistory() async {
+    final profile = _activeProfile;
+    if (profile == null) return;
+    try {
+      await devHistoryStorage.saveHistory(profile.userId, _history);
+      if (_historyError != null) {
+        _historyError = null;
+        notifyListeners();
+      }
+    } catch (e, st) {
+      debugPrint('Failed to persist history: $e\n$st');
+      _historyError = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> _detectIncomingTransfers(
+    List<AssetBalance> previous,
+    List<AssetBalance> current,
+  ) async {
+    if (!_hasBalanceSnapshot) return;
+    if (previous.isEmpty) return;
+    final prevMap = <String, AssetBalance>{
+      for (final asset in previous) asset.token.symbol: asset,
+    };
+    final additions = <TransactionRecord>[];
+    for (final asset in current) {
+      final prev = prevMap[asset.token.symbol];
+      if (prev == null) continue;
+      final delta = asset.raw - prev.raw;
+      if (delta <= BigInt.zero) continue;
+      final amount = _fromBaseUnits(delta, asset.decimals);
+      if (amount <= 0) continue;
+      additions.add(
+        TransactionRecord(
+          id: _nextRecordId(),
+          tokenSymbol: asset.token.symbol,
+          amount: amount,
+          incoming: true,
+          timestamp: DateTime.now(),
+          note: 'Баланс пополнен',
+        ),
+      );
+    }
+    if (additions.isEmpty) return;
+    await _appendHistory(additions);
+  }
+
+  double _fromBaseUnits(BigInt amount, int decimals) {
+    if (amount == BigInt.zero) return 0;
+    final divisor = math.pow(10, decimals).toDouble();
+    return amount.toDouble() / divisor;
+  }
+
+  String _nextRecordId() {
+    _historyCounter++;
+    final micros = DateTime.now().microsecondsSinceEpoch;
+    return 'tx_${micros}_$_historyCounter';
+  }
+
+  String _shortenAddress(String address) {
+    if (address.length <= 12) return address;
+    return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
   }
 
   void _setActiveProfile(DevWalletProfile? profile) {
     if (_activeProfile == null && profile == null) return;
     if (identical(_activeProfile, profile)) return;
     _activeProfile = profile;
+    if (_activeProfile == null) {
+      _stopAutoRefresh();
+      _clearHistoryState();
+      notifyListeners();
+      return;
+    }
+    _restartAutoRefresh();
+    _historyLoading = true;
     notifyListeners();
+    unawaited(_loadHistoryFromStorage(silent: true));
+  }
+
+  Future<AssetBalance> _fetchAssetBalance(
+    TokenMetadata token,
+    EthereumAddress owner,
+  ) async {
+    if (token.isNative) {
+      final balance = await blockchain.getNativeBalance(owner);
+      return AssetBalance(
+        token: token,
+        raw: balance.getInWei,
+        decimals: token.decimalsHint,
+      );
+    }
+
+    final contract = EthereumAddress.fromHex(token.contractAddress!);
+    final raw = await blockchain.getTokenBalance(contract, owner);
+    final decimals = token.fetchDecimalsFromChain
+        ? await blockchain.getTokenDecimals(contract)
+        : token.decimalsHint;
+    return AssetBalance(token: token, raw: raw, decimals: decimals);
+  }
+
+  BigInt _toBaseUnits(double amount, int decimals) {
+    final fixed = amount.toStringAsFixed(decimals);
+    final parts = fixed.split('.');
+    final whole = BigInt.parse(parts.first);
+    final fraction = parts.length > 1 ? parts[1] : '';
+    final padded = fraction.padRight(decimals, '0');
+    final fractionValue = padded.isEmpty ? BigInt.zero : BigInt.parse(padded);
+    final base = BigInt.from(10).pow(decimals);
+    return whole * base + fractionValue;
+  }
+
+  void _restartAutoRefresh() {
+    _balanceTimer?.cancel();
+    _balanceTimer = Timer.periodic(
+      _autoRefreshInterval,
+      (_) => refreshBalances(silent: true),
+    );
+  }
+
+  void _stopAutoRefresh() {
+    _balanceTimer?.cancel();
+    _balanceTimer = null;
+  }
+
+  @override
+  void dispose() {
+    _stopAutoRefresh();
+    unawaited(blockchain.dispose());
+    super.dispose();
   }
 }
