@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../services/config.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -156,6 +159,14 @@ class _HomePageState extends State<HomePage> {
         ),
         actions: [
           Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: 'Settings',
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              icon: const Icon(Icons.settings, color: Color(0xFFB3B8D7)),
+            ),
+          ),
+          Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
               tooltip: 'Выйти',
@@ -229,6 +240,40 @@ class _HomePageState extends State<HomePage> {
                   onReceive: _openReceiveSheet,
                   onBuy: _openBuySheet,
                   onSwap: _openSwapSheet,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.pushNamed(context, '/mobile/pair');
+                          if (result is Map) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Сессия получена, подключаемся...')),
+                            );
+                                try {
+                              // notify local dev server about pairing so desktop can detect it
+                              final session = result['session'] as String?;
+                              if (session != null) {
+                                final uri = ApiConfig.apiUri('/api/pairings');
+                                final payload = <String, dynamic>{'session': session};
+                                // prefer address returned from scanner result, fallback to current profile address
+                                final sentAddress = result['address'] as String? ?? address;
+                                if (sentAddress != null) payload['address'] = sentAddress;
+                                await http.post(uri, body: jsonEncode(payload), headers: {'Content-Type': 'application/json'});
+                              }
+                            } catch (_) {
+                              // ignore network errors in dev flow
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.link),
+                        label: const Text('Подключить к ПК (QR)'),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 Row(

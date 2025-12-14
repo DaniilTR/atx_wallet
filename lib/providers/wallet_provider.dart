@@ -267,6 +267,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await devStorage.saveProfile(profile);
     _setActiveProfile(profile);
     await refreshBalances(silent: true);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('lastDevUserId', userId);
+    } catch (_) {}
     return profile;
   }
 
@@ -278,6 +282,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     if (profile != null) {
       privateKey = profile.privateKeyHex;
       await refreshBalances(silent: true);
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('lastDevUserId', userId);
+      } catch (_) {}
     }
     return profile;
   }
@@ -291,6 +299,42 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _clearHistoryState();
     _hasBalanceSnapshot = false;
     notifyListeners();
+    // remove lastDevUserId
+    unawaited(Future(() async {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('lastDevUserId');
+      } catch (_) {}
+    }));
+  }
+
+  /// Set a read-only profile that only contains an address. Useful for
+  /// desktop clients that receive the address from a paired mobile device
+  /// but do not possess private keys. This will enable balance refreshes.
+  Future<void> setReadOnlyAddress(String addressHex) async {
+    final profile = DevWalletProfile(
+      userId: '_remote',
+      mnemonic: '',
+      privateKeyHex: '',
+      addressHex: addressHex,
+    );
+    _setActiveProfile(profile);
+    // do not set privateKey
+    await refreshBalances(silent: false);
+    notifyListeners();
+  }
+
+  /// Initialize provider: load private key and try loading last dev profile.
+  Future<void> init() async {
+    await loadPrivateKey();
+    if (!devEnabled) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final last = prefs.getString('lastDevUserId');
+      if (last != null && last.isNotEmpty) {
+        await loadDevProfile(last);
+      }
+    } catch (_) {}
   }
 
   Future<void> refreshBalances({bool silent = false}) async {

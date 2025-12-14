@@ -12,6 +12,45 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Simple request logger to help debugging mobile<->server connectivity
+app.use((req, res, next) => {
+  console.log(new Date().toISOString(), req.method, req.url, 'from', req.ip);
+  next();
+});
+
+// Simple in-memory pairing store for development/testing
+const pairings = new Map();
+
+// Accept pairing confirmation from mobile clients
+app.post('/api/pairings', async (req, res) => {
+  try {
+    const body = req.body || {};
+    console.log('POST /api/pairings body:', body);
+    const { session, device, address } = body;
+    if (!session) return res.status(400).json({ message: 'Session is required' });
+    // Store optional address (wallet address) if provided by mobile client
+    pairings.set(String(session), { connected: true, device: device || 'mobile', when: Date.now(), address: address || null });
+    return res.status(201).json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// Query pairing status by session id
+app.get('/api/pairings/:session', async (req, res) => {
+  try {
+    const { session } = req.params;
+    if (!session) return res.status(400).json({ message: 'Session is required' });
+    const entry = pairings.get(String(session));
+    if (!entry) return res.status(404).json({ connected: false });
+    return res.status(200).json({ connected: !!entry.connected, device: entry.device, when: entry.when, address: entry.address || null });
+  } catch (e) {
+    console.error(e);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'change_me';
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/atx_wallet';
@@ -37,22 +76,33 @@ function devHistoryFile(userId) {
   return path.join(DEV_HISTORY_DIR, `${safeId}.history.json`);
 }
 
-await mongoose.connect(MONGODB_URI);
+let dbConnected = false;
+try {
+  await mongoose.connect(MONGODB_URI);
+  dbConnected = true;
+  console.log('Connected to MongoDB');
+} catch (e) {
+  console.warn('MongoDB not available, running in dev-only mode (pairing endpoints will work).');
+}
 
-const userSchema = new mongoose.Schema({
-  name: { type: String },
-  username: { type: String, required: true, unique: true, index: true },
-  email: { type: String }, // опционально
-  passwordHash: { type: String, required: true },
-}, { timestamps: true });
+let User = null;
+if (dbConnected) {
+  const userSchema = new mongoose.Schema({
+    name: { type: String },
+    username: { type: String, required: true, unique: true, index: true },
+    email: { type: String }, // опционально
+    passwordHash: { type: String, required: true },
+  }, { timestamps: true });
 
-const User = mongoose.model('User', userSchema);
+  User = mongoose.model('User', userSchema);
+}
 
 function sign(user) {
   return jwt.sign({ sub: user._id, username: user.username }, JWT_SECRET, { expiresIn: '7d' });
 }
 
 app.post('/api/auth/register', async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ message: 'Database unavailable in dev mode' });
   try {
     const { name, username, password, email } = req.body || {};
     if (!username || !password) return res.status(400).json({ message: 'Invalid payload' });
@@ -71,6 +121,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 app.post('/api/auth/login', async (req, res) => {
+  if (!dbConnected) return res.status(503).json({ message: 'Database unavailable in dev mode' });
   try {
     const { login, password } = req.body || {};
     if (!login || !password) return res.status(400).json({ message: 'Invalid payload' });

@@ -8,7 +8,7 @@ class ApiClient {
   ApiClient({http.Client? client}) : _client = client ?? http.Client();
   final http.Client _client;
 
-  Uri _uri(String path) => Uri.parse(kApiBaseUrl + path);
+  Uri _uri(String path) => ApiConfig.apiUri(path);
 
   Future<Map<String, dynamic>> postJson(
     String path,

@@ -14,9 +14,7 @@ class DevTransactionStorage {
   final bool devEnabled;
 
   Uri _historyUri(String userId) {
-    final base = kApiBaseUrl.endsWith('/')
-        ? kApiBaseUrl.substring(0, kApiBaseUrl.length - 1)
-        : kApiBaseUrl;
+    final base = ApiConfig.base.endsWith('/') ? ApiConfig.base.substring(0, ApiConfig.base.length - 1) : ApiConfig.base;
     return Uri.parse(
       '$base/api/dev-wallet-history/${Uri.encodeComponent(userId)}',
     );
