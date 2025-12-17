@@ -281,14 +281,14 @@ class _HomePageState extends State<HomePage> {
                               ),
                             );
                             try {
-                              // notify local dev server about pairing so desktop can detect it
+                              // Отправляем сессию на бэкенд
                               final session = result['session'] as String?;
                               if (session != null) {
                                 final uri = ApiConfig.apiUri('/api/pairings');
                                 final payload = <String, dynamic>{
                                   'session': session,
                                 };
-                                // prefer address returned from scanner result, fallback to current profile address
+                                // Если есть адрес, добавляем его
                                 final sentAddress =
                                     result['address'] as String? ?? address;
                                 if (sentAddress != null)
@@ -300,7 +300,7 @@ class _HomePageState extends State<HomePage> {
                                 );
                               }
                             } catch (_) {
-                              // ignore network errors in dev flow
+                              // игнорируем ошибки
                             }
                           }
                         },
