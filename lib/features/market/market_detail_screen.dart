@@ -69,76 +69,109 @@ class _MarketDetailScreenState extends State<MarketDetailScreen> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, style: const TextStyle(color: Colors.white70)),
-                        const SizedBox(height: 12),
-                        ElevatedButton(onPressed: _loadChart, child: const Text('Повторить')),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _error!,
+                      style: const TextStyle(color: Colors.white70),
                     ),
-                  )
-                : _coinId == null
-                    ? const Center(child: Text('Price data not available for this token'))
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 8),
-                          const Text('Last 7 days', style: TextStyle(color: Colors.white, fontSize: 16)),
-                          const SizedBox(height: 12),
-                          Expanded(
-                            child: _prices == null || _prices!.isEmpty
-                                ? const Center(child: Text('No chart data', style: TextStyle(color: Colors.white70)))
-                                : LayoutBuilder(builder: (context, constraints) {
-                                    final fullWidth = constraints.maxWidth;
-                                    const leftLabels = 64.0;
-                                    final chartWidth = (fullWidth - leftLabels).clamp(100.0, fullWidth);
-                                    return Row(
-                                      children: [
-                                        Container(
-                                          width: leftLabels,
-                                          padding: const EdgeInsets.only(right: 8),
-                                          child: _YAxisLabels(data: _prices!),
-                                        ),
-                                        SizedBox(
-                                          width: chartWidth,
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTapDown: (ev) {
-                                              final local = ev.localPosition;
-                                              final n = _prices!.length;
-                                              final stepX = chartWidth / (n - 1);
-                                              final dx = local.dx.clamp(0.0, chartWidth);
-                                              final idx = (dx / stepX).round().clamp(0, n - 1);
-                                              setState(() {
-                                                _selectedIndex = idx;
-                                                _lastTapX = dx;
-                                              });
-                                            },
-                                            child: Stack(
-                                              children: [
-                                                Positioned.fill(
-                                                  child: CustomPaint(
-                                                    painter: _ChartPainter(_prices!, selectedIndex: _selectedIndex),
-                                                  ),
-                                                ),
-                                                if (_selectedIndex != null)
-                                                  Positioned(
-                                                    left: (_lastTapX ?? 0) - 60,
-                                                    top: 8,
-                                                    child: _TooltipCard(entry: _prices![_selectedIndex!]),
-                                                  ),
-                                              ],
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadChart,
+                      child: const Text('Повторить'),
+                    ),
+                  ],
+                ),
+              )
+            : _coinId == null
+            ? const Center(
+                child: Text('Price data not available for this token'),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Last 7 days',
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: _prices == null || _prices!.isEmpty
+                        ? const Center(
+                            child: Text(
+                              'No chart data',
+                              style: TextStyle(color: Colors.white70),
+                            ),
+                          )
+                        : LayoutBuilder(
+                            builder: (context, constraints) {
+                              final fullWidth = constraints.maxWidth;
+                              const leftLabels = 64.0;
+                              final chartWidth = (fullWidth - leftLabels).clamp(
+                                100.0,
+                                fullWidth,
+                              );
+                              return Row(
+                                children: [
+                                  Container(
+                                    width: leftLabels,
+                                    padding: const EdgeInsets.only(right: 8),
+                                    child: _YAxisLabels(data: _prices!),
+                                  ),
+                                  SizedBox(
+                                    width: chartWidth,
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.opaque,
+                                      onTapDown: (ev) {
+                                        final local = ev.localPosition;
+                                        final n = _prices!.length;
+                                        final stepX = chartWidth / (n - 1);
+                                        final dx = local.dx.clamp(
+                                          0.0,
+                                          chartWidth,
+                                        );
+                                        final idx = (dx / stepX).round().clamp(
+                                          0,
+                                          n - 1,
+                                        );
+                                        setState(() {
+                                          _selectedIndex = idx;
+                                          _lastTapX = dx;
+                                        });
+                                      },
+                                      child: Stack(
+                                        children: [
+                                          Positioned.fill(
+                                            child: CustomPaint(
+                                              painter: _ChartPainter(
+                                                _prices!,
+                                                selectedIndex: _selectedIndex,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
-                                    );
-                                  }),
+                                          if (_selectedIndex != null)
+                                            Positioned(
+                                              left: (_lastTapX ?? 0) - 60,
+                                              top: 8,
+                                              child: _TooltipCard(
+                                                entry:
+                                                    _prices![_selectedIndex!],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
                           ),
-                        ],
-                      ),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -172,7 +205,9 @@ class _ChartPainter extends CustomPainter {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
     }
 
-    final stepX = prices.length > 1 ? size.width / (prices.length - 1) : size.width;
+    final stepX = prices.length > 1
+        ? size.width / (prices.length - 1)
+        : size.width;
     final path = Path();
     for (var i = 0; i < prices.length; i++) {
       final x = i * stepX;
@@ -186,7 +221,9 @@ class _ChartPainter extends CustomPainter {
     canvas.drawPath(path, paint);
 
     // selected point
-    if (selectedIndex != null && selectedIndex! >= 0 && selectedIndex! < prices.length) {
+    if (selectedIndex != null &&
+        selectedIndex! >= 0 &&
+        selectedIndex! < prices.length) {
       final idx = selectedIndex!;
       final sx = idx * stepX;
       final sy = size.height - ((prices[idx] - min) / span) * size.height;
@@ -198,7 +235,8 @@ class _ChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) {
     if (oldDelegate is _ChartPainter) {
-      return oldDelegate.data != data || oldDelegate.selectedIndex != selectedIndex;
+      return oldDelegate.data != data ||
+          oldDelegate.selectedIndex != selectedIndex;
     }
     return true;
   }
@@ -206,7 +244,7 @@ class _ChartPainter extends CustomPainter {
 
 class _YAxisLabels extends StatelessWidget {
   final List<List<dynamic>> data;
-  const _YAxisLabels({required this.data, super.key});
+  const _YAxisLabels({required this.data});
 
   @override
   Widget build(BuildContext context) {
@@ -218,9 +256,18 @@ class _YAxisLabels extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       crossAxisAlignment: CrossAxisAlignment.end,
       children: [
-        Text('\$${max.toStringAsFixed(4)}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-        Text('\$${mid.toStringAsFixed(4)}', style: const TextStyle(color: Colors.white38, fontSize: 12)),
-        Text('\$${min.toStringAsFixed(4)}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+        Text(
+          '\$${max.toStringAsFixed(4)}',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
+        Text(
+          '\$${mid.toStringAsFixed(4)}',
+          style: const TextStyle(color: Colors.white38, fontSize: 12),
+        ),
+        Text(
+          '\$${min.toStringAsFixed(4)}',
+          style: const TextStyle(color: Colors.white70, fontSize: 12),
+        ),
       ],
     );
   }
@@ -228,14 +275,15 @@ class _YAxisLabels extends StatelessWidget {
 
 class _TooltipCard extends StatelessWidget {
   final List<dynamic> entry; // [timestamp, price]
-  const _TooltipCard({required this.entry, super.key});
+  const _TooltipCard({required this.entry});
 
   @override
   Widget build(BuildContext context) {
     final ts = entry[0] as num;
     final price = (entry[1] as num).toDouble();
     final dt = DateTime.fromMillisecondsSinceEpoch(ts.toInt());
-    final label = '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
+    final label =
+        '${dt.month}/${dt.day} ${dt.hour}:${dt.minute.toString().padLeft(2, '0')}';
     return Card(
       color: const Color(0xFF111827),
       child: Padding(
@@ -243,9 +291,15 @@ class _TooltipCard extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('\$${price.toStringAsFixed(4)}', style: const TextStyle(color: Colors.white)),
+            Text(
+              '\$${price.toStringAsFixed(4)}',
+              style: const TextStyle(color: Colors.white),
+            ),
             const SizedBox(height: 4),
-            Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            Text(
+              label,
+              style: const TextStyle(color: Colors.white60, fontSize: 11),
+            ),
           ],
         ),
       ),

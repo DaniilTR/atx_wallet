@@ -2,7 +2,7 @@
 
 Express + MongoDB (Mongoose). Минимальные эндпоинты аутентификации и полный чек‑лист проверок.
 ```bash
-D:\Wallet\flutter\bin\flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
+flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
 ```
 ## Требования
 - WSL (Ubuntu)

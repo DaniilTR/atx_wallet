@@ -2,7 +2,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 class AnimatedNeonBackground extends StatefulWidget {
-  const AnimatedNeonBackground({super.key});
+  const AnimatedNeonBackground({this.isDark = true, super.key});
+
+  final bool isDark;
 
   @override
   State<AnimatedNeonBackground> createState() => _AnimatedNeonBackgroundState();
@@ -36,11 +38,15 @@ class _AnimatedNeonBackgroundState extends State<AnimatedNeonBackground>
           child: Stack(
             children: [
               // Градиентный фон как база
-              const _GradientBackdrop(),
+              _GradientBackdrop(isDark: widget.isDark),
               // Плавающие неоновые круги
               ..._buildFloatingBlobs(context, _controller.value),
               // Лёгкий тёмный вуаль, чтобы контент читался
-              Container(color: Colors.black.withOpacity(0.15)),
+              Container(
+                color: widget.isDark
+                    ? Colors.black.withOpacity(0.15)
+                    : Colors.white.withOpacity(0.65),
+              ),
             ],
           ),
         );
@@ -80,7 +86,7 @@ class _AnimatedNeonBackgroundState extends State<AnimatedNeonBackground>
         phase: 0.25,
         radius: 110,
         colors: [
-          const Color(0xFF2CB67D).withOpacity(0.75), // Зеленый неон 
+          const Color(0xFF2CB67D).withOpacity(0.75), // Зеленый неон
           const Color(0xFFFFD166).withOpacity(0.55), // Желтый неон
         ],
       ),
@@ -101,20 +107,20 @@ class _AnimatedNeonBackgroundState extends State<AnimatedNeonBackground>
 }
 
 class _GradientBackdrop extends StatelessWidget {
-  const _GradientBackdrop();
+  const _GradientBackdrop({required this.isDark});
+
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0B1020),
-            Color(0xFF0D1326),
-            Color(0xFF0A0F1C),
-          ],
+          colors: isDark
+              ? const [Color(0xFF0B1020), Color(0xFF0D1326), Color(0xFF0A0F1C)]
+              : const [Color(0xFFF6F9FF), Color(0xFFE0E7F3), Color(0xFFDDE5FF)],
         ),
       ),
     );
@@ -135,10 +141,7 @@ class _NeonCircle extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [
-              colors.first,
-              colors.last.withOpacity(0.0),
-            ],
+            colors: [colors.first, colors.last.withOpacity(0.0)],
             stops: const [0.0, 1.0],
           ),
         ),
