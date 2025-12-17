@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../services/config.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -106,6 +109,10 @@ class _HomePageState extends State<HomePage> {
   }
 
   void _handleTabChange(int value) {
+    if (value == 2) {
+      Navigator.pushNamed(context, '/settings');
+      return;
+    }
     setState(() => _tab = value);
     if (value == 1) {
       _openPopularSheet();
@@ -123,11 +130,20 @@ class _HomePageState extends State<HomePage> {
     final profile = wallet.activeProfile ?? args?.devProfile;
     final address = profile?.addressHex;
     final username = auth.currentUser?.username ?? 'Wallet';
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB3B8D7)
+        : const Color(0xFF475569);
+    final scaffoldBg = theme.scaffoldBackgroundColor;
     return Scaffold(
       extendBody: true,
-      backgroundColor: const Color.fromARGB(255, 9, 24, 37),
+      backgroundColor: scaffoldBg,
       appBar: AppBar(
-        systemOverlayStyle: SystemUiOverlayStyle.light,
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
         backgroundColor: Colors.transparent,
         shadowColor: Colors.transparent,
         toolbarHeight: 65,
@@ -141,20 +157,25 @@ class _HomePageState extends State<HomePage> {
               Text(
                 username,
                 style: GoogleFonts.inter(
-                  color: Colors.white,
+                  color: primaryTextColor,
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
                 ),
               ),
               const SizedBox(width: 4),
-              const Icon(
-                Icons.keyboard_arrow_down_rounded,
-                color: Color(0xFFB3B8D7),
-              ),
+              Icon(Icons.keyboard_arrow_down_rounded, color: mutedTextColor),
             ],
           ),
         ),
         actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: IconButton(
+              tooltip: 'Settings',
+              onPressed: () => Navigator.pushNamed(context, '/settings'),
+              icon: Icon(Icons.settings, color: mutedTextColor),
+            ),
+          ),
           Padding(
             padding: const EdgeInsets.only(right: 12),
             child: IconButton(
@@ -165,14 +186,17 @@ class _HomePageState extends State<HomePage> {
                 if (!mounted) return;
                 Navigator.pushReplacementNamed(context, '/login');
               },
-              icon: const Icon(Icons.logout_rounded, color: Color(0xFFB3B8D7)),
+              icon: Icon(Icons.logout_rounded, color: mutedTextColor),
             ),
           ),
         ],
       ),
+
+      // Цветные круглишки на фоне
+      //------------------------------------------------------------------------
       body: Stack(
         children: [
-          const AnimatedNeonBackground(),
+          AnimatedNeonBackground(isDark: isDark),
           const Positioned(
             top: -60,
             right: -10,
@@ -188,6 +212,7 @@ class _HomePageState extends State<HomePage> {
             right: -70,
             child: _GlowCircle(diameter: 260, color: Color(0xFF4C6BFF)),
           ),
+
           SafeArea(
             child: ListView(
               physics: const BouncingScrollPhysics(),
@@ -196,15 +221,20 @@ class _HomePageState extends State<HomePage> {
                 _BalanceCard(
                   address: address,
                   balances: balances,
+                  isDark: isDark,
                   onCopy: () async {
                     if (address == null) {
                       if (!mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          backgroundColor: const Color(0xFF1C1F33),
+                          backgroundColor: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                           content: Text(
                             'Address is not ready yet',
-                            style: GoogleFonts.inter(color: Colors.white),
+                            style: GoogleFonts.inter(
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
                           ),
                         ),
                       );
@@ -225,10 +255,60 @@ class _HomePageState extends State<HomePage> {
                 ),
                 const SizedBox(height: 22),
                 _ActionsRow(
+                  isDark: isDark,
                   onSend: _openSendSheet,
                   onReceive: _openReceiveSheet,
                   onBuy: _openBuySheet,
                   onSwap: _openSwapSheet,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await Navigator.pushNamed(
+                            context,
+                            '/mobile/pair',
+                          );
+                          if (result is Map) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Сессия получена, подключаемся...',
+                                ),
+                              ),
+                            );
+                            try {
+                              // notify local dev server about pairing so desktop can detect it
+                              final session = result['session'] as String?;
+                              if (session != null) {
+                                final uri = ApiConfig.apiUri('/api/pairings');
+                                final payload = <String, dynamic>{
+                                  'session': session,
+                                };
+                                // prefer address returned from scanner result, fallback to current profile address
+                                final sentAddress =
+                                    result['address'] as String? ?? address;
+                                if (sentAddress != null)
+                                  payload['address'] = sentAddress;
+                                await http.post(
+                                  uri,
+                                  body: jsonEncode(payload),
+                                  headers: {'Content-Type': 'application/json'},
+                                );
+                              }
+                            } catch (_) {
+                              // ignore network errors in dev flow
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.link),
+                        label: const Text('Подключить к ПК (QR)'),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -237,7 +317,7 @@ class _HomePageState extends State<HomePage> {
                     Text(
                       'Мой кошелек',
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: primaryTextColor,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                       ),
@@ -260,7 +340,7 @@ class _HomePageState extends State<HomePage> {
                               ),
                             )
                           : const Icon(Icons.refresh_rounded),
-                      color: const Color(0xFFB0BBCE),
+                      color: mutedTextColor,
                     ),
                   ],
                 ),
@@ -295,6 +375,7 @@ class _HomePageState extends State<HomePage> {
         index: _tab,
         onChanged: _handleTabChange,
         onQrTap: _openQrSheet,
+        isDark: isDark,
       ),
     );
   }
@@ -304,12 +385,14 @@ class _BalanceCard extends StatelessWidget {
   const _BalanceCard({
     required this.onCopy,
     required this.balances,
+    required this.isDark,
     this.address,
   });
 
   final VoidCallback onCopy;
   final WalletBalances balances;
   final String? address;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -332,13 +415,18 @@ class _BalanceCard extends StatelessWidget {
           padding: EdgeInsets.zero,
           child: Container(
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color.fromARGB(49, 13, 18, 36),
-                  Color.fromARGB(49, 25, 13, 53),
-                ],
+                colors: isDark
+                    ? const [
+                        Color.fromARGB(66, 25, 27, 37),
+                        Color.fromARGB(19, 25, 35, 65),
+                      ]
+                    : const [
+                        Color.fromARGB(80, 111, 143, 255),
+                        Color.fromARGB(19, 145, 174, 231),
+                      ],
               ),
               borderRadius: BorderRadius.circular(36),
               border: Border.all(color: borderTint, width: 1.4),
@@ -486,12 +574,14 @@ class _BalanceCard extends StatelessWidget {
 
 class _ActionsRow extends StatelessWidget {
   const _ActionsRow({
+    required this.isDark,
     required this.onSend,
     required this.onReceive,
     required this.onBuy,
     required this.onSwap,
   });
 
+  final bool isDark;
   final VoidCallback onSend;
   final VoidCallback onReceive;
   final VoidCallback onBuy;
@@ -506,21 +596,25 @@ class _ActionsRow extends StatelessWidget {
           icon: Icons.north_east_rounded,
           label: 'Отправить',
           onTap: onSend,
+          isDark: isDark,
         ),
         _ActionButton(
           icon: Icons.south_rounded,
           label: 'Получить',
           onTap: onReceive,
+          isDark: isDark,
         ),
         _ActionButton(
           icon: Icons.attach_money_rounded,
           label: 'Купить',
           onTap: onBuy,
+          isDark: isDark,
         ),
         _ActionButton(
           icon: Icons.swap_horiz_rounded,
           label: 'Обменять',
           onTap: onSwap,
+          isDark: isDark,
         ),
       ],
     );
@@ -532,10 +626,12 @@ class _ActionButton extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    required this.isDark,
   });
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -548,21 +644,32 @@ class _ActionButton extends StatelessWidget {
             width: 62,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(31),
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF27305A), Color(0xFF171C33)],
+                colors: isDark
+                    ? const [Color(0xFF27305A), Color(0xFF171C33)]
+                    : const [Color(0xFFF6F9FF), Color(0xFFE0E7F3)],
               ),
-              border: Border.all(color: const Color(0x33FFFFFF)),
-              boxShadow: const [
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : const Color(0xFFD1D5E0),
+              ),
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x44090F25),
+                  color: isDark
+                      ? const Color(0x44090F25)
+                      : Colors.black.withOpacity(0.08),
                   blurRadius: 22,
-                  offset: Offset(0, 14),
+                  offset: const Offset(0, 14),
                 ),
               ],
             ),
-            child: Icon(icon, color: const Color(0xFFEFF2FF)),
+            child: Icon(
+              icon,
+              color: isDark ? const Color(0xFFEFF2FF) : const Color(0xFF0F172A),
+            ),
           ),
           const SizedBox(height: 10),
           Text(
@@ -571,7 +678,7 @@ class _ActionButton extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w500,
               letterSpacing: .1,
-              color: const Color(0xFFCAD0E4),
+              color: isDark ? const Color(0xFFCAD0E4) : const Color(0xFF334155),
             ),
           ),
         ],
@@ -727,6 +834,7 @@ class _NeonAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: 38,
       height: 38,
@@ -741,9 +849,17 @@ class _NeonAvatar extends StatelessWidget {
           BoxShadow(color: Color(0x804B46FF), blurRadius: 16, spreadRadius: 2),
         ],
       ),
-      child: const CircleAvatar(
-        backgroundColor: Color(0xFF1B2032),
-        child: Icon(Icons.person, size: 18, color: Colors.white),
+      child: CircleAvatar(
+        backgroundColor: isDark
+            ? const Color(0xFF1B2032)
+            : const Color.fromARGB(255, 227, 233, 255),
+        child: Icon(
+          Icons.person,
+          size: 18,
+          color: isDark
+              ? Colors.white
+              : const Color.fromARGB(255, 50, 122, 206),
+        ),
       ),
     );
   }
@@ -778,11 +894,13 @@ class _BottomNav extends StatelessWidget {
     required this.index,
     required this.onChanged,
     required this.onQrTap,
+    required this.isDark,
   });
 
   final int index;
   final ValueChanged<int> onChanged;
   final VoidCallback onQrTap;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
@@ -793,11 +911,16 @@ class _BottomNav extends StatelessWidget {
           Container(
             height: 100,
             width: MediaQuery.of(context).size.width,
-            decoration: const BoxDecoration(
+            decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [Color(0xFF485ACD), Color(0xFF3A1C7C)],
+                colors: isDark
+                    ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
+                    : const [
+                        Color.fromARGB(255, 121, 153, 255),
+                        Color.fromARGB(255, 96, 133, 255),
+                      ],
               ),
             ),
           ),
@@ -848,14 +971,18 @@ class _BottomNav extends StatelessWidget {
                                   icon: Icons.settings_rounded,
                                   active: index == 2,
                                   onTap: () => onChanged(2),
-                                  activeColor: Colors.white,
+                                  activeColor: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1E3A8A),
                                 ),
                                 const SizedBox(width: 20),
                                 _NavIcon(
                                   icon: Icons.table_rows_rounded,
                                   active: index == 3,
                                   onTap: () => onChanged(3),
-                                  activeColor: Colors.white,
+                                  activeColor: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF1E3A8A),
                                 ),
                               ],
                             ),
