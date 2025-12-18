@@ -2,7 +2,7 @@
 
 Express + MongoDB (Mongoose). Минимальные эндпоинты аутентификации и полный чек‑лист проверок.
 ```bash
-D:\Wallet\flutter\bin\flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
+flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
 ```
 
 ## Запуск бекенда
@@ -22,8 +22,23 @@ npm run dev
 ```bash
 systemctl is-active mongod 2>/dev/null || service mongod status
 ```
+# Открыть mongo shell (mongosh)
+```bash
+mongosh
+
+# Команды внутри оболочки
+use atx_wallet
+db.createUser({
+  user: "atx",
+  pwd: "StrongPassword123!",
+  roles: [{ role: "readWrite", db: "atx_wallet" }]
+})
+show collections
+```
 
 ### MongoDB: логин под админом и просмотр баз/коллекций
+
+
 ```bash
 # список баз
 mongosh -u root -p '22102004d' --authenticationDatabase admin --quiet --eval "db.getMongo().getDBs()"

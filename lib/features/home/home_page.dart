@@ -6,6 +6,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'models/coin.dart';
+import 'services/coin_service.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../providers/wallet_provider.dart';
