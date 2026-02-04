@@ -918,8 +918,9 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return SizedBox(
-      height: 110,
+      height: 110 + bottomPadding,
       child: Stack(
         alignment: Alignment.topCenter,
         clipBehavior: Clip.none,
@@ -931,7 +932,7 @@ class _BottomNav extends StatelessWidget {
             child: ClipPath(
               clipper: _NavBarClipper(),
               child: Container(
-                height: 85,
+                height: 85 + bottomPadding,
                 decoration: BoxDecoration(
                   color: const Color.fromARGB(20, 255, 255, 255),
                 ),
