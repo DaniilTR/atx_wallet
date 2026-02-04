@@ -646,22 +646,16 @@ class _AssetTile extends StatelessWidget {
     final secondaryLabel = usdValue == null ? amountLabel : tbnbLabel;
 
     return GlassCard(
-      borderRadius: 24,
+      borderRadius: 18,
       padding: EdgeInsets.zero,
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.02),
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [color.withOpacity(.32), const Color(0x120F1935)],
-          ),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: const Color(0x1CFFFFFF)),
+          color: const Color.fromARGB(20, 255, 255, 255),
+          borderRadius: BorderRadius.circular(18),
           boxShadow: const [
             BoxShadow(
               color: Color(0x33090F23),
-              blurRadius: 28,
+              blurRadius: 18,
               offset: Offset(0, 18),
             ),
           ],
@@ -679,7 +673,9 @@ class _AssetTile extends StatelessWidget {
                   end: Alignment.bottomRight,
                   colors: [color, color.withOpacity(.45)],
                 ),
-                border: Border.all(color: const Color(0x26FFFFFF)),
+                border: Border.all(
+                  color: const Color.fromARGB(20, 255, 255, 255),
+                ),
                 boxShadow: [
                   BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
                 ],
