@@ -34,10 +34,10 @@ const String kBnbUsdPriceUrl = String.fromEnvironment(
   defaultValue: 'https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT',
 );
 
-/// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/home'.
+/// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/start'.
 const String kInitialRoute = String.fromEnvironment(
   'INITIAL_ROUTE',
-  defaultValue: '/login',
+  defaultValue: '/start',
 );
 
 /// WebSocket-ретранслятор для сессий Desktop↔Mobile (можно переопределить через dart-define).
@@ -80,7 +80,8 @@ class ApiConfig {
     }
   }
 
-  static String _normalize(String b) => b.endsWith('/') ? b.substring(0, b.length - 1) : b;
+  static String _normalize(String b) =>
+      b.endsWith('/') ? b.substring(0, b.length - 1) : b;
 
   /// Build a full Uri for an API path, ensuring slashes are correct.
   static Uri apiUri(String path) {

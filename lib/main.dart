@@ -9,6 +9,7 @@ import 'features/desktop/pairing_screen.dart';
 import 'features/desktop/dashboard_screen.dart';
 import 'features/connection_screen/pair_connect_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'features/auth/start_page.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/home/home_page.dart';
@@ -149,6 +150,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
       darkTheme: darkTheme,
       initialRoute: initialRoute,
       routes: {
+        '/start': (_) => const StartPage(),
         '/login': (_) => const LoginPage(),
         '/register': (_) => const RegisterPage(),
         '/home': (_) => const HomePage(),
