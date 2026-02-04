@@ -864,8 +864,8 @@ class _NavBarClipper extends CustomClipper<Path> {
     final w = size.width;
     final center = w / 2;
 
-    const notchRadius = 40.0;
-    const notchDepth = 35.0;
+    const notchRadius = 44.0;
+    const notchDepth = 16.0;
 
     path.lineTo(center - notchRadius - 30, 0);
 
@@ -931,11 +931,7 @@ class _BottomNav extends StatelessWidget {
               child: Container(
                 height: 85,
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: isDark
-                        ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
-                        : const [Color(0xFF7999FF), Color(0xFF6085FF)],
-                  ),
+                  color: const Color.fromARGB(20, 255, 255, 255),
                 ),
               ),
             ),
