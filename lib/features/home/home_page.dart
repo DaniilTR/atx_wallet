@@ -864,6 +864,50 @@ class _GrowthPill extends StatelessWidget {
   }
 }
 
+class _NavBarClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    final path = Path();
+    final w = size.width;
+    final center = w / 2;
+
+    const notchRadius = 40.0;
+    const notchDepth = 35.0;
+
+    path.lineTo(center - notchRadius - 30, 0);
+
+    path.quadraticBezierTo(
+      center - notchRadius,
+      0,
+      center - notchRadius,
+      notchDepth,
+    );
+
+    path.arcToPoint(
+      Offset(center + notchRadius, notchDepth),
+      radius: const Radius.circular(notchRadius),
+      clockwise: false,
+    );
+
+    path.quadraticBezierTo(
+      center + notchRadius,
+      0,
+      center + notchRadius + 30,
+      0,
+    );
+
+    path.lineTo(w, 0);
+    path.lineTo(w, size.height);
+    path.lineTo(0, size.height);
+    path.close();
+
+    return path;
+  }
+
+  @override
+  bool shouldReclip(_) => false;
+}
+
 class _BottomNav extends StatelessWidget {
   const _BottomNav({
     required this.index,
@@ -879,127 +923,96 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 1),
+    final gradient = isDark
+        ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
+        : const [Color(0xFF7999FF), Color(0xFF6085FF)];
+
+    return SizedBox(
+      height: 110,
       child: Stack(
+        alignment: Alignment.topCenter,
+        clipBehavior: Clip.none,
         children: [
-          Container(
-            height: 100,
-            width: MediaQuery.of(context).size.width,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
-                    : const [
-                        Color.fromARGB(255, 121, 153, 255),
-                        Color.fromARGB(255, 96, 133, 255),
-                      ],
+          Positioned(
+            top: 25,
+            left: 0,
+            right: 0,
+            child: ClipPath(
+              clipper: _NavBarClipper(),
+              child: Container(
+                height: 85,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: isDark
+                        ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
+                        : const [Color(0xFF7999FF), Color(0xFF6085FF)],
+                  ),
+                ),
               ),
             ),
           ),
-          BottomAppBar(
-            color: Colors.transparent,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            shape: const CircularNotchedRectangle(),
-            child: SizedBox(
-              width: double.infinity,
-              height: 100,
-              child: Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.topCenter,
-                children: [
-                  Positioned.fill(
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(0, 0, 0, 0),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _NavIcon(
-                                  icon: Icons.home_rounded,
-                                  active: index == 0,
-                                  onTap: () => onChanged(0),
-                                  activeColor: Colors.white,
-                                ),
-                                const SizedBox(width: 20),
-                                _NavIcon(
-                                  icon: Icons.pie_chart_rounded,
-                                  active: index == 1,
-                                  onTap: () => onChanged(1),
-                                  activeColor: Colors.white,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 80),
-                          Expanded(
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              children: [
-                                _NavIcon(
-                                  icon: Icons.settings_rounded,
-                                  active: index == 2,
-                                  onTap: () => onChanged(2),
-                                  activeColor: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF1E3A8A),
-                                ),
-                                const SizedBox(width: 20),
-                                _NavIcon(
-                                  icon: Icons.table_rows_rounded,
-                                  active: index == 3,
-                                  onTap: () => onChanged(3),
-                                  activeColor: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF1E3A8A),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+
+          Positioned(
+            top: 45,
+            left: 0,
+            right: 0,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NavIcon(
+                  icon: Icons.home_rounded,
+                  active: index == 0,
+                  onTap: () => onChanged(0),
+                  activeColor: Colors.white,
+                ),
+                _NavIcon(
+                  icon: Icons.pie_chart_rounded,
+                  active: index == 1,
+                  onTap: () => onChanged(1),
+                  activeColor: Colors.white,
+                ),
+                const SizedBox(width: 80),
+                _NavIcon(
+                  icon: Icons.settings_rounded,
+                  active: index == 2,
+                  onTap: () => onChanged(2),
+                  activeColor: Colors.white,
+                ),
+                _NavIcon(
+                  icon: Icons.table_rows_rounded,
+                  active: index == 3,
+                  onTap: () => onChanged(3),
+                  activeColor: Colors.white,
+                ),
+              ],
+            ),
+          ),
+
+          Positioned(
+            top: 0,
+            child: GestureDetector(
+              onTap: onQrTap,
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF4D6CFF), Color(0xFF2F4BFF)],
                   ),
-                  Positioned(
-                    top: -8,
-                    child: GestureDetector(
-                      onTap: onQrTap,
-                      child: Container(
-                        width: 55,
-                        height: 55,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: const LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [Color(0xFF80B7FF), Color(0xFF6F5CFF)],
-                          ),
-                          border: Border.all(
-                            color: Colors.white.withOpacity(.3),
-                          ),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0xAA2634A7),
-                              blurRadius: 32,
-                              spreadRadius: 2,
-                            ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.qr_code_scanner_rounded,
-                          size: 30,
-                          color: Color(0xFF0F1733),
-                        ),
-                      ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF4D6CFF).withOpacity(.6),
+                      blurRadius: 30,
+                      spreadRadius: 4,
                     ),
-                  ),
-                ],
+                  ],
+                ),
+                child: const Icon(
+                  Icons.center_focus_strong,
+                  color: Colors.white,
+                  size: 30,
+                ),
               ),
             ),
           ),
