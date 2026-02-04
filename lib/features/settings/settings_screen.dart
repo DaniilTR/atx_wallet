@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
@@ -84,6 +86,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
             label: 'Адрес (публичный)',
             value: address ?? '—',
             isMonospace: true,
+          ),
+          const Divider(height: 28),
+          const Text(
+            'Подключение к ПК',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final result = await Navigator.pushNamed(
+                      context,
+                      '/mobile/pair',
+                    );
+                    if (result is Map) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Сессия получена, подключаемся...'),
+                        ),
+                      );
+                      try {
+                        // Отправляем сессию на бэкенд
+                        final session = result['session'] as String?;
+                        if (session != null) {
+                          final uri = ApiConfig.apiUri('/api/pairings');
+                          final payload = <String, dynamic>{'session': session};
+                          // Если есть адрес, добавляем его
+                          final sentAddress =
+                              result['address'] as String? ?? address;
+                          if (sentAddress != null)
+                            payload['address'] = sentAddress;
+                          await http.post(
+                            uri,
+                            body: jsonEncode(payload),
+                            headers: {'Content-Type': 'application/json'},
+                          );
+                        }
+                      } catch (_) {
+                        // игнорируем ошибки
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.link),
+                  label: const Text('Подключить к ПК (QR)'),
+                ),
+              ),
+            ],
           ),
           const Divider(height: 32),
           const Text(

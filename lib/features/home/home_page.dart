@@ -151,36 +151,36 @@ class _HomePageState extends State<HomePage> {
             top: -40,
             right: -10,
             child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF8B5CF6),
-              opacity: 0.5,
+              diameter: 240,
+              color: Color.fromARGB(255, 125, 71, 250),
+              opacity: 0.8,
             ),
           ),
           const Positioned(
-            top: 220,
+            top: 250,
             left: -70,
             child: _GlowCircle(
               diameter: 200,
               color: Color(0xFF60A5FA),
-              opacity: 0.45,
+              opacity: 0.7,
             ),
           ),
           const Positioned(
             bottom: -20,
             left: -40,
             child: _GlowCircle(
-              diameter: 180,
+              diameter: 210,
               color: Color(0xFF7C3AED),
-              opacity: 0.5,
+              opacity: 0.8,
             ),
           ),
           const Positioned(
             bottom: -20,
             right: -40,
             child: _GlowCircle(
-              diameter: 200,
+              diameter: 220,
               color: Color(0xFF34D399),
-              opacity: 0.45,
+              opacity: 0.8,
             ),
           ),
 
@@ -243,55 +243,6 @@ class _HomePageState extends State<HomePage> {
                   onReceive: _openReceiveSheet,
                   onBuy: _openBuySheet,
                   onSwap: _openSwapSheet,
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () async {
-                          final result = await Navigator.pushNamed(
-                            context,
-                            '/mobile/pair',
-                          );
-                          if (result is Map) {
-                            if (!mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Сессия получена, подключаемся...',
-                                ),
-                              ),
-                            );
-                            try {
-                              // Отправляем сессию на бэкенд
-                              final session = result['session'] as String?;
-                              if (session != null) {
-                                final uri = ApiConfig.apiUri('/api/pairings');
-                                final payload = <String, dynamic>{
-                                  'session': session,
-                                };
-                                // Если есть адрес, добавляем его
-                                final sentAddress =
-                                    result['address'] as String? ?? address;
-                                if (sentAddress != null)
-                                  payload['address'] = sentAddress;
-                                await http.post(
-                                  uri,
-                                  body: jsonEncode(payload),
-                                  headers: {'Content-Type': 'application/json'},
-                                );
-                              }
-                            } catch (_) {
-                              // игнорируем ошибки
-                            }
-                          }
-                        },
-                        icon: const Icon(Icons.link),
-                        label: const Text('Подключить к ПК (QR)'),
-                      ),
-                    ),
-                  ],
                 ),
                 const SizedBox(height: 20),
                 Row(
@@ -749,11 +700,6 @@ class _AssetTile extends StatelessWidget {
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    balance.token.symbol,
-                    style: GoogleFonts.inter(color: const Color(0xFF9FB3D8)),
                   ),
                   const SizedBox(height: 6),
                   Text(

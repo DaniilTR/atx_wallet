@@ -2,7 +2,7 @@
 
 Express + MongoDB (Mongoose). Минимальные эндпоинты аутентификации и полный чек‑лист проверок.
 ```bash
-flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
+![alt text](image.png)
 ```
 
 ## Запуск бекенда
