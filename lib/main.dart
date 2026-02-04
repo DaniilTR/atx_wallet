@@ -7,9 +7,7 @@ import 'features/settings/settings_screen.dart';
 import 'services/platform.dart';
 import 'features/desktop/pairing_screen.dart';
 import 'features/desktop/dashboard_screen.dart';
-import 'features/mobile/pair_connect_screen.dart';
-import 'features/market/market_list_screen.dart';
-import 'features/market/market_detail_screen.dart';
+import 'features/connection_screen/pair_connect_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
@@ -157,8 +155,6 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         '/mobile/pair': (_) => const MobilePairConnectScreen(),
         '/desktop/pair': (_) => const DesktopPairingScreen(),
         '/desktop/dashboard': (_) => const DesktopDashboardScreen(),
-        '/market': (_) => const MarketListScreen(),
-        '/market/detail': (_) => const MarketDetailScreen(),
         '/settings': (_) => SettingsScreen(
           themeMode: _themeMode,
           onThemeChanged: _setThemeMode,

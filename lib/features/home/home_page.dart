@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
-import 'models/coin.dart';
-import 'services/coin_service.dart';
+import '../market/models/coin.dart';
+import '../market/services/coin_service.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../providers/wallet_provider.dart';
@@ -18,7 +18,7 @@ part 'slides/send_sheet.dart';
 part 'slides/receive_sheet.dart';
 part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
-part 'slides/popular_coins_sheet.dart';
+part '../market/market_screen.dart';
 part 'slides/history_sheet.dart';
 part 'slides/qr_sheet.dart';
 part 'slides/labeled_field.dart';
@@ -916,10 +916,6 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final gradient = isDark
-        ? const [Color(0xFF485ACD), Color(0xFF3A1C7C)]
-        : const [Color(0xFF7999FF), Color(0xFF6085FF)];
-
     return SizedBox(
       height: 110,
       child: Stack(

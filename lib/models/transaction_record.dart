@@ -1,3 +1,7 @@
+// lib/models/transaction_record.dart
+// Модель записи транзакции в кошельке.
+/// Используется для DEV-хранилища и отображения истории.
+
 class TransactionRecord {
   const TransactionRecord({
     required this.id,
