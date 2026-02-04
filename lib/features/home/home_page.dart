@@ -85,9 +85,6 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
 
-  Future<void> _openPopularSheet() =>
-      _showNeonSheet(const _PopularCoinsSheet());
-
   Future<void> _openHistorySheet() => _showNeonSheet(const _HistorySheet());
 
   Future<void> _openQrSheet() async {
@@ -112,10 +109,15 @@ class _HomePageState extends State<HomePage> {
       Navigator.pushNamed(context, '/settings');
       return;
     }
-    setState(() => _tab = value);
     if (value == 1) {
-      _openPopularSheet();
-    } else if (value == 3) {
+      setState(() => _tab = value);
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const MarketScreen()));
+      return;
+    }
+    setState(() => _tab = value);
+    if (value == 3) {
       _openHistorySheet();
     }
   }

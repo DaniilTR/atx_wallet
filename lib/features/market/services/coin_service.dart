@@ -3,13 +3,27 @@ import 'package:http/http.dart' as http;
 import '../models/coin.dart';
 
 class CoinService {
-  // Returns a list of coins fetched from CoinGecko simple/price endpoint
+  // Returns a list of coins fetched from CoinGecko markets endpoint (single call with sparkline)
   static Future<List<Coin>> fetchTopCoins() async {
-    const ids = 'bitcoin,binancecoin,ethereum,solana';
-    final uri = Uri.https('api.coingecko.com', '/api/v3/simple/price', {
+    const order = [
+      'ethereum',
+      'bitcoin',
+      'solana',
+      'ripple',
+      'binancecoin',
+      'litecoin',
+      'cosmos',
+      'tron',
+      'toncoin',
+    ];
+    final ids = order.join(',');
+    final uri = Uri.https('api.coingecko.com', '/api/v3/coins/markets', {
+      'vs_currency': 'usd',
       'ids': ids,
-      'vs_currencies': 'usd',
-      'include_24hr_change': 'true',
+      'sparkline': 'true',
+      'price_change_percentage': '24h',
+      'per_page': order.length.toString(),
+      'page': '1',
     });
 
     final res = await http.get(
@@ -20,19 +34,17 @@ class CoinService {
       throw Exception('Failed to load coin prices (${res.statusCode})');
     }
 
-    final Map<String, dynamic> json =
-        jsonDecode(res.body) as Map<String, dynamic>;
-    final List<Coin> result = [];
-    for (final entry in json.entries) {
-      final id = entry.key;
-      final data = entry.value as Map<String, dynamic>;
-      result.add(Coin.fromApi(id, data));
-    }
-    // Keep consistent order
-    final order = ['BTC', 'BNB', 'ETH', 'SOL'];
-    result.sort(
-      (a, b) => order.indexOf(a.symbol).compareTo(order.indexOf(b.symbol)),
-    );
-    return result;
+    final List<dynamic> json = jsonDecode(res.body) as List<dynamic>;
+    final byId = <String, Coin>{
+      for (final item in json.whereType<Map>())
+        (item['id'] as String?) ?? '': Coin.fromMarketsApi(
+          item.cast<String, dynamic>(),
+        ),
+    };
+
+    return [
+      for (final id in order)
+        if (byId[id] != null) byId[id]!,
+    ];
   }
 }
