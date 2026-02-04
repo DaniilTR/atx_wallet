@@ -64,7 +64,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
   @override
   Widget build(BuildContext context) {
     final colorSchemeDark = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF7A5AF8),
+      seedColor: const Color(0xFF14191E),
       brightness: Brightness.dark,
     );
     final colorSchemeLight = ColorScheme.fromSeed(
@@ -75,7 +75,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
     final darkTheme = ThemeData(
       colorScheme: colorSchemeDark,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF141826),
+      scaffoldBackgroundColor: const Color(0xFF14191E),
       useMaterial3: true,
       textTheme: GoogleFonts.manropeTextTheme(ThemeData.dark().textTheme),
       inputDecorationTheme: InputDecorationTheme(
@@ -95,7 +95,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         ),
       ),
       cardTheme: CardThemeData(
-        color: const Color(0xFF1A2030),
+        color: const Color(0xFF14191E),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),

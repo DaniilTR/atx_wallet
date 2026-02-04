@@ -142,77 +142,46 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       extendBody: true,
       backgroundColor: scaffoldBg,
-      appBar: AppBar(
-        systemOverlayStyle: isDark
-            ? SystemUiOverlayStyle.light
-            : SystemUiOverlayStyle.dark,
-        backgroundColor: Colors.transparent,
-        shadowColor: Colors.transparent,
-        toolbarHeight: 65,
-        titleSpacing: 0,
-        title: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              const _NeonAvatar(),
-              const SizedBox(width: 12),
-              Text(
-                username,
-                style: GoogleFonts.inter(
-                  color: primaryTextColor,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                ),
-              ),
-              const SizedBox(width: 4),
-              Icon(Icons.keyboard_arrow_down_rounded, color: mutedTextColor),
-            ],
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: IconButton(
-              tooltip: 'Settings',
-              onPressed: () => Navigator.pushNamed(context, '/settings'),
-              icon: Icon(Icons.settings, color: mutedTextColor),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(right: 12),
-            child: IconButton(
-              tooltip: 'Выйти',
-              onPressed: () async {
-                wallet.clearDevProfile();
-                await auth.logout();
-                if (!mounted) return;
-                Navigator.pushReplacementNamed(context, '/login');
-              },
-              icon: Icon(Icons.logout_rounded, color: mutedTextColor),
-            ),
-          ),
-        ],
-      ),
-
       // Цветные круглишки на фоне
       //------------------------------------------------------------------------
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
           const Positioned(
-            top: -60,
+            top: -40,
             right: -10,
-            child: _GlowCircle(diameter: 240, color: Color(0xFF6D63FF)),
+            child: _GlowCircle(
+              diameter: 220,
+              color: Color(0xFF8B5CF6),
+              opacity: 0.5,
+            ),
           ),
           const Positioned(
-            bottom: 180,
-            left: -90,
-            child: _GlowCircle(diameter: 320, color: Color(0xFF34E5A2)),
+            top: 220,
+            left: -70,
+            child: _GlowCircle(
+              diameter: 200,
+              color: Color(0xFF60A5FA),
+              opacity: 0.45,
+            ),
           ),
           const Positioned(
-            bottom: -40,
-            right: -70,
-            child: _GlowCircle(diameter: 260, color: Color(0xFF4C6BFF)),
+            bottom: -20,
+            left: -40,
+            child: _GlowCircle(
+              diameter: 180,
+              color: Color(0xFF7C3AED),
+              opacity: 0.5,
+            ),
+          ),
+          const Positioned(
+            bottom: -20,
+            right: -40,
+            child: _GlowCircle(
+              diameter: 200,
+              color: Color(0xFF34D399),
+              opacity: 0.45,
+            ),
           ),
 
           SafeArea(
@@ -220,6 +189,18 @@ class _HomePageState extends State<HomePage> {
               physics: const BouncingScrollPhysics(),
               padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
               children: [
+                HomeTopBar(
+                  username: username,
+                  isDark: isDark,
+                  onSettings: () => Navigator.pushNamed(context, '/settings'),
+                  onLogout: () async {
+                    wallet.clearDevProfile();
+                    await auth.logout();
+                    if (!mounted) return;
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                ),
+                const SizedBox(height: 12),
                 _BalanceCard(
                   address: address,
                   balances: balances,
@@ -413,7 +394,7 @@ class _BalanceCard extends StatelessWidget {
       child: ConstrainedBox(
         constraints: const BoxConstraints(),
         child: GlassCard(
-          borderRadius: 36,
+          borderRadius: 24,
           padding: EdgeInsets.zero,
           child: Container(
             decoration: BoxDecoration(
@@ -422,15 +403,15 @@ class _BalanceCard extends StatelessWidget {
                 end: Alignment.bottomRight,
                 colors: isDark
                     ? const [
-                        Color.fromARGB(66, 25, 27, 37),
+                        Color.fromARGB(34, 25, 27, 37),
                         Color.fromARGB(19, 25, 35, 65),
                       ]
                     : const [
-                        Color.fromARGB(80, 111, 143, 255),
-                        Color.fromARGB(19, 145, 174, 231),
+                        Color.fromARGB(34, 111, 142, 255),
+                        Color.fromARGB(15, 145, 174, 231),
                       ],
               ),
-              borderRadius: BorderRadius.circular(36),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(color: borderTint, width: 1.4),
               boxShadow: const [
                 BoxShadow(
@@ -650,14 +631,13 @@ class _ActionButton extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: isDark
-                    ? const [Color(0xFF27305A), Color(0xFF171C33)]
+                    ? const [
+                        Color.fromARGB(255, 30, 30, 45),
+                        Color.fromARGB(255, 30, 30, 45),
+                      ]
                     : const [Color(0xFFF6F9FF), Color(0xFFE0E7F3)],
               ),
-              border: Border.all(
-                color: isDark
-                    ? const Color(0x33FFFFFF)
-                    : const Color(0xFFD1D5E0),
-              ),
+
               boxShadow: [
                 BoxShadow(
                   color: isDark
@@ -831,36 +811,83 @@ String _formatTimestamp(DateTime? value) {
   return '$hh:$mm:$ss';
 }
 
+class HomeTopBar extends StatelessWidget {
+  const HomeTopBar({
+    Key? key,
+    required this.username,
+    required this.isDark,
+    required this.onSettings,
+    required this.onLogout,
+  }) : super(key: key);
+
+  final String username;
+  final bool isDark;
+  final VoidCallback onSettings;
+  final Future<void> Function() onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB3B8D7)
+        : const Color(0xFF475569);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: SizedBox(
+        height: 65,
+        child: Row(
+          children: [
+            const _NeonAvatar(),
+            const SizedBox(width: 12),
+            Text(
+              username,
+              style: GoogleFonts.inter(
+                color: primaryTextColor,
+                fontWeight: FontWeight.w700,
+                fontSize: 18,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Icon(Icons.keyboard_arrow_down_rounded, color: mutedTextColor),
+            const Spacer(),
+            IconButton(
+              tooltip: 'Settings',
+              onPressed: onSettings,
+              icon: Icon(Icons.settings, color: mutedTextColor),
+            ),
+            IconButton(
+              tooltip: 'Выйти',
+              onPressed: () async {
+                await onLogout();
+              },
+              icon: Icon(Icons.logout_rounded, color: mutedTextColor),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _NeonAvatar extends StatelessWidget {
   const _NeonAvatar();
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
-      width: 38,
-      height: 38,
-      decoration: const BoxDecoration(
+      width: 33,
+      height: 33,
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        gradient: LinearGradient(
-          colors: [Color(0xFFB084FF), Color(0xFF6A63FF)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        boxShadow: [
-          BoxShadow(color: Color(0x804B46FF), blurRadius: 16, spreadRadius: 2),
-        ],
+        border: Border.all(color: const Color(0xFFDADADA), width: 2),
       ),
-      child: CircleAvatar(
-        backgroundColor: isDark
-            ? const Color(0xFF1B2032)
-            : const Color.fromARGB(255, 227, 233, 255),
+      child: const CircleAvatar(
+        backgroundColor: Color(0xFF14191E),
         child: Icon(
           Icons.person,
-          size: 18,
-          color: isDark
-              ? Colors.white
-              : const Color.fromARGB(255, 50, 122, 206),
+          size: 22,
+          color: Color.fromARGB(255, 219, 219, 219),
         ),
       ),
     );
