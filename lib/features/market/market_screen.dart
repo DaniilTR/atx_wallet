@@ -29,11 +29,15 @@ class _MarketScreenState extends State<MarketScreen> {
     );
   }
 
-  Future<void> _openHistorySheet() => _showNeonSheet(const _HistorySheet());
+  Future<void> _openHistoryPage() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const HistoryPage()));
+  }
 
-  Future<void> _openQrSheet() async {
-    final scanned = await _showNeonSheet<String?>(
-      _QrSheet(address: _currentAddress),
+  Future<void> _openQrPage() async {
+    final scanned = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(builder: (_) => QrPage(address: _currentAddress)),
     );
     if (!mounted) return;
     if (scanned != null) {
@@ -61,7 +65,7 @@ class _MarketScreenState extends State<MarketScreen> {
     }
     setState(() => _tab = value);
     if (value == 3) {
-      _openHistorySheet();
+      _openHistoryPage();
     }
   }
 
@@ -181,7 +185,7 @@ class _MarketScreenState extends State<MarketScreen> {
       bottomNavigationBar: _BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrSheet,
+        onQrTap: _openQrPage,
         isDark: isDark,
       ),
     );

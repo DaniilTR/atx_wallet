@@ -34,10 +34,10 @@ const String kBnbUsdPriceUrl = String.fromEnvironment(
   defaultValue: 'https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT',
 );
 
-/// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/start'.
+/// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/home'.
 const String kInitialRoute = String.fromEnvironment(
   'INITIAL_ROUTE',
-  defaultValue: '/start',
+  defaultValue: '/home',
 );
 
 /// WebSocket-ретранслятор для сессий Desktop↔Mobile (можно переопределить через dart-define).

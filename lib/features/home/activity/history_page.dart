@@ -1,7 +1,11 @@
-part of '../home_page.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class _HistorySheet extends StatelessWidget {
-  const _HistorySheet();
+import '../../../providers/wallet_scope.dart';
+
+class HistoryPage extends StatelessWidget {
+  const HistoryPage({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -9,6 +13,7 @@ class _HistorySheet extends StatelessWidget {
     final history = wallet.history;
     final loading = wallet.historyLoading;
     final error = wallet.historyError;
+    final theme = Theme.of(context);
 
     Widget body;
     if (loading && history.isEmpty) {
@@ -19,36 +24,39 @@ class _HistorySheet extends StatelessWidget {
         ),
       );
     } else if (history.isEmpty) {
-      body = Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.history_toggle_off_rounded,
-            color: Color(0xFF3F4B74),
-            size: 42,
-          ),
-          const SizedBox(height: 14),
-          Text(
-            'Еще нет операций',
-            style: GoogleFonts.inter(
-              color: Colors.white,
-              fontWeight: FontWeight.w600,
+      body = Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.history_toggle_off_rounded,
+              color: Color(0xFF3F4B74),
+              size: 42,
             ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Мы автоматически сохраняем отправки и поступления, даже оффлайн.',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF7C86B2),
-              fontSize: 12,
+            const SizedBox(height: 14),
+            Text(
+              'Еще нет операций',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 6),
+            Text(
+              'Мы автоматически сохраняем отправки и поступления, даже оффлайн.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: const Color(0xFF7C86B2),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       );
     } else {
       body = ListView.separated(
         physics: const BouncingScrollPhysics(),
+        padding: EdgeInsets.zero,
         itemBuilder: (context, index) {
           final entry = history[index];
           final isIncoming = entry.incoming;
@@ -123,47 +131,75 @@ class _HistorySheet extends StatelessWidget {
       );
     }
 
-    return _SheetContainer(
-      title: 'История операций',
-      subtitle: 'Последние транзакции кошелька',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Align(
-            alignment: Alignment.centerRight,
-            child: TextButton.icon(
-              onPressed: loading ? null : () => wallet.refreshHistory(),
-              icon: loading
-                  ? SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: const AlwaysStoppedAnimation<Color>(
-                          Color(0xFF7C86B2),
-                        ),
-                      ),
-                    )
-                  : const Icon(Icons.refresh_rounded, size: 18),
-              label: Text(
-                'Обновить',
-                style: GoogleFonts.inter(color: Colors.white),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 20,
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'История операций',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
               ),
             ),
-          ),
-          if (error != null) ...[
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
-              'Не удалось загрузить историю: $error',
+              'Последние транзакции кошелька',
               style: GoogleFonts.inter(
-                color: const Color(0xFFFF8F8F),
-                fontSize: 12,
+                color: const Color(0xFF8E99C0),
+                fontSize: 13,
               ),
             ),
           ],
-          const SizedBox(height: 12),
-          SizedBox(height: 300, child: body),
-        ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+        child: Column(
+          children: [
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: loading ? null : () => wallet.refreshHistory(),
+                icon: loading
+                    ? SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            Color(0xFF7C86B2),
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.refresh_rounded, size: 18),
+                label: Text(
+                  'Обновить',
+                  style: GoogleFonts.inter(color: Colors.white),
+                ),
+              ),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 4),
+              Text(
+                'Не удалось загрузить историю: $error',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFFFF8F8F),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Expanded(child: body),
+          ],
+        ),
       ),
     );
   }
@@ -197,4 +233,10 @@ String _formatHistorySubtitle(DateTime timestamp, String? note) {
   final base = '$datePart, $timePart';
   if (note == null || note.isEmpty) return base;
   return '$base · $note';
+}
+
+String _formatNumber(double value, {int precision = 2}) {
+  final text = value.toStringAsFixed(precision);
+  if (!text.contains('.')) return text;
+  return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
 }

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
-import 'package:qr_flutter/qr_flutter.dart';
 import '../market/models/coin.dart';
 import '../market/services/coin_service.dart';
+import 'activity/history_page.dart';
+import 'activity/qr_page.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../providers/wallet_provider.dart';
@@ -19,8 +19,6 @@ part 'slides/receive_sheet.dart';
 part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
 part '../market/market_screen.dart';
-part 'slides/history_sheet.dart';
-part 'slides/qr_sheet.dart';
 part 'slides/labeled_field.dart';
 part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
@@ -85,11 +83,15 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
 
-  Future<void> _openHistorySheet() => _showNeonSheet(const _HistorySheet());
+  Future<void> _openHistoryPage() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const HistoryPage()));
+  }
 
-  Future<void> _openQrSheet() async {
-    final scanned = await _showNeonSheet<String?>(
-      _QrSheet(address: _currentAddress),
+  Future<void> _openQrPage() async {
+    final scanned = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(builder: (_) => QrPage(address: _currentAddress)),
     );
     if (!mounted) return;
     if (scanned != null) {
@@ -118,7 +120,7 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() => _tab = value);
     if (value == 3) {
-      _openHistorySheet();
+      _openHistoryPage();
     }
   }
 
@@ -307,7 +309,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: _BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrSheet,
+        onQrTap: _openQrPage,
         isDark: isDark,
       ),
     );

@@ -1,15 +1,18 @@
-part of '../home_page.dart';
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
-class _QrSheet extends StatefulWidget {
-  const _QrSheet({required this.address});
+class QrPage extends StatefulWidget {
+  const QrPage({super.key, required this.address});
 
   final String? address;
 
   @override
-  State<_QrSheet> createState() => _QrSheetState();
+  State<QrPage> createState() => _QrPageState();
 }
 
-class _QrSheetState extends State<_QrSheet> {
+class _QrPageState extends State<QrPage> {
   final MobileScannerController _scannerController = MobileScannerController(
     formats: const [BarcodeFormat.qrCode],
   );
@@ -70,15 +73,40 @@ class _QrSheetState extends State<_QrSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
     final fallback = widget.address ?? 'Адрес недоступен';
-    final sheetHeight = (media.size.height * 0.82).clamp(420.0, 760.0);
+    final theme = Theme.of(context);
 
-    return _SheetContainer(
-      title: 'QR & Сканер',
-      subtitle: 'Покажите свой адрес или отсканируйте чужой',
-      child: SizedBox(
-        height: sheetHeight.toDouble(),
+    return Scaffold(
+      backgroundColor: theme.scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 20,
+        toolbarHeight: 72,
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'QR & Сканер',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Покажите свой адрес или отсканируйте чужой',
+              style: GoogleFonts.inter(
+                color: const Color(0xFF8E99C0),
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
         child: Column(
           children: [
             Row(
@@ -215,44 +243,60 @@ class _QrModeButton extends StatelessWidget {
 
 class _MyQrPane extends StatelessWidget {
   const _MyQrPane({required super.key, required this.address});
-  // для нее задай отступ снизу 100
+
   final String address;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(maxWidth: 400, maxHeight: 400),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(32),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1E2645), Color(0xFF12162B)],
-        ),
-        border: Border.all(color: const Color(0x22FFFFFF)),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x55121C3C),
-            blurRadius: 30,
-            offset: Offset(0, 22),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shortestSide = constraints.biggest.shortestSide;
+        final boxSize = shortestSide > 0
+            ? shortestSide.clamp(240.0, 360.0)
+            : 320.0;
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 100),
+            child: SizedBox(
+              width: boxSize,
+              height: boxSize,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(32),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF1E2645), Color(0xFF12162B)],
+                  ),
+                  border: Border.all(color: const Color(0x22FFFFFF)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x55121C3C),
+                      blurRadius: 30,
+                      offset: Offset(0, 22),
+                    ),
+                  ],
+                ),
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: QrImageView(
+                    data: address,
+                    backgroundColor: Colors.transparent,
+                    size: double.infinity,
+                    gapless: false,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF80B7FF),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF80B7FF),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-        ],
-      ),
-      padding: const EdgeInsets.all(32),
-      child: Center(
-        child: QrImageView(
-          data: address,
-          backgroundColor: Colors.transparent,
-          size: double.infinity,
-          gapless: false,
-          eyeStyle: const QrEyeStyle(
-            eyeShape: QrEyeShape.square,
-            color: Color(0xFF80B7FF),
-          ),
-          dataModuleStyle: const QrDataModuleStyle(
-            dataModuleShape: QrDataModuleShape.square,
-            color: Color(0xFF80B7FF),
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
