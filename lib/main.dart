@@ -103,33 +103,61 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
     final lightTheme = ThemeData(
       colorScheme: colorSchemeLight,
       brightness: Brightness.light,
-      scaffoldBackgroundColor: Colors.white,
+      scaffoldBackgroundColor: const Color(0xFFF7F8FC),
       useMaterial3: true,
       textTheme: GoogleFonts.manropeTextTheme(ThemeData.light().textTheme),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: const Color(0xFFF1F3F9),
+        fillColor: const Color(0xFFF2F4FA),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.06)),
+          borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: Colors.black.withOpacity(0.04)),
+          borderSide: const BorderSide(color: Color(0xFFE5E7F0)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
-          borderSide: BorderSide(color: colorSchemeLight.primary, width: 1.4),
+          borderSide: BorderSide(color: colorSchemeLight.primary, width: 1.6),
         ),
       ),
+      dividerColor: const Color(0xFFE6EAF2),
       cardTheme: CardThemeData(
-        color: const Color(0xFFF5F7FB),
-        elevation: 0,
+        color: const Color(0xFFFFFFFF),
+        elevation: 1,
+        shadowColor: const Color(0x1A1B2C5B),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.transparent,
-        foregroundColor: Colors.black87,
+        foregroundColor: Color(0xFF0F172A),
+        elevation: 0,
+        titleTextStyle: TextStyle(
+          color: Color(0xFF0F172A),
+          fontWeight: FontWeight.w700,
+          fontSize: 18,
+        ),
+      ),
+      iconTheme: const IconThemeData(color: Color(0xFF334155)),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: colorSchemeLight.primary,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(foregroundColor: const Color(0xFF4C6BFF)),
+      ),
+      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+        backgroundColor: Colors.transparent,
+        selectedItemColor: Color(0xFF4C6BFF),
+        unselectedItemColor: Color(0xFF94A3B8),
         elevation: 0,
       ),
     );

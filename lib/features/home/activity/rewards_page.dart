@@ -56,11 +56,20 @@ class _RewardsPageState extends State<RewardsPage> {
 
   void _handleTabChange(int value) {
     if (value == 0) {
-      Navigator.of(context).pop();
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
+      return;
+    }
+    if (value == 1) {
+      setState(() => _tab = value);
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MarketScreen()),
+      );
       return;
     }
     if (value == 2) {
-      Navigator.pushNamed(context, '/settings');
+      setState(() => _tab = value);
       return;
     }
     setState(() => _tab = value);
@@ -203,7 +212,7 @@ class _RewardsPageState extends State<RewardsPage> {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomNav(
+      bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
         onQrTap: _openQrPage,

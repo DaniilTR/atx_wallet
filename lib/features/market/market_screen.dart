@@ -56,11 +56,15 @@ class _MarketScreenState extends State<MarketScreen> {
 
   void _handleTabChange(int value) {
     if (value == 0) {
-      Navigator.of(context).pop();
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomePage()));
       return;
     }
     if (value == 2) {
-      Navigator.pushNamed(context, '/settings');
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const RewardsPage()));
       return;
     }
     setState(() => _tab = value);
@@ -182,7 +186,7 @@ class _MarketScreenState extends State<MarketScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomNav(
+      bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
         onQrTap: _openQrPage,

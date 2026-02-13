@@ -14,6 +14,7 @@ import '../../services/auth_scope.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'home_route_args.dart';
+import 'widgets/bottom_nav.dart';
 
 part 'slides/sheet_container.dart';
 part 'slides/send_sheet.dart';
@@ -113,14 +114,14 @@ class _HomePageState extends State<HomePage> {
     if (value == 2) {
       Navigator.of(
         context,
-      ).push(MaterialPageRoute(builder: (_) => const RewardsPage()));
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const RewardsPage()));
       return;
     }
     if (value == 1) {
       setState(() => _tab = value);
-      Navigator.of(
-        context,
-      ).push(MaterialPageRoute(builder: (_) => const MarketScreen()));
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MarketScreen()),
+      );
       return;
     }
     setState(() => _tab = value);
@@ -311,7 +312,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
       ),
-      bottomNavigationBar: _BottomNav(
+      bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
         onQrTap: _openQrPage,
@@ -927,139 +928,6 @@ class _NavBarClipper extends CustomClipper<Path> {
 
   @override
   bool shouldReclip(_) => false;
-}
-
-class _BottomNav extends StatelessWidget {
-  const _BottomNav({
-    required this.index,
-    required this.onChanged,
-    required this.onQrTap,
-    required this.isDark,
-  });
-
-  final int index;
-  final ValueChanged<int> onChanged;
-  final VoidCallback onQrTap;
-  final bool isDark;
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomPadding = MediaQuery.of(context).padding.bottom;
-    return SizedBox(
-      height: 110 + bottomPadding,
-      child: Stack(
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.none,
-        children: [
-          Positioned(
-            top: 25,
-            left: 0,
-            right: 0,
-            child: ClipPath(
-              clipper: _NavBarClipper(),
-              child: Container(
-                height: 85 + bottomPadding,
-                decoration: BoxDecoration(
-                  color: const Color.fromARGB(20, 255, 255, 255),
-                ),
-              ),
-            ),
-          ),
-
-          Positioned(
-            top: 45,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavIcon(
-                  icon: Icons.home_rounded,
-                  active: index == 0,
-                  onTap: () => onChanged(0),
-                  activeColor: Colors.white,
-                ),
-                _NavIcon(
-                  icon: Icons.pie_chart_rounded,
-                  active: index == 1,
-                  onTap: () => onChanged(1),
-                  activeColor: Colors.white,
-                ),
-                const SizedBox(width: 80),
-                _NavIcon(
-                  icon: Icons.card_giftcard_rounded,
-                  active: index == 2,
-                  onTap: () => onChanged(2),
-                  activeColor: Colors.white,
-                ),
-                _NavIcon(
-                  icon: Icons.table_rows_rounded,
-                  active: index == 3,
-                  onTap: () => onChanged(3),
-                  activeColor: Colors.white,
-                ),
-              ],
-            ),
-          ),
-
-          Positioned(
-            top: 0,
-            child: GestureDetector(
-              onTap: onQrTap,
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4D6CFF), Color(0xFF2F4BFF)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4D6CFF).withOpacity(.6),
-                      blurRadius: 30,
-                      spreadRadius: 4,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.center_focus_strong,
-                  color: Colors.white,
-                  size: 30,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NavIcon extends StatelessWidget {
-  const _NavIcon({
-    required this.icon,
-    required this.active,
-    required this.onTap,
-    required this.activeColor,
-  });
-
-  final IconData icon;
-  final bool active;
-  final VoidCallback onTap;
-  final Color activeColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(
-        icon,
-        color: active ? activeColor : const Color(0xFFD2D8F6),
-        size: 26,
-      ),
-    );
-  }
 }
 
 class _GlowCircle extends StatelessWidget {
