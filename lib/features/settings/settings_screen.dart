@@ -139,6 +139,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const Divider(height: 32),
           const Text(
+            'Поддержка',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () {
+              showDialog<void>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Центр поддержки'),
+                  content: const Text(
+                    'Нужна помощь? Обращайтесь:\n'
+                    'Почта: almuhambetoveset@gmail.com\n'
+                    'Телефон: 87716878676',
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: const Text('Закрыть'),
+                    ),
+                  ],
+                ),
+              );
+            },
+            icon: const Icon(Icons.support_agent_rounded),
+            label: const Text('Центр поддержки'),
+          ),
+          const Divider(height: 32),
+          const Text(
             'API Base URL (for dev/testing)',
             style: TextStyle(fontWeight: FontWeight.w600),
           ),
