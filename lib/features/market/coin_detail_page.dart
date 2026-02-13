@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../providers/wallet_scope.dart';
 import '../../services/price_service.dart';
 
 class CoinDetailPage extends StatefulWidget {
@@ -99,6 +100,8 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final wallet = WalletScope.of(context);
+    final balance = wallet.balanceForSymbol(widget.symbol);
     final priceText = _price == null
         ? '—'
         : _price! >= 1
@@ -109,6 +112,13 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
     final changeText = _change == null
         ? '—'
         : '${changeValue >= 0 ? '+' : ''}${changeValue.toStringAsFixed(2)}%';
+    final amount = balance?.amount ?? 0;
+    final amountLabel =
+        '${_formatNumber(amount, precision: 6)} ${widget.symbol}';
+    final usdValue = _price == null ? null : amount * _price!;
+    final usdLabel = usdValue == null
+        ? '—'
+        : '\$${_formatNumber(usdValue, precision: 2)}';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -170,6 +180,20 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
                     : const Color(0xFF40C977),
                 fontWeight: FontWeight.w600,
               ),
+            ),
+            const SizedBox(height: 16),
+            _BalanceFrame(
+              symbol: widget.symbol,
+              name: widget.name,
+              amountLabel: amountLabel,
+              usdLabel: usdLabel,
+            ),
+            const SizedBox(height: 16),
+            _QuickActionsRow(
+              onSend: () => _showStub(context, 'Отправка в разработке'),
+              onReceive: () => _showStub(context, 'Получение в разработке'),
+              onBuy: () => _showStub(context, 'Покупка в разработке'),
+              onSwap: () => _showStub(context, 'Обмен в разработке'),
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -265,6 +289,208 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _BalanceFrame extends StatelessWidget {
+  const _BalanceFrame({
+    required this.symbol,
+    required this.name,
+    required this.amountLabel,
+    required this.usdLabel,
+  });
+
+  final String symbol;
+  final String name;
+  final String amountLabel;
+  final String usdLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0x151E2542),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x221B2546)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x33090F23),
+            blurRadius: 18,
+            offset: Offset(0, 18),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFF59E0B), Color(0xFFFB923C)],
+                ),
+              ),
+              child: Center(
+                child: Text(
+                  symbol.substring(0, 1),
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 18,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    amountLabel,
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFF9FB1FF),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  usdLabel,
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'Мой баланс',
+                  style: GoogleFonts.inter(
+                    color: const Color(0xFF8E99C0),
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _QuickActionsRow extends StatelessWidget {
+  const _QuickActionsRow({
+    required this.onSend,
+    required this.onReceive,
+    required this.onBuy,
+    required this.onSwap,
+  });
+
+  final VoidCallback onSend;
+  final VoidCallback onReceive;
+  final VoidCallback onBuy;
+  final VoidCallback onSwap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _QuickActionButton(
+          icon: Icons.north_east_rounded,
+          label: 'Отправить',
+          onTap: onSend,
+        ),
+        _QuickActionButton(
+          icon: Icons.south_rounded,
+          label: 'Получить',
+          onTap: onReceive,
+        ),
+        _QuickActionButton(
+          icon: Icons.attach_money_rounded,
+          label: 'Купить',
+          onTap: onBuy,
+        ),
+        _QuickActionButton(
+          icon: Icons.swap_horiz_rounded,
+          label: 'Обменять',
+          onTap: onSwap,
+        ),
+      ],
+    );
+  }
+}
+
+class _QuickActionButton extends StatelessWidget {
+  const _QuickActionButton({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            height: 62,
+            width: 62,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(31),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  Color.fromARGB(255, 30, 30, 45),
+                  Color.fromARGB(255, 30, 30, 45),
+                ],
+              ),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x44090F25),
+                  blurRadius: 22,
+                  offset: Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Icon(icon, color: const Color(0xFFEFF2FF)),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              letterSpacing: .1,
+              color: const Color(0xFFCAD0E4),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -383,6 +609,12 @@ class _PriceChartPainter extends CustomPainter {
   bool shouldRepaint(covariant _PriceChartPainter oldDelegate) {
     return oldDelegate.data != data || oldDelegate.color != color;
   }
+}
+
+String _formatNumber(double value, {int precision = 2}) {
+  final text = value.toStringAsFixed(precision);
+  if (!text.contains('.')) return text;
+  return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
 }
 
 void _showStub(BuildContext context, String text) {
