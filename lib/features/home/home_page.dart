@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../market/models/coin.dart';
 import '../market/services/coin_service.dart';
+import '../market/coin_detail_page.dart';
+import '../../services/price_service.dart';
 import 'activity/history_page.dart';
 import 'activity/qr_page.dart';
 
@@ -19,6 +21,7 @@ part 'slides/receive_sheet.dart';
 part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
 part '../market/market_screen.dart';
+part 'activity/rewards_page.dart';
 part 'slides/labeled_field.dart';
 part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
@@ -108,7 +111,9 @@ class _HomePageState extends State<HomePage> {
 
   void _handleTabChange(int value) {
     if (value == 2) {
-      Navigator.pushNamed(context, '/settings');
+      Navigator.of(
+        context,
+      ).push(MaterialPageRoute(builder: (_) => const RewardsPage()));
       return;
     }
     if (value == 1) {
@@ -641,6 +646,10 @@ class _AssetTile extends StatelessWidget {
     final usdValue = bnbUsdPrice == null
         ? null
         : balance.tbnbValue * bnbUsdPrice!;
+    final tokenPriceUsd = bnbUsdPrice == null
+        ? null
+        : balance.token.tbnbRate * bnbUsdPrice!;
+    final coinId = PriceService.symbolToCoinGeckoId[balance.token.symbol];
     final valueLabel = usdValue == null
         ? tbnbLabel
         : '\$${_formatNumber(usdValue, precision: 2)}';
@@ -649,90 +658,105 @@ class _AssetTile extends StatelessWidget {
     return GlassCard(
       borderRadius: 18,
       padding: EdgeInsets.zero,
-      child: Container(
-        decoration: BoxDecoration(
-          color: const Color.fromARGB(20, 255, 255, 255),
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33090F23),
-              blurRadius: 18,
-              offset: Offset(0, 18),
-            ),
-          ],
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
-        child: Row(
-          children: [
-            Container(
-              width: 46,
-              height: 46,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(14),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [color, color.withOpacity(.45)],
-                ),
-                border: Border.all(
-                  color: const Color.fromARGB(20, 255, 255, 255),
-                ),
-                boxShadow: [
-                  BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
-                ],
-              ),
-              child: const Icon(
-                Icons.currency_bitcoin_rounded,
-                color: Colors.white,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CoinDetailPage(
+                symbol: balance.token.symbol,
+                name: balance.token.name,
+                coinId: coinId,
+                priceUsd: tokenPriceUsd,
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          );
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color.fromARGB(20, 255, 255, 255),
+            borderRadius: BorderRadius.circular(18),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x33090F23),
+                blurRadius: 18,
+                offset: Offset(0, 18),
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
+          child: Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(14),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [color, color.withOpacity(.45)],
+                  ),
+                  border: Border.all(
+                    color: const Color.fromARGB(20, 255, 255, 255),
+                  ),
+                  boxShadow: [
+                    BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.currency_bitcoin_rounded,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      balance.token.name,
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      amountLabel,
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withOpacity(0.85),
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    balance.token.name,
+                    valueLabel,
                     style: GoogleFonts.inter(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
+                      fontSize: 16,
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 4),
                   Text(
-                    amountLabel,
+                    secondaryLabel,
                     style: GoogleFonts.inter(
-                      color: Colors.white.withOpacity(0.85),
-                      fontSize: 13,
+                      color: const Color(0xFF9FB3D8),
+                      fontSize: 12,
                     ),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  valueLabel,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  secondaryLabel,
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF9FB3D8),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -963,7 +987,7 @@ class _BottomNav extends StatelessWidget {
                 ),
                 const SizedBox(width: 80),
                 _NavIcon(
-                  icon: Icons.settings_rounded,
+                  icon: Icons.card_giftcard_rounded,
                   active: index == 2,
                   onTap: () => onChanged(2),
                   activeColor: Colors.white,

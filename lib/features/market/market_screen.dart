@@ -200,81 +200,97 @@ class _MarketRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isNegative = coin.change24h < 0;
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-      decoration: BoxDecoration(
-        color: const Color.fromARGB(20, 255, 255, 255),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: const Color(0xFF151B2D),
-            child: Text(
-              coin.symbol.substring(0, 1),
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontWeight: FontWeight.w700,
-              ),
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => CoinDetailPage(
+              symbol: coin.symbol,
+              name: coin.name,
+              coinId: coin.id,
+              priceUsd: coin.priceUsd,
+              change24h: coin.change24h,
             ),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        decoration: BoxDecoration(
+          color: const Color.fromARGB(20, 255, 255, 255),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            CircleAvatar(
+              radius: 20,
+              backgroundColor: const Color(0xFF151B2D),
+              child: Text(
+                coin.symbol.substring(0, 1),
+                style: GoogleFonts.inter(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    coin.symbol,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                ],
+              ),
+            ),
+            SizedBox(
+              width: 110,
+              height: 38,
+              child: (coin.sparkline != null && coin.sparkline!.length >= 2)
+                  ? _Sparkline(
+                      data: coin.sparkline!,
+                      color: isNegative
+                          ? const Color(0xFFFF6B6B)
+                          : const Color(0xFF31E6D2),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  coin.symbol,
+                  coin.formattedPrice,
                   style: GoogleFonts.inter(
                     color: Colors.white,
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const SizedBox(height: 4),
-              ],
-            ),
-          ),
-          SizedBox(
-            width: 110,
-            height: 38,
-            child: (coin.sparkline != null && coin.sparkline!.length >= 2)
-                ? _Sparkline(
-                    data: coin.sparkline!,
+                Text(
+                  coin.formattedChange,
+                  style: GoogleFonts.inter(
                     color: isNegative
                         ? const Color(0xFFFF6B6B)
-                        : const Color(0xFF31E6D2),
-                  )
-                : const SizedBox.shrink(),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                coin.formattedPrice,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
+                        : const Color(0xFF40C977),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                coin.formattedChange,
-                style: GoogleFonts.inter(
-                  color: isNegative
-                      ? const Color(0xFFFF6B6B)
-                      : const Color(0xFF40C977),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
