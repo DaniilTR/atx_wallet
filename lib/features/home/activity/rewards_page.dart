@@ -30,9 +30,7 @@ class _RewardsPageState extends State<RewardsPage> {
   }
 
   Future<void> _openHistoryPage() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const HistoryPage()));
+    await Navigator.of(context).pushNamed('/history');
   }
 
   Future<void> _openQrPage() async {

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../providers/wallet_scope.dart';
-import '../../services/price_service.dart';
+import '../../../../providers/wallet_scope.dart';
+import '../../../../services/price_service.dart';
 
 class CoinDetailPage extends StatefulWidget {
   const CoinDetailPage({

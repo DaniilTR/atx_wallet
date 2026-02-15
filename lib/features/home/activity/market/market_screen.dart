@@ -1,4 +1,4 @@
-part of '../home/home_page.dart';
+part of '../../home_page.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -30,9 +30,7 @@ class _MarketScreenState extends State<MarketScreen> {
   }
 
   Future<void> _openHistoryPage() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const HistoryPage()));
+    await Navigator.of(context).pushNamed('/history');
   }
 
   Future<void> _openQrPage() async {

@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../market/models/coin.dart';
-import '../market/services/coin_service.dart';
-import '../market/coin_detail_page.dart';
+import 'activity/market/models/coin.dart';
+import 'activity/market/services/coin_service.dart';
+import 'activity/market/coin_detail_page.dart';
 import '../../services/price_service.dart';
-import 'activity/history_page.dart';
 import 'activity/qr_page.dart';
 
 import '../../providers/wallet_scope.dart';
@@ -21,12 +20,24 @@ part 'slides/send_sheet.dart';
 part 'slides/receive_sheet.dart';
 part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
-part '../market/market_screen.dart';
+part 'activity/market/market_screen.dart';
 part 'activity/rewards_page.dart';
 part 'slides/labeled_field.dart';
 part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
 part 'slides/swap_card.dart';
+
+class SendSheet extends StatelessWidget {
+  const SendSheet({required this.address, this.initialRecipient, super.key});
+
+  final String? address;
+  final String? initialRecipient;
+
+  @override
+  Widget build(BuildContext context) {
+    return _SendSheet(address: address, initialRecipient: initialRecipient);
+  }
+}
 
 const Map<String, Color> _tokenColors = <String, Color>{
   'TBNB': Color(0xFF5782FF),
@@ -88,9 +99,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
 
   Future<void> _openHistoryPage() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const HistoryPage()));
+    await Navigator.of(context).pushNamed('/history');
   }
 
   Future<void> _openQrPage() async {

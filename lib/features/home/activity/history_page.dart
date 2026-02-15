@@ -2,26 +2,91 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../providers/wallet_scope.dart';
+import 'package:atx_wallet/features/auth/widgets/animated_neon_background.dart';
+import 'package:atx_wallet/features/home/activity/qr_page.dart';
+import 'package:atx_wallet/features/home/home_page.dart';
+import 'package:atx_wallet/features/home/widgets/bottom_nav.dart';
+import 'package:atx_wallet/providers/wallet_scope.dart';
+import 'package:atx_wallet/services/auth_scope.dart';
 
-class HistoryPage extends StatelessWidget {
+class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
 
   @override
+  State<HistoryPage> createState() => _HistoryPageState();
+}
+
+class _HistoryPageState extends State<HistoryPage> {
+  int _tab = 3;
+
+  void _handleTabChange(int value) {
+    if (value == 0) {
+      Navigator.of(context).pushReplacementNamed('/home');
+      return;
+    }
+    if (value == 1) {
+      Navigator.of(context).pushReplacementNamed('/market');
+      return;
+    }
+    if (value == 2) {
+      Navigator.of(context).pushReplacementNamed('/rewards');
+      return;
+    }
+    setState(() => _tab = value);
+  }
+
+  Future<T?> _showNeonSheet<T>(Widget child) {
+    return showModalBottomSheet<T>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+            left: 16,
+            right: 16,
+            top: 12,
+          ),
+          child: child,
+        ),
+      ),
+    );
+  }
+
+  String? get _currentAddress {
+    final wallet = WalletScope.of(context);
+    return wallet.activeProfile?.addressHex;
+  }
+
+  Future<void> _openQrPage() async {
+    final scanned = await Navigator.of(context).push<String?>(
+      MaterialPageRoute(builder: (_) => QrPage(address: _currentAddress)),
+    );
+    if (!mounted) return;
+    if (scanned != null) {
+      await _showNeonSheet<void>(
+        SendSheet(address: _currentAddress, initialRecipient: scanned),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final auth = AuthScope.of(context);
     final wallet = WalletScope.of(context);
     final history = wallet.history;
     final loading = wallet.historyLoading;
     final error = wallet.historyError;
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
 
     Widget body;
     if (loading && history.isEmpty) {
-      body = const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF7C86B2)),
-        ),
+      body = const Padding(
+        padding: EdgeInsets.symmetric(vertical: 48),
+        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
       );
     } else if (history.isEmpty) {
       body = Center(
@@ -55,7 +120,8 @@ class HistoryPage extends StatelessWidget {
       );
     } else {
       body = ListView.separated(
-        physics: const BouncingScrollPhysics(),
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
         padding: EdgeInsets.zero,
         itemBuilder: (context, index) {
           final entry = history[index];
@@ -132,73 +198,151 @@ class HistoryPage extends StatelessWidget {
     }
 
     return Scaffold(
+      extendBody: true,
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        titleSpacing: 20,
-        toolbarHeight: 72,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'История операций',
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.w700,
-              ),
+      body: Stack(
+        children: [
+          AnimatedNeonBackground(isDark: isDark),
+          const Positioned(
+            top: -40,
+            right: -10,
+            child: _GlowCircle(
+              diameter: 240,
+              color: Color.fromARGB(255, 125, 71, 250),
+              opacity: 0.8,
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Последние транзакции кошелька',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF8E99C0),
-                fontSize: 13,
-              ),
+          ),
+          const Positioned(
+            top: 250,
+            left: -70,
+            child: _GlowCircle(
+              diameter: 200,
+              color: Color(0xFF60A5FA),
+              opacity: 0.7,
             ),
-          ],
-        ),
+          ),
+          const Positioned(
+            bottom: -20,
+            left: -40,
+            child: _GlowCircle(
+              diameter: 210,
+              color: Color(0xFF7C3AED),
+              opacity: 0.8,
+            ),
+          ),
+          const Positioned(
+            bottom: -20,
+            right: -40,
+            child: _GlowCircle(
+              diameter: 220,
+              color: Color(0xFF34D399),
+              opacity: 0.8,
+            ),
+          ),
+          SafeArea(
+            child: ListView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
+              children: [
+                HomeTopBar(
+                  username: auth.currentUser?.username ?? 'Wallet',
+                  isDark: isDark,
+                  onSettings: () => Navigator.pushNamed(context, '/settings'),
+                  onLogout: () async {
+                    wallet.clearDevProfile();
+                    await auth.logout();
+                    if (!mounted) return;
+                    Navigator.pushReplacementNamed(context, '/login');
+                  },
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'История операций',
+                  style: GoogleFonts.inter(
+                    color: primaryTextColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Последние транзакции кошелька',
+                  style: GoogleFonts.inter(
+                    color: isDark
+                        ? const Color(0xFF8E99C0)
+                        : const Color(0xFF475569),
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: loading ? null : () => wallet.refreshHistory(),
+                    icon: loading
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.refresh_rounded, size: 18),
+                    label: Text(
+                      'Обновить',
+                      style: GoogleFonts.inter(
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                ),
+                if (error != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'Не удалось загрузить историю: $error',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFFF8F8F),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                body,
+              ],
+            ),
+          ),
+        ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-        child: Column(
-          children: [
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: loading ? null : () => wallet.refreshHistory(),
-                icon: loading
-                    ? SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: const AlwaysStoppedAnimation<Color>(
-                            Color(0xFF7C86B2),
-                          ),
-                        ),
-                      )
-                    : const Icon(Icons.refresh_rounded, size: 18),
-                label: Text(
-                  'Обновить',
-                  style: GoogleFonts.inter(color: Colors.white),
-                ),
-              ),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 4),
-              Text(
-                'Не удалось загрузить историю: $error',
-                style: GoogleFonts.inter(
-                  color: const Color(0xFFFF8F8F),
-                  fontSize: 12,
-                ),
-              ),
-            ],
-            const SizedBox(height: 12),
-            Expanded(child: body),
-          ],
+      bottomNavigationBar: BottomNav(
+        index: _tab,
+        onChanged: _handleTabChange,
+        onQrTap: _openQrPage,
+        isDark: isDark,
+      ),
+    );
+  }
+}
+
+class _GlowCircle extends StatelessWidget {
+  const _GlowCircle({
+    required this.diameter,
+    required this.color,
+    this.opacity = 0.55,
+  });
+
+  final double diameter;
+  final Color color;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [color.withOpacity(opacity), color.withOpacity(0.0)],
+          ),
         ),
       ),
     );

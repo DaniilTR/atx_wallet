@@ -1,14 +1,15 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
-import '../../providers/wallet_scope.dart';
+import 'package:atx_wallet/providers/wallet_scope.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
 class MobilePairConnectScreen extends StatefulWidget {
   const MobilePairConnectScreen({super.key});
 
   @override
-  State<MobilePairConnectScreen> createState() => _MobilePairConnectScreenState();
+  State<MobilePairConnectScreen> createState() =>
+      _MobilePairConnectScreenState();
 }
 
 class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
@@ -27,10 +28,12 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
 
   Future<void> _onDetect(BarcodeCapture capture) async {
     if (_processing) return;
-    final raw = capture.barcodes.map((b) => b.rawValue).firstWhere(
-      (v) => v != null && v.trim().isNotEmpty,
-      orElse: () => null,
-    );
+    final raw = capture.barcodes
+        .map((b) => b.rawValue)
+        .firstWhere(
+          (v) => v != null && v.trim().isNotEmpty,
+          orElse: () => null,
+        );
     if (raw == null) return;
     setState(() {
       _processing = true;
@@ -38,7 +41,8 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
     });
     try {
       final payload = jsonDecode(raw);
-      if (payload is! Map<String, dynamic>) throw const FormatException('bad_json');
+      if (payload is! Map<String, dynamic>)
+        throw const FormatException('bad_json');
       if (payload['type'] != 'pair') throw const FormatException('bad_type');
       final session = payload['session'] as String?;
       final relay = payload['relay'] as String?;
@@ -78,10 +82,7 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                MobileScanner(
-                  controller: _controller,
-                  onDetect: _onDetect,
-                ),
+                MobileScanner(controller: _controller, onDetect: _onDetect),
                 Positioned(
                   bottom: 24,
                   left: 24,
@@ -90,16 +91,24 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
                     children: [
                       if (_error != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.5),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.redAccent.withOpacity(0.6)),
+                            border: Border.all(
+                              color: Colors.redAccent.withOpacity(0.6),
+                            ),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.error_outline, color: Colors.redAccent),
+                              const Icon(
+                                Icons.error_outline,
+                                color: Colors.redAccent,
+                              ),
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
@@ -115,13 +124,17 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           FilledButton.icon(
-                            onPressed: _processing ? null : () => _controller.toggleTorch(),
+                            onPressed: _processing
+                                ? null
+                                : () => _controller.toggleTorch(),
                             icon: const Icon(Icons.bolt),
                             label: const Text('Фонарик'),
                           ),
                           const SizedBox(width: 12),
                           OutlinedButton.icon(
-                            onPressed: _processing ? null : () => _controller.switchCamera(),
+                            onPressed: _processing
+                                ? null
+                                : () => _controller.switchCamera(),
                             icon: const Icon(Icons.cameraswitch),
                             label: const Text('Сменить камеру'),
                           ),
@@ -136,7 +149,9 @@ class _MobilePairConnectScreenState extends State<MobilePairConnectScreen> {
           Container(
             decoration: BoxDecoration(
               color: const Color(0xFF1A2030),
-              border: Border(top: BorderSide(color: Colors.white.withOpacity(0.08))),
+              border: Border(
+                top: BorderSide(color: Colors.white.withOpacity(0.08)),
+              ),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             child: Row(
