@@ -212,15 +212,6 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ),
           const Positioned(
-            top: 250,
-            left: -70,
-            child: _GlowCircle(
-              diameter: 200,
-              color: Color(0xFF60A5FA),
-              opacity: 0.7,
-            ),
-          ),
-          const Positioned(
             bottom: -20,
             left: -40,
             child: _GlowCircle(
@@ -246,6 +237,7 @@ class _HistoryPageState extends State<HistoryPage> {
                   child: HomeTopBar(
                     username: auth.currentUser?.username ?? 'Wallet',
                     isDark: isDark,
+                    onWallets: () => showWalletsSheet<void>(context),
                     onSettings: () => Navigator.pushNamed(context, '/settings'),
                     onLogout: () async {
                       wallet.clearDevProfile();

@@ -129,6 +129,7 @@ class _RewardsPageState extends State<RewardsPage> {
                     child: HomeTopBar(
                       username: auth.currentUser?.username ?? 'Wallet',
                       isDark: isDark,
+                      onWallets: () => showWalletsSheet<void>(context),
                       onSettings: () =>
                           Navigator.pushNamed(context, '/settings'),
                       onLogout: () async {

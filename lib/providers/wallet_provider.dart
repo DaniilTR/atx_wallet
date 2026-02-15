@@ -170,6 +170,11 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   DevWalletProfile? get activeProfile => _activeProfile;
   bool get devEnabled => devStorage.devEnabled;
 
+  String? _activeUserId;
+  List<DevWalletProfile> _wallets = const <DevWalletProfile>[];
+  UnmodifiableListView<DevWalletProfile> get wallets =>
+      UnmodifiableListView(_wallets);
+
   WalletBalances _balances = WalletBalances.initial(kTrackedTokens);
   WalletBalances get balances => _balances;
   List<TokenMetadata> get supportedTokens => kTrackedTokens;
@@ -191,6 +196,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
   bool get isWalletReady =>
       _activeProfile?.addressHex != null && privateKey != null;
+
+  String? get activeUserId => _activeUserId;
 
   // Загрузить приватный ключ из SharedPreferences (dev-сторона, без шифрования).
   Future<void> loadPrivateKey() async {
@@ -241,57 +248,125 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   Future<DevWalletProfile?> generateAndPersistForUser(String userId) async {
     if (!devStorage.devEnabled) return null;
 
-    // Если профиль уже есть (перерегистрация) — не создаём заново.
-    final exists = await devStorage.exists(userId);
-    if (exists) {
-      final existing = await devStorage.loadProfile(userId);
-      _setActiveProfile(existing);
-      if (existing != null) {
-        privateKey = existing.privateKeyHex;
-        await refreshBalances(silent: true);
-      }
-      return existing;
+    // Если у пользователя уже есть кошельки — просто загрузим и вернём активный.
+    final bundle = await devStorage.loadBundle(userId);
+    if (bundle != null && bundle.wallets.isNotEmpty) {
+      await loadDevWallets(userId);
+      return _activeProfile;
     }
 
-    final mnemonic = generateMnemonic();
-    final privateKeyHex = await getPrivateKey(mnemonic);
-    final address = await getPublicKey(privateKeyHex);
-
-    final profile = DevWalletProfile(
-      userId: userId,
-      mnemonic: mnemonic,
-      privateKeyHex: privateKeyHex,
-      addressHex: address.hexEip55,
-    );
-
-    await devStorage.saveProfile(profile);
-    _setActiveProfile(profile);
-    await refreshBalances(silent: true);
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('lastDevUserId', userId);
-    } catch (_) {}
-    return profile;
+    // Иначе создаём первый кошелёк.
+    final created = await createNewWallet(userId: userId, name: 'Кошелёк 1');
+    return created;
   }
 
   /// Получить профиль из DEV-хранилища по userId (для главного экрана).
   Future<DevWalletProfile?> loadDevProfile(String userId) async {
+    // backward-compatible alias
+    return loadDevWallets(userId);
+  }
+
+  Future<DevWalletProfile?> loadDevWallets(String userId) async {
     if (!devStorage.devEnabled) return null;
-    final profile = await devStorage.loadProfile(userId);
-    _setActiveProfile(profile);
-    if (profile != null) {
-      privateKey = profile.privateKeyHex;
+    _activeUserId = userId;
+
+    final bundle = await devStorage.loadBundle(userId);
+    final wallets = bundle?.wallets ?? const <DevWalletProfile>[];
+    _wallets = List.unmodifiable(wallets);
+    DevWalletProfile? active;
+    if (bundle != null && wallets.isNotEmpty) {
+      active = wallets.firstWhere(
+        (w) => w.walletId == bundle.activeWalletId,
+        orElse: () => wallets.first,
+      );
+    }
+    _setActiveProfile(active);
+
+    if (active != null) {
+      privateKey = active.privateKeyHex.isEmpty ? null : active.privateKeyHex;
       await refreshBalances(silent: true);
+      await _loadHistoryFromStorage(silent: true);
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('lastDevUserId', userId);
       } catch (_) {}
     }
+    return active;
+  }
+
+  String _newWalletId() {
+    final now = DateTime.now().microsecondsSinceEpoch;
+    final salt = math.Random().nextInt(1 << 30);
+    return 'w${now.toRadixString(16)}${salt.toRadixString(16)}';
+  }
+
+  Future<DevWalletProfile> createNewWallet({
+    required String userId,
+    String? name,
+    bool makeActive = true,
+  }) async {
+    if (!devStorage.devEnabled) {
+      throw StateError('Dev wallet storage is disabled');
+    }
+    final mnemonic = generateMnemonic();
+    return importWalletFromMnemonic(
+      userId: userId,
+      mnemonic: mnemonic,
+      name: name,
+      walletId: _newWalletId(),
+      makeActive: makeActive,
+    );
+  }
+
+  Future<DevWalletProfile> importWalletFromMnemonic({
+    required String userId,
+    required String mnemonic,
+    String? name,
+    String? walletId,
+    bool makeActive = true,
+  }) async {
+    if (!devStorage.devEnabled) {
+      throw StateError('Dev wallet storage is disabled');
+    }
+    final normalized = mnemonic.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (!bip39.validateMnemonic(normalized)) {
+      throw ArgumentError('Некорректная сид-фраза');
+    }
+
+    final id = walletId ?? _newWalletId();
+    final privateKeyHex = await getPrivateKey(normalized);
+    final address = await getPublicKey(privateKeyHex);
+
+    final profile = DevWalletProfile(
+      walletId: id,
+      name: (name == null || name.trim().isEmpty) ? 'Кошелёк' : name.trim(),
+      userId: userId,
+      mnemonic: normalized,
+      privateKeyHex: privateKeyHex,
+      addressHex: address.hexEip55,
+    );
+
+    await devStorage.addWallet(userId, profile, makeActive: makeActive);
+    await loadDevWallets(userId);
     return profile;
+  }
+
+  Future<void> switchActiveWallet({
+    required String userId,
+    required String walletId,
+  }) async {
+    if (!devStorage.devEnabled) return;
+    await devStorage.setActiveWallet(userId, walletId);
+    await loadDevWallets(userId);
   }
 
   void clearDevProfile() {
     if (_activeProfile == null) return;
+    _wallets = const <DevWalletProfile>[];
+    _activeUserId = null;
     _activeProfile = null;
     privateKey = null;
     _balances = WalletBalances.initial(kTrackedTokens);
@@ -300,12 +375,14 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _hasBalanceSnapshot = false;
     notifyListeners();
     // remove lastDevUserId
-    unawaited(Future(() async {
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.remove('lastDevUserId');
-      } catch (_) {}
-    }));
+    unawaited(
+      Future(() async {
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.remove('lastDevUserId');
+        } catch (_) {}
+      }),
+    );
   }
 
   /// Set a read-only profile that only contains an address. Useful for
@@ -313,6 +390,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   /// but do not possess private keys. This will enable balance refreshes.
   Future<void> setReadOnlyAddress(String addressHex) async {
     final profile = DevWalletProfile(
+      walletId: '_remote',
+      name: 'Remote',
       userId: '_remote',
       mnemonic: '',
       privateKeyHex: '',
@@ -332,7 +411,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       final prefs = await SharedPreferences.getInstance();
       final last = prefs.getString('lastDevUserId');
       if (last != null && last.isNotEmpty) {
-        await loadDevProfile(last);
+        await loadDevWallets(last);
       }
     } catch (_) {}
   }
@@ -467,7 +546,15 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       notifyListeners();
     }
     try {
-      final records = await devHistoryStorage.loadHistory(profile.userId);
+      var records = await devHistoryStorage.loadHistory(profile.storageId);
+      // Backward compatibility: older builds stored history under userId.
+      if (records.isEmpty && profile.userId.isNotEmpty) {
+        final legacy = await devHistoryStorage.loadHistory(profile.userId);
+        if (legacy.isNotEmpty) {
+          records = legacy;
+          await devHistoryStorage.saveHistory(profile.storageId, legacy);
+        }
+      }
       _history = List.unmodifiable(records);
       _historyError = null;
     } catch (e, st) {
@@ -495,7 +582,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final profile = _activeProfile;
     if (profile == null) return;
     try {
-      await devHistoryStorage.saveHistory(profile.userId, _history);
+      await devHistoryStorage.saveHistory(profile.storageId, _history);
       if (_historyError != null) {
         _historyError = null;
         notifyListeners();

@@ -24,18 +24,14 @@ class _BuySheet extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1C2444), Color(0xFF12162B)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+                  color: const Color(0xFF14191E),
                   border: Border.all(color: const Color(0x22FFFFFF)),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: const Color(0x4436C1FF),
+                      backgroundColor: const Color(0xFF14191E),
                       child: Text(
                         item.$1,
                         style: const TextStyle(color: Colors.white),

@@ -6,6 +6,7 @@ import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';
 import 'activity/qr_page.dart';
+import '../../dev/dev_wallet_storage.dart';
 import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
@@ -20,6 +21,8 @@ part 'slides/send_sheet.dart';
 part 'slides/receive_sheet.dart';
 part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
+part 'slides/wallets/wallets_sheet.dart';
+part 'slides/wallets/add_wallet_sheet.dart';
 part 'activity/market/market_screen.dart';
 part 'activity/rewards_page.dart';
 part 'slides/labeled_field.dart';
@@ -206,13 +209,14 @@ class _HomePageState extends State<HomePage> {
                     child: HomeTopBar(
                       username: username,
                       isDark: isDark,
+                      onWallets: () => showWalletsSheet<void>(context),
                       onSettings: () =>
                           Navigator.pushNamed(context, '/settings'),
                       onLogout: () async {
                         wallet.clearDevProfile();
                         await auth.logout();
                         if (!mounted) return;
-                        Navigator.pushReplacementNamed(context, '/login');
+                        Navigator.pushReplacementNamed(context, '/start');
                       },
                     ),
                   ),
@@ -804,12 +808,14 @@ class HomeTopBar extends StatelessWidget {
     Key? key,
     required this.username,
     required this.isDark,
+    this.onWallets,
     required this.onSettings,
     required this.onLogout,
   }) : super(key: key);
 
   final String username;
   final bool isDark;
+  final VoidCallback? onWallets;
   final VoidCallback onSettings;
   final Future<void> Function() onLogout;
 
@@ -828,16 +834,31 @@ class HomeTopBar extends StatelessWidget {
           children: [
             const _NeonAvatar(),
             const SizedBox(width: 12),
-            Text(
-              username,
-              style: GoogleFonts.inter(
-                color: primaryTextColor,
-                fontWeight: FontWeight.w700,
-                fontSize: 18,
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: onWallets,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      username,
+                      style: GoogleFonts.inter(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: mutedTextColor,
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(width: 4),
-            Icon(Icons.keyboard_arrow_down_rounded, color: mutedTextColor),
             const Spacer(),
             IconButton(
               tooltip: 'Settings',

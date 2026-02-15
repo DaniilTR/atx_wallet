@@ -17,9 +17,7 @@ class _SwapCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF1C2444), Color(0xFF12162B)],
-        ),
+        color: const Color(0xFF14191E),
         border: Border.all(color: const Color(0x1AFFFFFF)),
       ),
       child: Column(

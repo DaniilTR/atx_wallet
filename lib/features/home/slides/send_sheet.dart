@@ -97,7 +97,7 @@ class _SendSheetState extends State<_SendSheet> {
             'Транзакция отправлена: $txHash',
             style: GoogleFonts.inter(color: Colors.white),
           ),
-          backgroundColor: const Color(0xFF1C1F33),
+          backgroundColor: const Color(0xFF14191E),
         ),
       );
     } catch (e) {
@@ -149,12 +149,12 @@ class _SendSheetState extends State<_SendSheet> {
                 labelText: 'Токен',
                 labelStyle: GoogleFonts.inter(color: const Color(0xFFB5BEDF)),
                 filled: true,
-                fillColor: const Color(0xFF1A223E),
+                fillColor: const Color(0xFF14191E),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              dropdownColor: const Color(0xFF1A223E),
+              dropdownColor: const Color(0xFF14191E),
               items: tokens
                   .map(
                     (t) => DropdownMenuItem<TokenMetadata>(

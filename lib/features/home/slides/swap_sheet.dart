@@ -161,12 +161,12 @@ class _SwapSheetState extends State<_SwapSheet> {
             decoration: InputDecoration(
               labelText: 'Токен получения',
               filled: true,
-              fillColor: const Color(0xFF1A223E),
+              fillColor: const Color(0xFF14191E),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
             ),
-            dropdownColor: const Color(0xFF1A223E),
+            dropdownColor: const Color(0xFF14191E),
             items: tokens
                 .map(
                   (token) => DropdownMenuItem<TokenMetadata>(

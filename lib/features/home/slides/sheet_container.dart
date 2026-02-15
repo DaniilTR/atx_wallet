@@ -21,7 +21,7 @@ class _SheetContainer extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
           decoration: BoxDecoration(
-            color: const Color(0xFF101529),
+            color: const Color(0xFF14191E),
             border: Border.all(color: Colors.white.withOpacity(0.08)),
             boxShadow: const [
               BoxShadow(

@@ -68,6 +68,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _loading = true);
     final auth = AuthScope.of(context);
     final wallet = WalletScope.read(context);
+
     try {
       final user = await auth.login(
         login: _loginCtrl.text.trim(),
@@ -82,7 +83,7 @@ class _LoginPageState extends State<LoginPage> {
         context,
         '/home',
         arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
-      );
+      ); // это
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(

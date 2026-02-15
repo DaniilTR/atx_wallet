@@ -134,6 +134,7 @@ class _MarketScreenState extends State<MarketScreen> {
                     child: HomeTopBar(
                       username: auth.currentUser?.username ?? 'Wallet',
                       isDark: isDark,
+                      onWallets: () => showWalletsSheet<void>(context),
                       onSettings: () =>
                           Navigator.pushNamed(context, '/settings'),
                       onLogout: () async {

@@ -18,7 +18,7 @@ class _ReceiveSheet extends StatelessWidget {
             height: 180,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              color: const Color(0xFF161D34),
+              color: const Color(0xFF14191E),
               border: Border.all(color: const Color(0x33FFFFFF)),
             ),
             alignment: Alignment.center,
