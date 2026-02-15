@@ -81,28 +81,28 @@ class _HistoryPageState extends State<HistoryPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
 
-    Widget body;
+    Widget content;
     if (loading && history.isEmpty) {
-      body = const Padding(
-        padding: EdgeInsets.symmetric(vertical: 48),
-        child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-      );
+      content = const Center(child: CircularProgressIndicator(strokeWidth: 2));
     } else if (history.isEmpty) {
-      body = Center(
+      content = Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.history_toggle_off_rounded,
-              color: Color(0xFF3F4B74),
+              color: isDark ? const Color(0xFF3F4B74) : const Color(0xFF64748B),
               size: 42,
             ),
             const SizedBox(height: 14),
             Text(
               'Еще нет операций',
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -111,7 +111,7 @@ class _HistoryPageState extends State<HistoryPage> {
               'Мы автоматически сохраняем отправки и поступления, даже оффлайн.',
               textAlign: TextAlign.center,
               style: GoogleFonts.inter(
-                color: const Color(0xFF7C86B2),
+                color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
                 fontSize: 12,
               ),
             ),
@@ -119,10 +119,9 @@ class _HistoryPageState extends State<HistoryPage> {
         ),
       );
     } else {
-      body = ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        padding: EdgeInsets.zero,
+      content = ListView.separated(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.only(bottom: 190),
         itemBuilder: (context, index) {
           final entry = history[index];
           final isIncoming = entry.incoming;
@@ -240,72 +239,84 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ),
           SafeArea(
-            child: ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
+            child: Column(
               children: [
-                HomeTopBar(
-                  username: auth.currentUser?.username ?? 'Wallet',
-                  isDark: isDark,
-                  onSettings: () => Navigator.pushNamed(context, '/settings'),
-                  onLogout: () async {
-                    wallet.clearDevProfile();
-                    await auth.logout();
-                    if (!mounted) return;
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'История операций',
-                  style: GoogleFonts.inter(
-                    color: primaryTextColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                  child: HomeTopBar(
+                    username: auth.currentUser?.username ?? 'Wallet',
+                    isDark: isDark,
+                    onSettings: () => Navigator.pushNamed(context, '/settings'),
+                    onLogout: () async {
+                      wallet.clearDevProfile();
+                      await auth.logout();
+                      if (!mounted) return;
+                      Navigator.pushReplacementNamed(context, '/login');
+                    },
                   ),
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Последние транзакции кошелька',
-                  style: GoogleFonts.inter(
-                    color: isDark
-                        ? const Color(0xFF8E99C0)
-                        : const Color(0xFF475569),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: loading ? null : () => wallet.refreshHistory(),
-                    icon: loading
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(
-                      'Обновить',
-                      style: GoogleFonts.inter(
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'История операций',
+                        style: GoogleFonts.inter(
+                          color: primaryTextColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'Последние транзакции кошелька',
+                        style: GoogleFonts.inter(
+                          color: mutedTextColor,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton.icon(
+                          onPressed: loading
+                              ? null
+                              : () => wallet.refreshHistory(),
+                          icon: loading
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.refresh_rounded, size: 18),
+                          label: Text(
+                            'Обновить',
+                            style: GoogleFonts.inter(color: primaryTextColor),
+                          ),
+                        ),
+                      ),
+                      if (error != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Не удалось загрузить историю: $error',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFF8F8F),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                if (error != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'Не удалось загрузить историю: $error',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFFF8F8F),
-                      fontSize: 12,
-                    ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: content,
                   ),
-                ],
-                const SizedBox(height: 12),
-                body,
+                ),
               ],
             ),
           ),

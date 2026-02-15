@@ -118,93 +118,111 @@ class _RewardsPageState extends State<RewardsPage> {
             ),
           ),
           SafeArea(
-            child: ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
+            child: Stack(
               children: [
-                HomeTopBar(
-                  username: auth.currentUser?.username ?? 'Wallet',
-                  isDark: isDark,
-                  onSettings: () => Navigator.pushNamed(context, '/settings'),
-                  onLogout: () async {
-                    wallet.clearDevProfile();
-                    await auth.logout();
-                    if (!mounted) return;
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Rewards',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.inter(
-                    color: primaryTextColor,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: HomeTopBar(
+                      username: auth.currentUser?.username ?? 'Wallet',
+                      isDark: isDark,
+                      onSettings: () =>
+                          Navigator.pushNamed(context, '/settings'),
+                      onLogout: () async {
+                        wallet.clearDevProfile();
+                        await auth.logout();
+                        if (!mounted) return;
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                    ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                const _RewardsIllustration(),
-                const SizedBox(height: 20),
-                Row(
-                  children: const [
-                    Expanded(
-                      child: _StatCard(
-                        title: 'Уровень',
-                        value: '100 XP to\nБронзовый',
-                      ),
-                    ),
-                    SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(title: 'XP Баланс', value: '0 XP'),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 22),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Expanded(
-                      child: _SectionTitle(
-                        title: 'Redeem XP',
-                        subtitle: 'Partner Benefits',
-                      ),
-                    ),
-                    _RequirementChip(text: 'Бронзовый required'),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 260,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
+                Positioned.fill(
+                  top: 69,
+                  child: ListView(
                     physics: const BouncingScrollPhysics(),
-                    itemCount: _RewardItem.samples.length,
-                    separatorBuilder: (_, __) => const SizedBox(width: 12),
-                    itemBuilder: (context, index) {
-                      return _RewardCard(item: _RewardItem.samples[index]);
-                    },
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
+                    children: [
+                      Text(
+                        'Rewards',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.inter(
+                          color: primaryTextColor,
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      const _RewardsIllustration(),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: const [
+                          Expanded(
+                            child: _StatCard(
+                              title: 'Уровень',
+                              value: '100 XP to\nБронзовый',
+                            ),
+                          ),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(title: 'XP Баланс', value: '0 XP'),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 22),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Expanded(
+                            child: _SectionTitle(
+                              title: 'Redeem XP',
+                              subtitle: 'Partner Benefits',
+                            ),
+                          ),
+                          _RequirementChip(text: 'Бронзовый required'),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      SizedBox(
+                        height: 260,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          itemCount: _RewardItem.samples.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 12),
+                          itemBuilder: (context, index) {
+                            return _RewardCard(
+                              item: _RewardItem.samples[index],
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.center,
+                        children: const [
+                          Expanded(
+                            child: _SectionTitle(
+                              title: 'Trust Alpha',
+                              subtitle: 'Бронзовый required',
+                            ),
+                          ),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 16,
+                            color: Color(0xFF9FB1FF),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      const _TrustCard(),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 18),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: const [
-                    Expanded(
-                      child: _SectionTitle(
-                        title: 'Trust Alpha',
-                        subtitle: 'Бронзовый required',
-                      ),
-                    ),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      size: 16,
-                      color: Color(0xFF9FB1FF),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                const _TrustCard(),
               ],
             ),
           ),

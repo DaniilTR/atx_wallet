@@ -123,61 +123,76 @@ class _MarketScreenState extends State<MarketScreen> {
             ),
           ),
           SafeArea(
-            child: ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
+            child: Stack(
               children: [
-                HomeTopBar(
-                  username: auth.currentUser?.username ?? 'Wallet',
-                  isDark: isDark,
-                  onSettings: () => Navigator.pushNamed(context, '/settings'),
-                  onLogout: () async {
-                    wallet.clearDevProfile();
-                    await auth.logout();
-                    if (!mounted) return;
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Список котировок',
-                  style: GoogleFonts.inter(
-                    color: primaryTextColor,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: HomeTopBar(
+                      username: auth.currentUser?.username ?? 'Wallet',
+                      isDark: isDark,
+                      onSettings: () =>
+                          Navigator.pushNamed(context, '/settings'),
+                      onLogout: () async {
+                        wallet.clearDevProfile();
+                        await auth.logout();
+                        if (!mounted) return;
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
-                FutureBuilder<List<Coin>>(
-                  future: CoinService.fetchTopCoins(),
-                  builder: (context, snap) {
-                    if (snap.connectionState == ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    if (snap.hasError) {
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        child: Center(
-                          child: Text(
-                            'Ошибка загрузки курсов. Проверьте интернет и попробуйте позже.',
-                            style: GoogleFonts.inter(color: Colors.white),
-                            textAlign: TextAlign.center,
-                          ),
+                Positioned.fill(
+                  top: 69,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 190),
+                    children: [
+                      Text(
+                        'Список котировок',
+                        style: GoogleFonts.inter(
+                          color: primaryTextColor,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                         ),
-                      );
-                    }
-                    final coins = snap.data ?? <Coin>[];
-                    return Column(
-                      children: [
-                        for (var i = 0; i < coins.length; i++) ...[
-                          _MarketRow(coin: coins[i]),
-                        ],
-                      ],
-                    );
-                  },
+                      ),
+                      const SizedBox(height: 12),
+                      FutureBuilder<List<Coin>>(
+                        future: CoinService.fetchTopCoins(),
+                        builder: (context, snap) {
+                          if (snap.connectionState == ConnectionState.waiting) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 40),
+                              child: Center(child: CircularProgressIndicator()),
+                            );
+                          }
+                          if (snap.hasError) {
+                            return Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              child: Center(
+                                child: Text(
+                                  'Ошибка загрузки курсов. Проверьте интернет и попробуйте позже.',
+                                  style: GoogleFonts.inter(color: Colors.white),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ),
+                            );
+                          }
+                          final coins = snap.data ?? <Coin>[];
+                          return Column(
+                            children: [
+                              for (var i = 0; i < coins.length; i++) ...[
+                                _MarketRow(coin: coins[i]),
+                              ],
+                            ],
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),

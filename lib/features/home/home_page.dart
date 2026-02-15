@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';
-import 'activity/market/coin_detail_page.dart';
-import '../../services/price_service.dart';
 import 'activity/qr_page.dart';
-
-import '../../providers/wallet_scope.dart';
 import '../../providers/wallet_provider.dart';
+import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import '../../services/price_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'home_route_args.dart';
@@ -121,16 +121,12 @@ class _HomePageState extends State<HomePage> {
 
   void _handleTabChange(int value) {
     if (value == 2) {
-      Navigator.of(
-        context,
-      ).pushReplacement(MaterialPageRoute(builder: (_) => const RewardsPage()));
+      Navigator.of(context).pushReplacementNamed('/rewards');
       return;
     }
     if (value == 1) {
       setState(() => _tab = value);
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MarketScreen()),
-      );
+      Navigator.of(context).pushReplacementNamed('/market');
       return;
     }
     setState(() => _tab = value);
@@ -155,11 +151,10 @@ class _HomePageState extends State<HomePage> {
         ? const Color(0xFFB3B8D7)
         : const Color(0xFF475569);
     final scaffoldBg = theme.scaffoldBackgroundColor;
+
     return Scaffold(
       extendBody: true,
       backgroundColor: scaffoldBg,
-      // Цветные круглишки на фоне
-      //------------------------------------------------------------------------
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
@@ -199,123 +194,139 @@ class _HomePageState extends State<HomePage> {
               opacity: 0.8,
             ),
           ),
-
           SafeArea(
-            child: ListView(
-              physics: const BouncingScrollPhysics(),
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 190),
+            child: Stack(
               children: [
-                HomeTopBar(
-                  username: username,
-                  isDark: isDark,
-                  onSettings: () => Navigator.pushNamed(context, '/settings'),
-                  onLogout: () async {
-                    wallet.clearDevProfile();
-                    await auth.logout();
-                    if (!mounted) return;
-                    Navigator.pushReplacementNamed(context, '/login');
-                  },
-                ),
-                const SizedBox(height: 12),
-                _BalanceCard(
-                  address: address,
-                  balances: balances,
-                  isDark: isDark,
-                  onCopy: () async {
-                    if (address == null) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          backgroundColor: isDark
-                              ? Colors.white
-                              : const Color(0xFF0F172A),
-                          content: Text(
-                            'Address is not ready yet',
-                            style: GoogleFonts.inter(
-                              color: isDark ? Colors.black : Colors.white,
-                            ),
-                          ),
-                        ),
-                      );
-                      return;
-                    }
-                    await Clipboard.setData(ClipboardData(text: address));
-                    if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        backgroundColor: const Color(0xFF1C1F33),
-                        content: Text(
-                          'Address copied',
-                          style: GoogleFonts.inter(color: Colors.white),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 22),
-                _ActionsRow(
-                  isDark: isDark,
-                  onSend: _openSendSheet,
-                  onReceive: _openReceiveSheet,
-                  onBuy: _openBuySheet,
-                  onSwap: _openSwapSheet,
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Мой кошелек',
-                      style: GoogleFonts.inter(
-                        color: primaryTextColor,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                      ),
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                    child: HomeTopBar(
+                      username: username,
+                      isDark: isDark,
+                      onSettings: () =>
+                          Navigator.pushNamed(context, '/settings'),
+                      onLogout: () async {
+                        wallet.clearDevProfile();
+                        await auth.logout();
+                        if (!mounted) return;
+                        Navigator.pushReplacementNamed(context, '/login');
+                      },
                     ),
-                    IconButton(
-                      splashRadius: 18,
-                      tooltip: 'Обновить баланс',
-                      onPressed: balances.isLoading
-                          ? null
-                          : () => _refreshBalances(),
-                      icon: balances.isLoading
-                          ? SizedBox(
-                              width: 18,
-                              height: 18,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                  Color(0xFFB0BBCE),
+                  ),
+                ),
+                Positioned.fill(
+                  top: 69,
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
+                    children: [
+                      _BalanceCard(
+                        address: address,
+                        balances: balances,
+                        isDark: isDark,
+                        onCopy: () async {
+                          if (address == null) {
+                            if (!mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                backgroundColor: isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                                content: Text(
+                                  'Address is not ready yet',
+                                  style: GoogleFonts.inter(
+                                    color: isDark ? Colors.black : Colors.white,
+                                  ),
                                 ),
                               ),
-                            )
-                          : const Icon(Icons.refresh_rounded),
-                      color: mutedTextColor,
-                    ),
-                  ],
+                            );
+                            return;
+                          }
+                          await Clipboard.setData(ClipboardData(text: address));
+                          if (!mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              backgroundColor: const Color(0xFF1C1F33),
+                              content: Text(
+                                'Address copied',
+                                style: GoogleFonts.inter(color: Colors.white),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 22),
+                      _ActionsRow(
+                        isDark: isDark,
+                        onSend: _openSendSheet,
+                        onReceive: _openReceiveSheet,
+                        onBuy: _openBuySheet,
+                        onSwap: _openSwapSheet,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Мой кошелек',
+                            style: GoogleFonts.inter(
+                              color: primaryTextColor,
+                              fontSize: 20,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          IconButton(
+                            splashRadius: 18,
+                            tooltip: 'Обновить баланс',
+                            onPressed: balances.isLoading
+                                ? null
+                                : () => _refreshBalances(),
+                            icon: balances.isLoading
+                                ? SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        isDark
+                                            ? const Color(0xFFDDE1FF)
+                                            : const Color(0xFF4C6BFF),
+                                      ),
+                                    ),
+                                  )
+                                : const Icon(Icons.refresh_rounded),
+                            color: mutedTextColor,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      for (var i = 0; i < balances.assets.length; i++) ...[
+                        _AssetTile(
+                          balance: balances.assets[i],
+                          color:
+                              _tokenColors[balances.assets[i].token.symbol] ??
+                              const Color(0xFF4C6BFF),
+                          bnbUsdPrice: balances.bnbUsdPrice,
+                        ),
+                        if (i != balances.assets.length - 1)
+                          const SizedBox(height: 14),
+                      ],
+                      if (balances.error != null) ...[
+                        const SizedBox(height: 12),
+                        Text(
+                          'Не удалось обновить баланс: ${balances.error}',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFFFF8F8F),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 18),
-                for (var i = 0; i < balances.assets.length; i++) ...[
-                  _AssetTile(
-                    balance: balances.assets[i],
-                    color:
-                        _tokenColors[balances.assets[i].token.symbol] ??
-                        const Color(0xFF4C6BFF),
-                    bnbUsdPrice: balances.bnbUsdPrice,
-                  ),
-                  if (i != balances.assets.length - 1)
-                    const SizedBox(height: 14),
-                ],
-                if (balances.error != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    'Не удалось обновить баланс: ${balances.error}',
-                    style: GoogleFonts.inter(
-                      color: const Color(0xFFFF8F8F),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
               ],
             ),
           ),
