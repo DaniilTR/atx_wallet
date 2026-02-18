@@ -4,10 +4,6 @@ import 'package:flutter/material.dart';
 import 'services/auth_scope.dart';
 import 'services/config.dart';
 import 'features/settings/settings_screen.dart';
-import 'services/platform.dart';
-import 'features/desktop/pairing_screen.dart';
-import 'features/desktop/dashboard_screen.dart';
-import 'features/desktop/connection_screen/pair_connect_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'features/auth/start_page.dart';
 import 'features/auth/login_page.dart';
@@ -27,7 +23,6 @@ Future<void> main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      await ApiConfig.init();
       final walletProvider = WalletProvider(
         devEnabled: kEnableDevWalletStorage,
       );
@@ -163,22 +158,15 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
       ),
     );
 
-    final initialRoute = isDesktop ? '/desktop/pair' : kInitialRoute;
-    // Debug: log platform and chosen initial route to help diagnose startup routing
-    // (Remove or guard this in production)
-    // ignore: avoid_print
-    print(
-      'AtxWalletApp starting — isDesktop=$isDesktop initialRoute=$initialRoute',
-    );
-
     return MaterialApp(
       title: 'ATX Wallet',
       debugShowCheckedModeBanner: false,
       themeMode: _themeMode,
       theme: lightTheme,
       darkTheme: darkTheme,
-      initialRoute: initialRoute,
+      initialRoute: kInitialRoute,
       routes: {
+        '/': (_) => const StartPage(),
         '/start': (_) => const StartPage(),
         '/login': (_) => const LoginPage(),
         '/register': (_) => const RegisterPage(),
@@ -186,9 +174,6 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         '/market': (_) => const MarketScreen(),
         '/rewards': (_) => const RewardsPage(),
         '/history': (_) => const HistoryPage(),
-        '/mobile/pair': (_) => const MobilePairConnectScreen(),
-        '/desktop/pair': (_) => const DesktopPairingScreen(),
-        '/desktop/dashboard': (_) => const DesktopDashboardScreen(),
         '/settings': (_) => SettingsScreen(
           themeMode: _themeMode,
           onThemeChanged: _setThemeMode,

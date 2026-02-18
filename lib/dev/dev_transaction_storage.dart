@@ -2,23 +2,17 @@ import 'dart:convert';
 import 'dart:io' show Directory, File;
 
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/transaction_record.dart';
-import '../services/config.dart';
+import '../history_model/transaction_record.dart';
 
 class DevTransactionStorage {
   DevTransactionStorage({required this.devEnabled});
 
   final bool devEnabled;
 
-  Uri _historyUri(String userId) {
-    final base = ApiConfig.base.endsWith('/') ? ApiConfig.base.substring(0, ApiConfig.base.length - 1) : ApiConfig.base;
-    return Uri.parse(
-      '$base/api/dev-wallet-history/${Uri.encodeComponent(userId)}',
-    );
-  }
+  static const String _webKeyPrefix = 'tx_history_v1__';
 
   String _safeId(String userId) =>
       userId.replaceAll(RegExp(r'[^a-zA-Z0-9_.@-]'), '_');
@@ -39,18 +33,20 @@ class DevTransactionStorage {
 
   Future<List<TransactionRecord>> loadHistory(String userId) async {
     if (kIsWeb) {
-      if (!devEnabled) return const [];
-      final response = await http.get(_historyUri(userId));
-      if (response.statusCode == 404) return const [];
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Failed to load history: HTTP ${response.statusCode}');
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('$_webKeyPrefix${_safeId(userId)}');
+      if (raw == null || raw.isEmpty) return const <TransactionRecord>[];
+      try {
+        final List<dynamic> data = jsonDecode(raw) as List<dynamic>;
+        return data
+            .cast<Map<String, dynamic>>()
+            .map(TransactionRecord.fromJson)
+            .toList()
+          ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
+      } catch (e) {
+        debugPrint('Failed to parse web history: $e');
+        return const <TransactionRecord>[];
       }
-      final List<dynamic> data = jsonDecode(response.body) as List<dynamic>;
-      return data
-          .cast<Map<String, dynamic>>()
-          .map(TransactionRecord.fromJson)
-          .toList()
-        ..sort((a, b) => b.timestamp.compareTo(a.timestamp));
     }
 
     final path = await _filePathFor(userId);
@@ -74,15 +70,8 @@ class DevTransactionStorage {
     );
 
     if (kIsWeb) {
-      if (!devEnabled) return;
-      final response = await http.put(
-        _historyUri(userId),
-        headers: const {'Content-Type': 'application/json'},
-        body: payload,
-      );
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw Exception('Failed to save history: HTTP ${response.statusCode}');
-      }
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('$_webKeyPrefix${_safeId(userId)}', payload);
       return;
     }
 

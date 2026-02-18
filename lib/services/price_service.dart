@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import 'config.dart';
 
 /// Simple price service using CoinGecko public API.
 class PriceService {
-  PriceService({http.Client? client, this.maxRetries = 2, this.baseTimeout = const Duration(seconds: 6)}) : _client = client ?? http.Client();
+  PriceService({
+    http.Client? client,
+    this.maxRetries = 2,
+    this.baseTimeout = const Duration(seconds: 6),
+  }) : _client = client ?? http.Client();
   final http.Client _client;
   final int maxRetries;
   final Duration baseTimeout;
@@ -50,7 +53,9 @@ class PriceService {
               continue;
             }
             final entry = json[id] as Map<String, dynamic>?;
-            final price = entry == null ? null : (entry['usd'] as num?)?.toDouble();
+            final price = entry == null
+                ? null
+                : (entry['usd'] as num?)?.toDouble();
             out[s] = price;
           }
           return out;
@@ -68,16 +73,22 @@ class PriceService {
   }
 
   /// Fetch market chart (prices) for coin id for last [days]. Returns list of price points (timestamp, price).
-  Future<List<List<dynamic>>?> getMarketChart(String coinId, {int days = 7}) async {
-    final uri = Uri.https('api.coingecko.com', '/api/v3/coins/$coinId/market_chart', {
-      'vs_currency': 'usd',
-      'days': days.toString(),
-    });
+  Future<List<List<dynamic>>?> getMarketChart(
+    String coinId, {
+    int days = 7,
+  }) async {
+    final uri = Uri.https(
+      'api.coingecko.com',
+      '/api/v3/coins/$coinId/market_chart',
+      {'vs_currency': 'usd', 'days': days.toString()},
+    );
     int attempt = 0;
     while (true) {
       attempt++;
       try {
-        final timeout = baseTimeout * (attempt == 1 ? 1 : attempt) + const Duration(seconds: 2);
+        final timeout =
+            baseTimeout * (attempt == 1 ? 1 : attempt) +
+            const Duration(seconds: 2);
         final res = await _client.get(uri).timeout(timeout);
         if (res.statusCode == 200) {
           final json = jsonDecode(res.body) as Map<String, dynamic>;
@@ -94,29 +105,4 @@ class PriceService {
   }
 
   void dispose() => _client.close();
-
-  /// Try to fetch a token catalog from the server (`/api/tokens`).
-  /// Expected JSON format: [{"symbol":"ATX","name":"ATX coin","coingecko_id":"atx-token-id"}, ...]
-  /// Returns null on failure; caller should fallback to local/provider tokens.
-  Future<List<Map<String, dynamic>>?> getTokenCatalog() async {
-    try {
-      final uri = ApiConfig.apiUri('/api/tokens');
-      int attempt = 0;
-      while (true) {
-        attempt++;
-        try {
-          final timeout = baseTimeout * (attempt == 1 ? 1 : attempt);
-          final res = await _client.get(uri).timeout(timeout);
-          if (res.statusCode == 200) {
-            final jsonBody = jsonDecode(res.body) as List<dynamic>;
-            return jsonBody.cast<Map<String, dynamic>>();
-          }
-        } catch (_) {}
-        if (attempt >= maxRetries) return null;
-        await Future.delayed(Duration(milliseconds: 200 * (1 << (attempt - 1))));
-      }
-    } catch (_) {
-      return null;
-    }
-  }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../dev/dev_wallet_storage.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../home/home_route_args.dart';
@@ -25,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptAutoLogin());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptPrefillLogin());
   }
 
   @override
@@ -35,9 +34,8 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  Future<void> _attemptAutoLogin() async {
+  Future<void> _attemptPrefillLogin() async {
     final auth = AuthScope.of(context);
-    final wallet = WalletScope.read(context);
     try {
       final user = await auth.tryRestoreSession();
       if (!mounted) return;
@@ -45,18 +43,10 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => _checkingSession = false);
         return;
       }
-      DevWalletProfile? profile;
-      if (wallet.devEnabled) {
-        try {
-          profile = await wallet.loadDevProfile(user.id);
-        } catch (_) {}
-      }
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
-      );
+      // Безопасный режим: сессия пользователя может быть восстановлена,
+      // но кошелёк остаётся заблокирован до ввода пароля.
+      _loginCtrl.text = user.username;
+      setState(() => _checkingSession = false);
     } catch (_) {
       if (!mounted) return;
       setState(() => _checkingSession = false);
@@ -74,15 +64,19 @@ class _LoginPageState extends State<LoginPage> {
         login: _loginCtrl.text.trim(),
         password: _passwordCtrl.text,
       );
-      DevWalletProfile? profile;
       if (wallet.devEnabled) {
-        profile = await wallet.loadDevProfile(user.id);
+        await wallet.loadDevProfile(user.id);
+      } else {
+        await wallet.unlockSecureWallets(
+          userId: user.id,
+          password: _passwordCtrl.text,
+        );
       }
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
         '/home',
-        arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
+        arguments: HomeRouteArgs(userId: user.id),
       ); // это
     } catch (e) {
       if (!mounted) return;

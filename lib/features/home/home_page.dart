@@ -118,8 +118,7 @@ class _HomePageState extends State<HomePage> {
 
   String? get _currentAddress {
     final wallet = WalletScope.of(context);
-    final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
-    final profile = wallet.activeProfile ?? args?.devProfile;
+    final profile = wallet.activeProfile;
     return profile?.addressHex;
   }
 
@@ -144,8 +143,7 @@ class _HomePageState extends State<HomePage> {
     final auth = AuthScope.of(context);
     final wallet = WalletScope.of(context);
     final balances = wallet.balances;
-    final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
-    final profile = wallet.activeProfile ?? args?.devProfile;
+    final profile = wallet.activeProfile;
     final address = profile?.addressHex;
     final username = auth.currentUser?.username ?? 'Wallet';
     final theme = Theme.of(context);

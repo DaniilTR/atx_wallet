@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
+import 'package:web3dart/crypto.dart';
 
 import 'config.dart';
 
@@ -67,6 +68,14 @@ class BlockchainService {
       maxGas: maxGas,
       gasPrice: gasPrice,
     );
+    if (kColdWalletMode) {
+      final signed = await _client.signTransaction(
+        credentials,
+        tx,
+        chainId: kBscChainId,
+      );
+      return bytesToHex(signed, include0x: true);
+    }
     return _client.sendTransaction(credentials, tx, chainId: kBscChainId);
   }
 
@@ -87,6 +96,14 @@ class BlockchainService {
       maxGas: maxGas,
       gasPrice: gasPrice,
     );
+    if (kColdWalletMode) {
+      final signed = await _client.signTransaction(
+        credentials,
+        tx,
+        chainId: kBscChainId,
+      );
+      return bytesToHex(signed, include0x: true);
+    }
     return _client.sendTransaction(credentials, tx, chainId: kBscChainId);
   }
 

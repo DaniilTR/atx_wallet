@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../dev/dev_wallet_storage.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../home/home_route_args.dart';
@@ -29,7 +28,7 @@ class _RegisterPageState extends State<RegisterPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptAutoLogin());
+    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptPrefill());
   }
 
   @override
@@ -41,9 +40,8 @@ class _RegisterPageState extends State<RegisterPage> {
     super.dispose();
   }
 
-  Future<void> _attemptAutoLogin() async {
+  Future<void> _attemptPrefill() async {
     final auth = AuthScope.of(context);
-    final wallet = WalletScope.read(context);
     try {
       final user = await auth.tryRestoreSession();
       if (!mounted) return;
@@ -51,18 +49,10 @@ class _RegisterPageState extends State<RegisterPage> {
         setState(() => _checkingSession = false);
         return;
       }
-      DevWalletProfile? profile;
-      if (wallet.devEnabled) {
-        try {
-          profile = await wallet.loadDevProfile(user.id);
-        } catch (_) {}
-      }
-      if (!mounted) return;
-      Navigator.pushReplacementNamed(
-        context,
-        '/home',
-        arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
-      );
+      // Если сессия восстановлена, регистрации обычно не нужно.
+      // Оставляем экран регистрации, но заполняем никнейм.
+      _usernameCtrl.text = user.username;
+      setState(() => _checkingSession = false);
     } catch (_) {
       if (!mounted) return;
       setState(() => _checkingSession = false);
@@ -87,15 +77,19 @@ class _RegisterPageState extends State<RegisterPage> {
         email: email.isEmpty ? null : email,
         password: _passwordCtrl.text,
       );
-      DevWalletProfile? profile;
       if (wallet.devEnabled) {
-        profile = await wallet.generateAndPersistForUser(user.id);
+        await wallet.generateAndPersistForUser(user.id);
+      } else {
+        await wallet.createInitialSecureWallet(
+          userId: user.id,
+          password: _passwordCtrl.text,
+        );
       }
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,
         '/home',
-        arguments: HomeRouteArgs(userId: user.id, devProfile: profile),
+        arguments: HomeRouteArgs(userId: user.id),
       );
     } catch (e) {
       if (!mounted) return;

@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
+import 'package:flutter/services.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
-import '../../services/config.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -21,31 +19,17 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  final _controller = TextEditingController();
-  bool _saving = false;
   late bool _useDarkTheme;
 
   @override
   void initState() {
     super.initState();
-    _controller.text = ApiConfig.base;
     _useDarkTheme = widget.themeMode != ThemeMode.light;
   }
 
   @override
   void dispose() {
-    _controller.dispose();
     super.dispose();
-  }
-
-  Future<void> _save() async {
-    setState(() => _saving = true);
-    await ApiConfig.setBase(_controller.text.trim());
-    setState(() => _saving = false);
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Saved')));
   }
 
   @override
@@ -54,6 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final wallet = WalletScope.maybeOf(context);
     final address = wallet?.activeProfile?.addressHex;
     final username = auth.currentUser?.username ?? '—';
+    final userId = auth.currentUser?.id;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -87,55 +72,100 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: address ?? '—',
             isMonospace: true,
           ),
-          const Divider(height: 28),
-          const Text(
-            'Подключение к ПК',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () async {
-                    final result = await Navigator.pushNamed(
-                      context,
-                      '/mobile/pair',
-                    );
-                    if (result is Map) {
-                      if (!mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Сессия получена, подключаемся...'),
-                        ),
-                      );
-                      try {
-                        // Отправляем сессию на бэкенд
-                        final session = result['session'] as String?;
-                        if (session != null) {
-                          final uri = ApiConfig.apiUri('/api/pairings');
-                          final payload = <String, dynamic>{'session': session};
-                          // Если есть адрес, добавляем его
-                          final sentAddress =
-                              result['address'] as String? ?? address;
-                          if (sentAddress != null)
-                            payload['address'] = sentAddress;
-                          await http.post(
-                            uri,
-                            body: jsonEncode(payload),
-                            headers: {'Content-Type': 'application/json'},
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            onPressed: (wallet == null || userId == null)
+                ? null
+                : () async {
+                    final controller = TextEditingController();
+                    try {
+                      final password = await showDialog<String>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Подтверждение паролем'),
+                            content: TextField(
+                              controller: controller,
+                              obscureText: true,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Пароль',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(null),
+                                child: const Text('Отмена'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(controller.text),
+                                child: const Text('Показать'),
+                              ),
+                            ],
                           );
-                        }
-                      } catch (_) {
-                        // игнорируем ошибки
-                      }
+                        },
+                      );
+
+                      final trimmed = password?.trim() ?? '';
+                      if (trimmed.isEmpty) return;
+
+                      final seed = await wallet.revealActiveMnemonic(
+                        userId: userId,
+                        password: trimmed,
+                      );
+                      if (!context.mounted) return;
+
+                      await showDialog<void>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Ваша seed-фраза'),
+                            content: SelectableText(
+                              seed,
+                              style: const TextStyle(
+                                fontFamily: 'monospace',
+                                height: 1.4,
+                              ),
+                            ),
+                            actions: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  await Clipboard.setData(
+                                    ClipboardData(text: seed),
+                                  );
+                                  if (!context.mounted) return;
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('Seed-фраза скопирована'),
+                                    ),
+                                  );
+                                },
+                                icon: const Icon(Icons.copy),
+                                label: const Text('Скопировать'),
+                              ),
+                              TextButton(
+                                onPressed: () => Navigator.of(context).pop(),
+                                child: const Text('Закрыть'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    } catch (e) {
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Не удалось открыть seed: $e')),
+                      );
+                    } finally {
+                      controller.dispose();
                     }
                   },
-                  icon: const Icon(Icons.link),
-                  label: const Text('Подключить к ПК (QR)'),
-                ),
-              ),
-            ],
+            icon: const Icon(Icons.visibility),
+            label: const Text('Показать seed-фразу'),
           ),
           const Divider(height: 32),
           const Text(
@@ -165,41 +195,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             },
             icon: const Icon(Icons.support_agent_rounded),
             label: const Text('Центр поддержки'),
-          ),
-          const Divider(height: 32),
-          const Text(
-            'API Base URL (for dev/testing)',
-            style: TextStyle(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          TextField(
-            controller: _controller,
-            keyboardType: TextInputType.url,
-            decoration: const InputDecoration(
-              hintText: 'http://192.168.1.100:3000',
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              ElevatedButton(
-                onPressed: _saving ? null : _save,
-                child: _saving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Text('Save'),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: () {
-                  _controller.text = kApiBaseUrl;
-                },
-                child: const Text('Reset to default'),
-              ),
-            ],
           ),
         ],
       ),

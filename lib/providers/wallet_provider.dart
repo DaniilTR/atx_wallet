@@ -4,15 +4,20 @@ import 'dart:math' as math;
 
 import 'package:bip32/bip32.dart' as bip32;
 import 'package:bip39/bip39.dart' as bip39;
+import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart';
 import 'package:hex/hex.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 
+import '../WalletSecureStorage/random_bytes.dart';
+import '../WalletSecureStorage/secure_wallet_vault.dart';
+import '../WalletSecureStorage/wallet_vault_models.dart';
 import '../dev/dev_transaction_storage.dart';
 import '../dev/dev_wallet_storage.dart';
-import '../models/transaction_record.dart';
+import '../history_model/transaction_record.dart';
 import '../services/blockchain_service.dart';
+import '../services/config.dart';
 
 // Интерфейс для сервиса генерации и получения ключей/адреса.
 abstract class WalletAddressService {
@@ -166,9 +171,15 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   final DevTransactionStorage devHistoryStorage;
   final BlockchainService blockchain;
 
+  final SecureWalletVault _secureVault = SecureWalletVault();
+  WalletVaultBundle? _secureBundle;
+  SecretKey? _secureKey;
+
   DevWalletProfile? _activeProfile;
   DevWalletProfile? get activeProfile => _activeProfile;
   bool get devEnabled => devStorage.devEnabled;
+
+  bool get isUnlocked => devEnabled ? privateKey != null : _secureKey != null;
 
   String? _activeUserId;
   List<DevWalletProfile> _wallets = const <DevWalletProfile>[];
@@ -199,18 +210,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
   String? get activeUserId => _activeUserId;
 
-  // Загрузить приватный ключ из SharedPreferences (dev-сторона, без шифрования).
-  Future<void> loadPrivateKey() async {
-    final prefs = await SharedPreferences.getInstance();
-    privateKey = prefs.getString('privateKey');
-  }
-
-  // Сохранить приватный ключ в SharedPreferences и уведомить слушателей.
-  Future<void> setPrivateKey(String privateKey) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('privateKey', privateKey);
-    this.privateKey = privateKey;
-    notifyListeners();
+  void _setPrivateKeyInMemory(String? value) {
+    privateKey = value;
   }
 
   @override
@@ -230,9 +231,183 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final derived = child.privateKey!;
     final privateKeyHex = HEX.encode(derived);
 
-    // Кладём в локальное (dev) хранилище, чтобы можно было показать в UI/консоли.
-    await setPrivateKey(privateKeyHex);
     return privateKeyHex;
+  }
+
+  Future<void> unlockSecureWallets({
+    required String userId,
+    required String password,
+  }) async {
+    SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
+
+    final bundle = await _secureVault.loadBundle(userId);
+    if (bundle == null || bundle.wallets.isEmpty) {
+      throw StateError('Кошелёк не найден. Создайте новый.');
+    }
+
+    final key = await _secureVault.deriveBundleKey(
+      bundle: bundle,
+      password: password,
+    );
+    _secureKey = key;
+    _secureBundle = bundle;
+    _activeUserId = userId;
+
+    final profiles = bundle.wallets
+        .where((e) => e.userId.isNotEmpty && e.walletId.isNotEmpty)
+        .map(
+          (e) => DevWalletProfile(
+            walletId: e.walletId,
+            name: e.name,
+            userId: e.userId,
+            mnemonic: '',
+            privateKeyHex: '',
+            addressHex: e.addressHex,
+          ),
+        )
+        .toList(growable: false);
+    _wallets = List.unmodifiable(profiles);
+
+    final activeId = bundle.activeWalletId.isNotEmpty
+        ? bundle.activeWalletId
+        : (bundle.wallets.isNotEmpty ? bundle.wallets.first.walletId : '');
+    final activeEntry = bundle.wallets.firstWhere(
+      (w) => w.walletId == activeId,
+      orElse: () => bundle.wallets.first,
+    );
+    final mnemonic = await _secureVault.decryptMnemonic(
+      key: key,
+      entry: activeEntry,
+    );
+    if (!bip39.validateMnemonic(mnemonic.trim())) {
+      throw StateError('Повреждённое хранилище: seed невалиден');
+    }
+    final pk = await getPrivateKey(mnemonic);
+    _setPrivateKeyInMemory(pk);
+
+    final activeProfile = profiles.firstWhere(
+      (p) => p.walletId == activeEntry.walletId,
+      orElse: () => profiles.first,
+    );
+    _setActiveProfile(activeProfile);
+    await refreshBalances(silent: true);
+    await _loadHistoryFromStorage(silent: true);
+    notifyListeners();
+  }
+
+  Future<void> createInitialSecureWallet({
+    required String userId,
+    required String password,
+    String name = 'Кошелёк 1',
+  }) async {
+    SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
+
+    final existing = await _secureVault.loadBundle(userId);
+    if (existing != null && existing.wallets.isNotEmpty) {
+      await unlockSecureWallets(userId: userId, password: password);
+      return;
+    }
+
+    final salt = await secureRandomBytes(16);
+    final empty = await _secureVault.createEmptyBundle(
+      password: password,
+      salt: salt,
+    );
+    final key = await _secureVault.deriveBundleKey(
+      bundle: empty,
+      password: password,
+    );
+
+    final mnemonic = generateMnemonic();
+    final pk = await getPrivateKey(mnemonic);
+    final address = await getPublicKey(pk);
+    final walletId = _newWalletId();
+
+    final entry = await _secureVault.encryptMnemonic(
+      key: key,
+      userId: userId,
+      walletId: walletId,
+      name: name,
+      addressHex: address.hexEip55,
+      mnemonic: mnemonic,
+    );
+
+    final bundle = WalletVaultBundle(
+      version: empty.version,
+      createdAtIso: empty.createdAtIso,
+      kdf: empty.kdf,
+      activeWalletId: walletId,
+      wallets: <WalletVaultEntry>[entry],
+    );
+
+    await _secureVault.saveBundle(userId, bundle);
+    _secureKey = key;
+    _secureBundle = bundle;
+
+    // Обновляем состояние как после unlock.
+    _activeUserId = userId;
+    _setPrivateKeyInMemory(pk);
+    _wallets = List.unmodifiable([
+      DevWalletProfile(
+        walletId: walletId,
+        name: name,
+        userId: userId,
+        mnemonic: '',
+        privateKeyHex: '',
+        addressHex: address.hexEip55,
+      ),
+    ]);
+    _setActiveProfile(_wallets.first);
+    await refreshBalances(silent: true);
+    await _loadHistoryFromStorage(silent: true);
+    notifyListeners();
+  }
+
+  /// Возвращает seed-фразу активного кошелька.
+  ///
+  /// Требует пароль: в secure-режиме используется для деривации ключа и
+  /// расшифровки seed из `flutter_secure_storage`.
+  Future<String> revealActiveMnemonic({
+    required String userId,
+    required String password,
+  }) async {
+    if (devStorage.devEnabled) {
+      final active = _activeProfile ?? await loadDevWallets(userId);
+      if (active == null || active.mnemonic.trim().isEmpty) {
+        throw StateError('Seed-фраза не найдена');
+      }
+      return active.mnemonic.trim();
+    }
+
+    SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
+
+    final bundle = await _secureVault.loadBundle(userId);
+    if (bundle == null || bundle.wallets.isEmpty) {
+      throw StateError('Кошелёк не найден');
+    }
+
+    final key = await _secureVault.deriveBundleKey(
+      bundle: bundle,
+      password: password,
+    );
+
+    final activeId = bundle.activeWalletId.isNotEmpty
+        ? bundle.activeWalletId
+        : (bundle.wallets.isNotEmpty ? bundle.wallets.first.walletId : '');
+    final entry = bundle.wallets.firstWhere(
+      (w) => w.walletId == activeId,
+      orElse: () => bundle.wallets.first,
+    );
+
+    final mnemonic = await _secureVault.decryptMnemonic(key: key, entry: entry);
+    final normalized = mnemonic.trim().toLowerCase().replaceAll(
+      RegExp(r'\s+'),
+      ' ',
+    );
+    if (!bip39.validateMnemonic(normalized)) {
+      throw StateError('Повреждённое хранилище: seed невалиден');
+    }
+    return normalized;
   }
 
   @override
@@ -305,9 +480,23 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     String? name,
     bool makeActive = true,
   }) async {
-    if (!devStorage.devEnabled) {
-      throw StateError('Dev wallet storage is disabled');
+    if (devStorage.devEnabled) {
+      final mnemonic = generateMnemonic();
+      return importWalletFromMnemonic(
+        userId: userId,
+        mnemonic: mnemonic,
+        name: name,
+        walletId: _newWalletId(),
+        makeActive: makeActive,
+      );
     }
+
+    final key = _secureKey;
+    final bundle = _secureBundle;
+    if (key == null || bundle == null || _activeUserId != userId) {
+      throw StateError('Сначала войдите и разблокируйте кошелёк');
+    }
+
     final mnemonic = generateMnemonic();
     return importWalletFromMnemonic(
       userId: userId,
@@ -325,9 +514,6 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     String? walletId,
     bool makeActive = true,
   }) async {
-    if (!devStorage.devEnabled) {
-      throw StateError('Dev wallet storage is disabled');
-    }
     final normalized = mnemonic.trim().toLowerCase().replaceAll(
       RegExp(r'\s+'),
       ' ',
@@ -339,18 +525,89 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final id = walletId ?? _newWalletId();
     final privateKeyHex = await getPrivateKey(normalized);
     final address = await getPublicKey(privateKeyHex);
+    final displayName = (name == null || name.trim().isEmpty)
+        ? 'Кошелёк'
+        : name.trim();
+
+    if (devStorage.devEnabled) {
+      final profile = DevWalletProfile(
+        walletId: id,
+        name: displayName,
+        userId: userId,
+        mnemonic: normalized,
+        privateKeyHex: privateKeyHex,
+        addressHex: address.hexEip55,
+      );
+
+      await devStorage.addWallet(userId, profile, makeActive: makeActive);
+      await loadDevWallets(userId);
+      return profile;
+    }
+
+    final key = _secureKey;
+    final existingBundle = _secureBundle;
+    if (key == null || existingBundle == null || _activeUserId != userId) {
+      throw StateError('Сначала войдите и разблокируйте кошелёк');
+    }
+
+    final entry = await _secureVault.encryptMnemonic(
+      key: key,
+      userId: userId,
+      walletId: id,
+      name: displayName,
+      addressHex: address.hexEip55,
+      mnemonic: normalized,
+    );
+
+    final wallets = <WalletVaultEntry>[...existingBundle.wallets]
+      ..removeWhere((w) => w.walletId == id)
+      ..add(entry);
+    final activeWalletId = makeActive
+        ? id
+        : (existingBundle.activeWalletId.isNotEmpty
+              ? existingBundle.activeWalletId
+              : (wallets.isNotEmpty ? wallets.first.walletId : id));
+
+    final updated = WalletVaultBundle(
+      version: existingBundle.version,
+      createdAtIso: existingBundle.createdAtIso,
+      kdf: existingBundle.kdf,
+      activeWalletId: activeWalletId,
+      wallets: List.unmodifiable(wallets),
+    );
+    await _secureVault.saveBundle(userId, updated);
+    _secureBundle = updated;
 
     final profile = DevWalletProfile(
       walletId: id,
-      name: (name == null || name.trim().isEmpty) ? 'Кошелёк' : name.trim(),
+      name: displayName,
       userId: userId,
-      mnemonic: normalized,
-      privateKeyHex: privateKeyHex,
+      mnemonic: '',
+      privateKeyHex: '',
       addressHex: address.hexEip55,
     );
+    _wallets = List.unmodifiable(
+      updated.wallets
+          .map(
+            (e) => DevWalletProfile(
+              walletId: e.walletId,
+              name: e.name,
+              userId: e.userId,
+              mnemonic: '',
+              privateKeyHex: '',
+              addressHex: e.addressHex,
+            ),
+          )
+          .toList(growable: false),
+    );
 
-    await devStorage.addWallet(userId, profile, makeActive: makeActive);
-    await loadDevWallets(userId);
+    if (makeActive) {
+      _setPrivateKeyInMemory(privateKeyHex);
+      _setActiveProfile(profile);
+      await refreshBalances(silent: true);
+      await _loadHistoryFromStorage(silent: true);
+    }
+    notifyListeners();
     return profile;
   }
 
@@ -358,17 +615,59 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     required String userId,
     required String walletId,
   }) async {
-    if (!devStorage.devEnabled) return;
-    await devStorage.setActiveWallet(userId, walletId);
-    await loadDevWallets(userId);
+    if (devStorage.devEnabled) {
+      await devStorage.setActiveWallet(userId, walletId);
+      await loadDevWallets(userId);
+      return;
+    }
+
+    final key = _secureKey;
+    final bundle = _secureBundle;
+    if (key == null || bundle == null || _activeUserId != userId) return;
+    if (bundle.wallets.isEmpty) return;
+    final entry = bundle.wallets.firstWhere(
+      (w) => w.walletId == walletId,
+      orElse: () => bundle.wallets.first,
+    );
+
+    final mnemonic = await _secureVault.decryptMnemonic(key: key, entry: entry);
+    if (!bip39.validateMnemonic(mnemonic.trim())) {
+      throw StateError('Повреждённое хранилище: seed невалиден');
+    }
+    final pk = await getPrivateKey(mnemonic);
+    _setPrivateKeyInMemory(pk);
+
+    final updated = WalletVaultBundle(
+      version: bundle.version,
+      createdAtIso: bundle.createdAtIso,
+      kdf: bundle.kdf,
+      activeWalletId: walletId,
+      wallets: bundle.wallets,
+    );
+    await _secureVault.saveBundle(userId, updated);
+    _secureBundle = updated;
+
+    if (_wallets.isEmpty) return;
+    final profile = _wallets.firstWhere(
+      (p) => p.walletId == walletId,
+      orElse: () => _wallets.first,
+    );
+    _setActiveProfile(profile);
+    await refreshBalances(silent: true);
+    await _loadHistoryFromStorage(silent: true);
+    notifyListeners();
   }
 
   void clearDevProfile() {
-    if (_activeProfile == null) return;
+    if (_activeProfile == null && privateKey == null && _secureKey == null) {
+      return;
+    }
     _wallets = const <DevWalletProfile>[];
     _activeUserId = null;
     _activeProfile = null;
-    privateKey = null;
+    _setPrivateKeyInMemory(null);
+    _secureKey = null;
+    _secureBundle = null;
     _balances = WalletBalances.initial(kTrackedTokens);
     _stopAutoRefresh();
     _clearHistoryState();
@@ -403,9 +702,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     notifyListeners();
   }
 
-  /// Initialize provider: load private key and try loading last dev profile.
+  /// Initialize provider: try loading last dev profile (DEV mode only).
   Future<void> init() async {
-    await loadPrivateKey();
     if (!devEnabled) return;
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -497,7 +795,9 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
         amount: raw,
       );
     }
-    await refreshBalances(silent: true);
+    if (!kColdWalletMode) {
+      await refreshBalances(silent: true);
+    }
     final record = TransactionRecord(
       id: _nextRecordId(),
       tokenSymbol: token.symbol,

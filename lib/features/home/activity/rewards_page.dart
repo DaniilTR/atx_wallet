@@ -47,8 +47,7 @@ class _RewardsPageState extends State<RewardsPage> {
 
   String? get _currentAddress {
     final wallet = WalletScope.of(context);
-    final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
-    final profile = wallet.activeProfile ?? args?.devProfile;
+    final profile = wallet.activeProfile;
     return profile?.addressHex;
   }
 

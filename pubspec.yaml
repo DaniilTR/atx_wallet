@@ -46,6 +46,10 @@ dependencies:
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.2
 
+  cryptography: ^2.9.0
+  argon2: ^1.0.1
+  unorm_dart: ^0.3.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

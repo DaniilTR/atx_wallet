@@ -1,9 +1,12 @@
 // lib/services/auth_service.dart
 // Локальный сервис аутентификации с хранением данных на устройстве
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../WalletSecureStorage/password_kdf.dart';
+import '../WalletSecureStorage/random_bytes.dart';
 import 'auth_user.dart';
 
 class AuthService {
@@ -80,7 +83,21 @@ class AuthService {
       username: username,
       email: email,
     );
-    _users[username] = _UserRecord(user: user, password: password);
+
+    final salt = await secureRandomBytes(PasswordKdf.defaultSaltBytes);
+    final verifier = await PasswordKdf.deriveVerifier(
+      password: password,
+      salt: salt,
+      iterations: PasswordKdf.defaultIterations,
+    );
+
+    _users[username] = _UserRecord(
+      user: user,
+      passwordAlg: PasswordKdf.alg,
+      passwordIterations: PasswordKdf.defaultIterations,
+      passwordSaltB64: base64Encode(salt),
+      passwordVerifierB64: base64Encode(verifier),
+    );
     _currentUser = user;
     await _persistUsers();
     await _persistCurrentUser();
@@ -94,9 +111,47 @@ class AuthService {
     await _ensureLoaded();
     await Future<void>.delayed(const Duration(milliseconds: 250));
     final stored = _users[login];
-    if (stored == null || stored.password != password) {
+
+    if (stored == null) {
       throw AuthException('Неверный никнейм или пароль');
     }
+
+    // Миграция legacy plaintext записей (если остались в prefs).
+    if (stored.legacyPassword != null) {
+      if (stored.legacyPassword != password) {
+        throw AuthException('Неверный никнейм или пароль');
+      }
+      final salt = await secureRandomBytes(PasswordKdf.defaultSaltBytes);
+      final verifier = await PasswordKdf.deriveVerifier(
+        password: password,
+        salt: salt,
+        iterations: PasswordKdf.defaultIterations,
+      );
+      final upgraded = stored.copyWith(
+        legacyPassword: null,
+        passwordAlg: PasswordKdf.alg,
+        passwordIterations: PasswordKdf.defaultIterations,
+        passwordSaltB64: base64Encode(salt),
+        passwordVerifierB64: base64Encode(verifier),
+      );
+      _users[login] = upgraded;
+      await _persistUsers();
+    } else {
+      final salt = base64Decode(stored.passwordSaltB64);
+      final verifier = await PasswordKdf.deriveVerifier(
+        password: password,
+        salt: Uint8List.fromList(salt),
+        iterations: stored.passwordIterations,
+      );
+      final storedVerifier = base64Decode(stored.passwordVerifierB64);
+      if (!PasswordKdf.constantTimeEquals(
+        Uint8List.fromList(storedVerifier),
+        verifier,
+      )) {
+        throw AuthException('Неверный никнейм или пароль');
+      }
+    }
+
     _currentUser = stored.user;
     await _persistCurrentUser();
     return stored.user;
@@ -115,15 +170,49 @@ class AuthService {
 }
 
 class _UserRecord {
-  const _UserRecord({required this.user, required this.password});
+  const _UserRecord({
+    required this.user,
+    required this.passwordAlg,
+    required this.passwordIterations,
+    required this.passwordSaltB64,
+    required this.passwordVerifierB64,
+    this.legacyPassword,
+  });
+
   final AuthUser user;
-  final String password;
+  final String passwordAlg;
+  final int passwordIterations;
+  final String passwordSaltB64;
+  final String passwordVerifierB64;
+  final String? legacyPassword;
+
+  _UserRecord copyWith({
+    AuthUser? user,
+    String? passwordAlg,
+    int? passwordIterations,
+    String? passwordSaltB64,
+    String? passwordVerifierB64,
+    String? legacyPassword,
+  }) {
+    return _UserRecord(
+      user: user ?? this.user,
+      passwordAlg: passwordAlg ?? this.passwordAlg,
+      passwordIterations: passwordIterations ?? this.passwordIterations,
+      passwordSaltB64: passwordSaltB64 ?? this.passwordSaltB64,
+      passwordVerifierB64: passwordVerifierB64 ?? this.passwordVerifierB64,
+      legacyPassword: legacyPassword,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': user.id,
     'username': user.username,
     'email': user.email,
-    'password': password,
+    'password': legacyPassword,
+    'passwordAlg': passwordAlg,
+    'passwordIterations': passwordIterations,
+    'passwordSaltB64': passwordSaltB64,
+    'passwordVerifierB64': passwordVerifierB64,
   };
 
   factory _UserRecord.fromJson(Map<String, dynamic> json) {
@@ -135,7 +224,13 @@ class _UserRecord {
         username: json['username'] as String? ?? 'unknown',
         email: json['email'] as String?,
       ),
-      password: json['password'] as String? ?? '',
+      legacyPassword: json['password'] as String?,
+      passwordAlg: (json['passwordAlg'] as String?) ?? PasswordKdf.alg,
+      passwordIterations:
+          (json['passwordIterations'] as num?)?.toInt() ??
+          PasswordKdf.defaultIterations,
+      passwordSaltB64: (json['passwordSaltB64'] as String?) ?? '',
+      passwordVerifierB64: (json['passwordVerifierB64'] as String?) ?? '',
     );
   }
 }
