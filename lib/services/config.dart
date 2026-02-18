@@ -1,3 +1,4 @@
+// lib/services/config.dart
 /// Глобальная конфигурация клиента.
 /// При необходимости переопределяйте через --dart-define.
 import 'package:shared_preferences/shared_preferences.dart';
