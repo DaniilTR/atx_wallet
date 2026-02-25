@@ -33,5 +33,5 @@ const String kBnbUsdPriceUrl = String.fromEnvironment(
 /// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/home'.
 const String kInitialRoute = String.fromEnvironment(
   'INITIAL_ROUTE',
-  defaultValue: '/start',
+  defaultValue: '/home',
 );

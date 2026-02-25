@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -79,6 +81,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : () async {
                     final controller = TextEditingController();
                     try {
+                      final isConfirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text('Что такое seed-фраза?'),
+                            content: const Text(
+                              'Это резервный ключ для восстановления кошелька.\n'
+                              'Мы не храним её и не можем восстановить за вас.\n'
+                              'Запишите фразу на бумаге и храните офлайн.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(false),
+                                child: const Text('Отмена'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(true),
+                                child: const Text('Продолжить'),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (isConfirmed != true) return;
+                      if (!context.mounted) return;
+
                       final password = await showDialog<String>(
                         context: context,
                         barrierDismissible: false,
@@ -121,39 +152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                       await showDialog<void>(
                         context: context,
-                        builder: (context) {
-                          return AlertDialog(
-                            title: const Text('Ваша seed-фраза'),
-                            content: SelectableText(
-                              seed,
-                              style: const TextStyle(
-                                fontFamily: 'monospace',
-                                height: 1.4,
-                              ),
-                            ),
-                            actions: [
-                              TextButton.icon(
-                                onPressed: () async {
-                                  await Clipboard.setData(
-                                    ClipboardData(text: seed),
-                                  );
-                                  if (!context.mounted) return;
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(
-                                      content: Text('Seed-фраза скопирована'),
-                                    ),
-                                  );
-                                },
-                                icon: const Icon(Icons.copy),
-                                label: const Text('Скопировать'),
-                              ),
-                              TextButton(
-                                onPressed: () => Navigator.of(context).pop(),
-                                child: const Text('Закрыть'),
-                              ),
-                            ],
-                          );
-                        },
+                        builder: (context) => _SeedPhraseDialog(seed: seed),
                       );
                     } catch (e) {
                       if (!context.mounted) return;
@@ -225,6 +224,86 @@ class _InfoTile extends StatelessWidget {
         Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
         const SizedBox(height: 4),
         SelectableText(value, style: textStyle),
+      ],
+    );
+  }
+}
+
+class _SeedPhraseDialog extends StatefulWidget {
+  const _SeedPhraseDialog({required this.seed});
+
+  final String seed;
+
+  @override
+  State<_SeedPhraseDialog> createState() => _SeedPhraseDialogState();
+}
+
+class _SeedPhraseDialogState extends State<_SeedPhraseDialog> {
+  static const int _timeoutSeconds = 60;
+
+  late int _secondsLeft;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _secondsLeft = _timeoutSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+
+      if (_secondsLeft <= 1) {
+        timer.cancel();
+        Navigator.of(context).pop();
+        return;
+      }
+
+      setState(() {
+        _secondsLeft -= 1;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Ваша seed-фраза'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Окно закроется через $_secondsLeft сек.'),
+          const SizedBox(height: 12),
+          SelectableText(
+            widget.seed,
+            style: const TextStyle(fontFamily: 'monospace', height: 1.4),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton.icon(
+          onPressed: () async {
+            await Clipboard.setData(ClipboardData(text: widget.seed));
+            if (!context.mounted) return;
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Seed-фраза скопирована')),
+            );
+          },
+          icon: const Icon(Icons.copy),
+          label: const Text('Скопировать'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Закрыть'),
+        ),
       ],
     );
   }
