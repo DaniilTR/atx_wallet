@@ -14,6 +14,8 @@ import 'features/auth/login_page.dart';
 import 'features/auth/register_page.dart';
 import 'features/home/home_page.dart';
 import 'features/home/activity/history_page.dart';
+import 'features/profile/profile_edit_page.dart';
+import 'features/profile/profile_prefs.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/wallet_scope.dart';
 
@@ -28,6 +30,7 @@ Future<void> main() async {
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       await ApiConfig.init();
+      await ProfilePrefs.init();
       final walletProvider = WalletProvider(
         devEnabled: kEnableDevWalletStorage,
       );
@@ -189,6 +192,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         '/mobile/pair': (_) => const MobilePairConnectScreen(),
         '/desktop/pair': (_) => const DesktopPairingScreen(),
         '/desktop/dashboard': (_) => const DesktopDashboardScreen(),
+        '/profile/edit': (_) => const ProfileEditPage(),
         '/settings': (_) => SettingsScreen(
           themeMode: _themeMode,
           onThemeChanged: _setThemeMode,

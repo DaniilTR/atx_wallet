@@ -12,6 +12,7 @@ import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../services/price_service.dart';
+import '../profile/profile_prefs.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'home_route_args.dart';
@@ -147,7 +148,8 @@ class _HomePageState extends State<HomePage> {
     final args = ModalRoute.of(context)?.settings.arguments as HomeRouteArgs?;
     final profile = wallet.activeProfile ?? args?.devProfile;
     final address = profile?.addressHex;
-    final username = auth.currentUser?.username ?? 'Wallet';
+    final username =
+        ProfilePrefs.displayName ?? auth.currentUser?.username ?? 'Wallet';
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
@@ -210,6 +212,15 @@ class _HomePageState extends State<HomePage> {
                     child: HomeTopBar(
                       username: username,
                       isDark: isDark,
+                      onProfileTap: () async {
+                        final changed = await Navigator.pushNamed(
+                          context,
+                          '/profile/edit',
+                        );
+                        if (changed == true && mounted) {
+                          setState(() {});
+                        }
+                      },
                       onWallets: () => showWalletsSheet<void>(context),
                       onSettings: () =>
                           Navigator.pushNamed(context, '/settings'),
@@ -809,6 +820,7 @@ class HomeTopBar extends StatelessWidget {
     Key? key,
     required this.username,
     required this.isDark,
+    this.onProfileTap,
     this.onWallets,
     required this.onSettings,
     required this.onLogout,
@@ -816,6 +828,7 @@ class HomeTopBar extends StatelessWidget {
 
   final String username;
   final bool isDark;
+  final VoidCallback? onProfileTap;
   final VoidCallback? onWallets;
   final VoidCallback onSettings;
   final Future<void> Function() onLogout;
@@ -833,7 +846,7 @@ class HomeTopBar extends StatelessWidget {
         height: 65,
         child: Row(
           children: [
-            const _NeonAvatar(),
+            _NeonAvatar(onTap: onProfileTap),
             const SizedBox(width: 12),
             InkWell(
               borderRadius: BorderRadius.circular(14),
@@ -881,23 +894,29 @@ class HomeTopBar extends StatelessWidget {
 }
 
 class _NeonAvatar extends StatelessWidget {
-  const _NeonAvatar();
+  const _NeonAvatar({this.onTap});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 33,
-      height: 33,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFDADADA), width: 2),
-      ),
-      child: const CircleAvatar(
-        backgroundColor: Color(0xFF14191E),
-        child: Icon(
-          Icons.person,
-          size: 22,
-          color: Color.fromARGB(255, 219, 219, 219),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(30),
+      child: Container(
+        width: 33,
+        height: 33,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: const Color(0xFFDADADA), width: 2),
+        ),
+        child: const CircleAvatar(
+          backgroundColor: Color(0xFF14191E),
+          child: Icon(
+            Icons.person,
+            size: 22,
+            color: Color.fromARGB(255, 219, 219, 219),
+          ),
         ),
       ),
     );

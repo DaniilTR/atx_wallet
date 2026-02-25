@@ -132,8 +132,20 @@ class _MarketScreenState extends State<MarketScreen> {
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
                     child: HomeTopBar(
-                      username: auth.currentUser?.username ?? 'Wallet',
+                      username:
+                          ProfilePrefs.displayName ??
+                          auth.currentUser?.username ??
+                          'Wallet',
                       isDark: isDark,
+                      onProfileTap: () async {
+                        final changed = await Navigator.pushNamed(
+                          context,
+                          '/profile/edit',
+                        );
+                        if (changed == true && mounted) {
+                          setState(() {});
+                        }
+                      },
                       onWallets: () => showWalletsSheet<void>(context),
                       onSettings: () =>
                           Navigator.pushNamed(context, '/settings'),

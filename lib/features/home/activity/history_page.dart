@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:atx_wallet/features/auth/widgets/animated_neon_background.dart';
 import 'package:atx_wallet/features/home/activity/qr_page.dart';
 import 'package:atx_wallet/features/home/home_page.dart';
+import 'package:atx_wallet/features/profile/profile_prefs.dart';
 import 'package:atx_wallet/features/home/widgets/bottom_nav.dart';
 import 'package:atx_wallet/providers/wallet_scope.dart';
 import 'package:atx_wallet/services/auth_scope.dart';
@@ -235,8 +236,20 @@ class _HistoryPageState extends State<HistoryPage> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
                   child: HomeTopBar(
-                    username: auth.currentUser?.username ?? 'Wallet',
+                    username:
+                        ProfilePrefs.displayName ??
+                        auth.currentUser?.username ??
+                        'Wallet',
                     isDark: isDark,
+                    onProfileTap: () async {
+                      final changed = await Navigator.pushNamed(
+                        context,
+                        '/profile/edit',
+                      );
+                      if (changed == true && mounted) {
+                        setState(() {});
+                      }
+                    },
                     onWallets: () => showWalletsSheet<void>(context),
                     onSettings: () => Navigator.pushNamed(context, '/settings'),
                     onLogout: () async {
