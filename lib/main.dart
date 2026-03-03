@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'services/auth_scope.dart';
-import 'services/config.dart';
 import 'features/settings/settings_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'features/auth/start_page.dart';
@@ -23,9 +22,7 @@ Future<void> main() async {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      final walletProvider = WalletProvider(
-        devEnabled: kEnableDevWalletStorage,
-      );
+      final walletProvider = WalletProvider();
       try {
         await walletProvider.init();
       } catch (_) {}
@@ -164,7 +161,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
       themeMode: _themeMode,
       theme: lightTheme,
       darkTheme: darkTheme,
-      initialRoute: kInitialRoute,
+      initialRoute: '/',
       routes: {
         '/': (_) => const StartPage(),
         '/start': (_) => const StartPage(),

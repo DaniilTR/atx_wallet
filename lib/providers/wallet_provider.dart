@@ -7,60 +7,154 @@ import 'package:bip39/bip39.dart' as bip39;
 import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart';
 import 'package:hex/hex.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 
 import '../WalletSecureStorage/random_bytes.dart';
 import '../WalletSecureStorage/secure_wallet_vault.dart';
 import '../WalletSecureStorage/wallet_vault_models.dart';
-import '../dev/dev_transaction_storage.dart';
-import '../dev/dev_wallet_storage.dart';
-import '../history_model/transaction_record.dart';
+import '../WalletSecureStorage/history_model/transaction_record.dart';
+import '../WalletSecureStorage/history_model/transaction_storage.dart';
+import '../services/asset_price_service.dart';
+import '../services/bitcoin_service.dart';
 import '../services/blockchain_service.dart';
 import '../services/config.dart';
 
-// Интерфейс для сервиса генерации и получения ключей/адреса.
+/// Интерфейс для генерации сид-фразы и получения EVM-ключей/адреса.
+///
+/// Примечание:
+/// - BTC адрес и баланс живут отдельно (см. `BitcoinService`).
 abstract class WalletAddressService {
   String generateMnemonic();
   Future<String> getPrivateKey(String mnemonic);
   Future<EthereumAddress> getPublicKey(String privateKey);
 }
 
+/// Метаданные отслеживаемого актива.
+///
+/// Зачем отдельная модель:
+/// - UI и провайдер должны знать символ, decimals и тип актива;
+/// - EVM ERC-20 требует `contractAddress`, а BTC — нет;
+/// - цены подтягиваются по `coinGeckoId`.
 class TokenMetadata {
   const TokenMetadata({
     required this.symbol,
     required this.name,
-    required this.tbnbRate,
+    required this.kind,
     this.contractAddress,
     this.decimalsHint = 18,
-    this.isNative = false,
     this.fetchDecimalsFromChain = false,
+    this.coinGeckoId,
   }) : assert(
-         isNative || contractAddress != null,
-         'ERC-20 token requires a contract address',
+         kind == AssetKind.bitcoin ||
+             kind == AssetKind.evmNative ||
+             contractAddress != null,
+         'ERC-20 токен требует contractAddress',
        );
 
   final String symbol;
   final String name;
-  final double tbnbRate; // отношение токена к TBNB
+  final AssetKind kind;
   final String? contractAddress;
   final int decimalsHint;
-  final bool isNative;
   final bool fetchDecimalsFromChain;
+  final String? coinGeckoId;
 
-  bool get isErc20 => !isNative;
+  bool get isBitcoin => kind == AssetKind.bitcoin;
+  bool get isEvm => kind != AssetKind.bitcoin;
+  bool get isNative => kind == AssetKind.evmNative;
+  bool get isErc20 => kind == AssetKind.evmErc20;
 }
 
+/// Публичный профиль кошелька для UI.
+///
+/// Важно:
+/// - не содержит сид-фразы и приватных ключей (в отличие от DEV-режима);
+/// - используется как «метка», какой кошелёк выбран и по какому ключу
+///   хранить историю операций.
+class WalletProfile {
+  const WalletProfile({
+    required this.walletId,
+    required this.name,
+    required this.userId,
+    required this.addressHex,
+  });
+
+  final String walletId;
+  final String name;
+  final String userId;
+  final String addressHex;
+
+  /// Идентификатор для привязки локальной истории.
+  ///
+  /// Делаем ключ стабильным и уникальным в пределах пользователя.
+  String get storageId => '${userId}__${walletId}';
+}
+
+enum AssetKind { evmNative, evmErc20, bitcoin }
+
+enum FeeStatus { ok, insufficientFee }
+
+class SendPreflightResult {
+  const SendPreflightResult({
+    required this.token,
+    required this.recipient,
+    required this.amount,
+    required this.networkLabel,
+    required this.feeStatus,
+    required this.feeLabel,
+    required this.speedLabel,
+    required this.canSend,
+    this.feeWarningText,
+    this.amountUsdLabel,
+  });
+
+  final TokenMetadata token;
+  final String recipient;
+  final double amount;
+  final String networkLabel;
+
+  /// Цвет/статус строки «Комиссия сети».
+  ///
+  /// Сейчас используем красный только когда не хватает ETH для оплаты gas.
+  final FeeStatus feeStatus;
+
+  /// Готовая строка комиссии для UI (например: "0,31 $  0.000123 ETH").
+  final String feeLabel;
+
+  /// Подсказка про скорость (например: "Рынок ~12 сек.").
+  final String speedLabel;
+
+  /// Можно ли отправлять транзакцию прямо сейчас.
+  ///
+  /// Включает проверки: достаточный баланс актива и достаточный ETH для комиссии.
+  final bool canSend;
+
+  /// Текст для предупреждения, если `feeStatus == insufficientFee`.
+  final String? feeWarningText;
+
+  /// Метка USD-оценки суммы перевода (например "1,00 $").
+  final String? amountUsdLabel;
+}
+
+/// Баланс конкретного актива.
+///
+/// `raw` хранится в базовых единицах:
+/// - для EVM: wei / минимальные единицы токена
+/// - для BTC: сатоши
+///
+/// `priceUsd` — цена **в USD-оценке по курсу USDT** (см. `refreshBalances`).
 class AssetBalance {
   const AssetBalance({
     required this.token,
     required this.raw,
     required this.decimals,
+    this.priceUsd,
   });
 
   final TokenMetadata token;
   final BigInt raw;
   final int decimals;
+  final double? priceUsd;
 
   double get amount {
     if (raw == BigInt.zero) return 0;
@@ -68,32 +162,40 @@ class AssetBalance {
     return raw.toDouble() / divisor;
   }
 
-  double get tbnbValue => amount * token.tbnbRate;
+  double? get usdValue {
+    final price = priceUsd;
+    if (price == null) return null;
+    return amount * price;
+  }
 }
 
 class WalletBalances {
   WalletBalances({
     required List<AssetBalance> assets,
-    this.bnbUsdPrice,
     this.updatedAt,
     this.isLoading = false,
     this.error,
   }) : assets = List.unmodifiable(assets);
 
   final List<AssetBalance> assets;
-  final double? bnbUsdPrice;
   final DateTime? updatedAt;
   final bool isLoading;
   final String? error;
 
-  double get totalTbnb =>
-      assets.fold<double>(0, (prev, asset) => prev + asset.tbnbValue);
-
-  double? get totalUsd => bnbUsdPrice == null ? null : totalTbnb * bnbUsdPrice!;
+  double? get totalUsd {
+    var sum = 0.0;
+    var hasAny = false;
+    for (final asset in assets) {
+      final v = asset.usdValue;
+      if (v == null) continue;
+      sum += v;
+      hasAny = true;
+    }
+    return hasAny ? sum : null;
+  }
 
   WalletBalances copyWith({
     List<AssetBalance>? assets,
-    double? bnbUsdPrice,
     bool? isLoading,
     bool clearError = false,
     String? error,
@@ -101,7 +203,6 @@ class WalletBalances {
   }) {
     return WalletBalances(
       assets: assets ?? this.assets,
-      bnbUsdPrice: bnbUsdPrice ?? this.bnbUsdPrice,
       isLoading: isLoading ?? this.isLoading,
       error: clearError ? null : (error ?? this.error),
       updatedAt: updatedAt ?? this.updatedAt,
@@ -125,70 +226,82 @@ class WalletBalances {
 
 const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
   TokenMetadata(
-    symbol: 'TBNB',
-    name: 'Test BNB',
-    tbnbRate: 1,
-    decimalsHint: 18,
-    isNative: true,
+    symbol: 'USDT',
+    name: 'Tether USD',
+    kind: AssetKind.evmErc20,
+    // USDT в сети Ethereum (основная сеть, ERC-20).
+    // Важно: адрес контракта должен быть адресом основной сети.
+    contractAddress: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    decimalsHint: 6,
+    fetchDecimalsFromChain: false,
+    coinGeckoId: 'tether',
   ),
   TokenMetadata(
-    symbol: 'ATX',
-    name: 'ATX coin',
-    contractAddress: '0x996Dbc052A2A4d128ddB2375A77608ff5cBc5Ff0',
-    tbnbRate: 0.001,
+    symbol: 'ETH',
+    name: 'Ethereum',
+    kind: AssetKind.evmNative,
     decimalsHint: 18,
-    fetchDecimalsFromChain: true,
+    coinGeckoId: 'ethereum',
   ),
   TokenMetadata(
-    symbol: 'LEV',
-    name: 'Levcoin',
-    contractAddress: '0x145753b98ECafDC1Fb60F57518598e9390B32af9',
-    tbnbRate: 0.01,
-    decimalsHint: 18,
-    fetchDecimalsFromChain: true,
+    symbol: 'BTC',
+    name: 'Bitcoin',
+    kind: AssetKind.bitcoin,
+    decimalsHint: 8,
+    coinGeckoId: 'bitcoin',
   ),
 ];
 
 class WalletProvider extends ChangeNotifier implements WalletAddressService {
   WalletProvider({
-    bool devEnabled = false,
     BlockchainService? blockchainService,
-    DevWalletStorage? walletStorage,
-    DevTransactionStorage? transactionStorage,
-  }) : devStorage = walletStorage ?? DevWalletStorage(devEnabled: devEnabled),
-       devHistoryStorage =
-           transactionStorage ?? DevTransactionStorage(devEnabled: devEnabled),
-       blockchain = blockchainService ?? BlockchainService();
+    BitcoinService? bitcoinService,
+    AssetPriceService? assetPriceService,
+    TransactionStorage? transactionStorage,
+  }) : blockchain = blockchainService ?? BlockchainService(),
+       bitcoin = bitcoinService ?? BitcoinService(),
+       prices = assetPriceService ?? AssetPriceService(),
+       historyStorage = transactionStorage ?? TransactionStorage();
 
-  // Храним приватный ключ в памяти (краткосрочно) для уведомлений UI.
+  // Приватный ключ EVM хранится только в памяти текущей сессии.
+  // В secure-режиме он деривируется из сид-фразы при разблокировке/переключении и не пишется в диск.
   String? privateKey;
 
-  // Стандартный путь BIP44 для EVM/BSC: m/44'/60'/0'/0/0.
+  // Стандартный BIP44-путь для EVM (coin type 60): m/44'/60'/0'/0/0.
+  // Используется для деривации приватного ключа EVM из сид-фразы.
   static const String _derivationPath = "m/44'/60'/0'/0/0";
   static const Duration _autoRefreshInterval = Duration(seconds: 45);
 
-  final DevWalletStorage devStorage;
-  final DevTransactionStorage devHistoryStorage;
   final BlockchainService blockchain;
+  final BitcoinService bitcoin;
+  final AssetPriceService prices;
+  final TransactionStorage historyStorage;
 
   final SecureWalletVault _secureVault = SecureWalletVault();
   WalletVaultBundle? _secureBundle;
   SecretKey? _secureKey;
 
-  DevWalletProfile? _activeProfile;
-  DevWalletProfile? get activeProfile => _activeProfile;
-  bool get devEnabled => devStorage.devEnabled;
+  WalletProfile? _activeProfile;
+  WalletProfile? get activeProfile => _activeProfile;
 
-  bool get isUnlocked => devEnabled ? privateKey != null : _secureKey != null;
+  /// В secure-режиме ключ бандла установлен только после `unlockSecureWallets`.
+  bool get isUnlocked => _secureKey != null;
 
   String? _activeUserId;
-  List<DevWalletProfile> _wallets = const <DevWalletProfile>[];
-  UnmodifiableListView<DevWalletProfile> get wallets =>
+  List<WalletProfile> _wallets = const <WalletProfile>[];
+  UnmodifiableListView<WalletProfile> get wallets =>
       UnmodifiableListView(_wallets);
 
   WalletBalances _balances = WalletBalances.initial(kTrackedTokens);
   WalletBalances get balances => _balances;
   List<TokenMetadata> get supportedTokens => kTrackedTokens;
+
+  String? _bitcoinAddress;
+  String? get bitcoinAddress => _bitcoinAddress;
+
+  // Приватный ключ BTC (WIF) хранится только в памяти текущей сессии.
+  // Используется для подписи P2PKH транзакций.
+  String? _bitcoinPrivateKeyWif;
 
   Timer? _balanceTimer;
   bool _hasBalanceSnapshot = false;
@@ -214,6 +327,31 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     privateKey = value;
   }
 
+  void _setBitcoinAddressInMemory(String? value) {
+    _bitcoinAddress = value;
+  }
+
+  void _setBitcoinPrivateKeyWifInMemory(String? value) {
+    _bitcoinPrivateKeyWif = value;
+  }
+
+  void _updateDerivedAddressesFromMnemonic(String mnemonic) {
+    // BTC-адрес деривируется из сид-фразы и держится в памяти.
+    // Мы не сохраняем BTC-адрес в постоянное хранилище: при следующей разблокировке
+    // он будет восстановлен повторно.
+    try {
+      _setBitcoinAddressInMemory(
+        bitcoin.deriveMainnetAddressFromMnemonic(mnemonic),
+      );
+      _setBitcoinPrivateKeyWifInMemory(
+        bitcoin.deriveMainnetPrivateKeyWifFromMnemonic(mnemonic),
+      );
+    } catch (_) {
+      _setBitcoinAddressInMemory(null);
+      _setBitcoinPrivateKeyWifInMemory(null);
+    }
+  }
+
   @override
   String generateMnemonic() {
     // Генерация сид-фразы (12 слов, 128 бит энтропии) по BIP-39.
@@ -222,7 +360,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
   @override
   Future<String> getPrivateKey(String mnemonic) async {
-    // Превращаем сид-фразу в seed (512 бит), строим master key и деривируем по пути BIP44.
+    // Превращаем сид-фразу в сид (512 бит), строим мастер-ключ и деривируем по пути BIP44.
     final seed = bip39.mnemonicToSeed(mnemonic);
     final root = bip32.BIP32.fromSeed(seed);
     final child = root.derivePath(_derivationPath);
@@ -256,12 +394,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final profiles = bundle.wallets
         .where((e) => e.userId.isNotEmpty && e.walletId.isNotEmpty)
         .map(
-          (e) => DevWalletProfile(
+          (e) => WalletProfile(
             walletId: e.walletId,
             name: e.name,
             userId: e.userId,
-            mnemonic: '',
-            privateKeyHex: '',
             addressHex: e.addressHex,
           ),
         )
@@ -284,6 +420,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
     final pk = await getPrivateKey(mnemonic);
     _setPrivateKeyInMemory(pk);
+    _updateDerivedAddressesFromMnemonic(mnemonic);
 
     final activeProfile = profiles.firstWhere(
       (p) => p.walletId == activeEntry.walletId,
@@ -321,6 +458,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final mnemonic = generateMnemonic();
     final pk = await getPrivateKey(mnemonic);
     final address = await getPublicKey(pk);
+    _updateDerivedAddressesFromMnemonic(mnemonic);
     final walletId = _newWalletId();
 
     final entry = await _secureVault.encryptMnemonic(
@@ -344,16 +482,15 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _secureKey = key;
     _secureBundle = bundle;
 
-    // Обновляем состояние как после unlock.
+    // Обновляем состояние как после разблокировки.
     _activeUserId = userId;
     _setPrivateKeyInMemory(pk);
+    // BTC-адрес уже был деривирован выше.
     _wallets = List.unmodifiable([
-      DevWalletProfile(
+      WalletProfile(
         walletId: walletId,
         name: name,
         userId: userId,
-        mnemonic: '',
-        privateKeyHex: '',
         addressHex: address.hexEip55,
       ),
     ]);
@@ -363,22 +500,14 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     notifyListeners();
   }
 
-  /// Возвращает seed-фразу активного кошелька.
+  /// Возвращает сид-фразу активного кошелька.
   ///
   /// Требует пароль: в secure-режиме используется для деривации ключа и
-  /// расшифровки seed из `flutter_secure_storage`.
+  /// расшифровки сид-фразы из `flutter_secure_storage`.
   Future<String> revealActiveMnemonic({
     required String userId,
     required String password,
   }) async {
-    if (devStorage.devEnabled) {
-      final active = _activeProfile ?? await loadDevWallets(userId);
-      if (active == null || active.mnemonic.trim().isEmpty) {
-        throw StateError('Seed-фраза не найдена');
-      }
-      return active.mnemonic.trim();
-    }
-
     SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
 
     final bundle = await _secureVault.loadBundle(userId);
@@ -412,61 +541,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
   @override
   Future<EthereumAddress> getPublicKey(String privateKey) async {
-    // Создаём объект приватного ключа web3dart и извлекаем адрес (EIP-55 checksum).
+    // Создаём объект приватного ключа web3dart и извлекаем адрес (EIP-55 с контрольной суммой).
     final private = EthPrivateKey.fromHex(privateKey);
     final address = private.address;
     return address;
-  }
-
-  /// DEV-режим: создать кошелёк и сохранить профиль для userId.
-  /// Вызывается ТОЛЬКО в момент регистрации. На авторизации НЕ вызываем.
-  Future<DevWalletProfile?> generateAndPersistForUser(String userId) async {
-    if (!devStorage.devEnabled) return null;
-
-    // Если у пользователя уже есть кошельки — просто загрузим и вернём активный.
-    final bundle = await devStorage.loadBundle(userId);
-    if (bundle != null && bundle.wallets.isNotEmpty) {
-      await loadDevWallets(userId);
-      return _activeProfile;
-    }
-
-    // Иначе создаём первый кошелёк.
-    final created = await createNewWallet(userId: userId, name: 'Кошелёк 1');
-    return created;
-  }
-
-  /// Получить профиль из DEV-хранилища по userId (для главного экрана).
-  Future<DevWalletProfile?> loadDevProfile(String userId) async {
-    // backward-compatible alias
-    return loadDevWallets(userId);
-  }
-
-  Future<DevWalletProfile?> loadDevWallets(String userId) async {
-    if (!devStorage.devEnabled) return null;
-    _activeUserId = userId;
-
-    final bundle = await devStorage.loadBundle(userId);
-    final wallets = bundle?.wallets ?? const <DevWalletProfile>[];
-    _wallets = List.unmodifiable(wallets);
-    DevWalletProfile? active;
-    if (bundle != null && wallets.isNotEmpty) {
-      active = wallets.firstWhere(
-        (w) => w.walletId == bundle.activeWalletId,
-        orElse: () => wallets.first,
-      );
-    }
-    _setActiveProfile(active);
-
-    if (active != null) {
-      privateKey = active.privateKeyHex.isEmpty ? null : active.privateKeyHex;
-      await refreshBalances(silent: true);
-      await _loadHistoryFromStorage(silent: true);
-      try {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('lastDevUserId', userId);
-      } catch (_) {}
-    }
-    return active;
   }
 
   String _newWalletId() {
@@ -475,22 +553,11 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return 'w${now.toRadixString(16)}${salt.toRadixString(16)}';
   }
 
-  Future<DevWalletProfile> createNewWallet({
+  Future<WalletProfile> createNewWallet({
     required String userId,
     String? name,
     bool makeActive = true,
   }) async {
-    if (devStorage.devEnabled) {
-      final mnemonic = generateMnemonic();
-      return importWalletFromMnemonic(
-        userId: userId,
-        mnemonic: mnemonic,
-        name: name,
-        walletId: _newWalletId(),
-        makeActive: makeActive,
-      );
-    }
-
     final key = _secureKey;
     final bundle = _secureBundle;
     if (key == null || bundle == null || _activeUserId != userId) {
@@ -507,7 +574,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     );
   }
 
-  Future<DevWalletProfile> importWalletFromMnemonic({
+  Future<WalletProfile> importWalletFromMnemonic({
     required String userId,
     required String mnemonic,
     String? name,
@@ -528,21 +595,6 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final displayName = (name == null || name.trim().isEmpty)
         ? 'Кошелёк'
         : name.trim();
-
-    if (devStorage.devEnabled) {
-      final profile = DevWalletProfile(
-        walletId: id,
-        name: displayName,
-        userId: userId,
-        mnemonic: normalized,
-        privateKeyHex: privateKeyHex,
-        addressHex: address.hexEip55,
-      );
-
-      await devStorage.addWallet(userId, profile, makeActive: makeActive);
-      await loadDevWallets(userId);
-      return profile;
-    }
 
     final key = _secureKey;
     final existingBundle = _secureBundle;
@@ -578,23 +630,19 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _secureVault.saveBundle(userId, updated);
     _secureBundle = updated;
 
-    final profile = DevWalletProfile(
+    final profile = WalletProfile(
       walletId: id,
       name: displayName,
       userId: userId,
-      mnemonic: '',
-      privateKeyHex: '',
       addressHex: address.hexEip55,
     );
     _wallets = List.unmodifiable(
       updated.wallets
           .map(
-            (e) => DevWalletProfile(
+            (e) => WalletProfile(
               walletId: e.walletId,
               name: e.name,
               userId: e.userId,
-              mnemonic: '',
-              privateKeyHex: '',
               addressHex: e.addressHex,
             ),
           )
@@ -603,6 +651,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
     if (makeActive) {
       _setPrivateKeyInMemory(privateKeyHex);
+      _updateDerivedAddressesFromMnemonic(normalized);
       _setActiveProfile(profile);
       await refreshBalances(silent: true);
       await _loadHistoryFromStorage(silent: true);
@@ -615,12 +664,6 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     required String userId,
     required String walletId,
   }) async {
-    if (devStorage.devEnabled) {
-      await devStorage.setActiveWallet(userId, walletId);
-      await loadDevWallets(userId);
-      return;
-    }
-
     final key = _secureKey;
     final bundle = _secureBundle;
     if (key == null || bundle == null || _activeUserId != userId) return;
@@ -636,6 +679,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
     final pk = await getPrivateKey(mnemonic);
     _setPrivateKeyInMemory(pk);
+    _updateDerivedAddressesFromMnemonic(mnemonic);
 
     final updated = WalletVaultBundle(
       version: bundle.version,
@@ -662,10 +706,12 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     if (_activeProfile == null && privateKey == null && _secureKey == null) {
       return;
     }
-    _wallets = const <DevWalletProfile>[];
+    _wallets = const <WalletProfile>[];
     _activeUserId = null;
     _activeProfile = null;
     _setPrivateKeyInMemory(null);
+    _setBitcoinAddressInMemory(null);
+    _setBitcoinPrivateKeyWifInMemory(null);
     _secureKey = null;
     _secureBundle = null;
     _balances = WalletBalances.initial(kTrackedTokens);
@@ -673,50 +719,42 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _clearHistoryState();
     _hasBalanceSnapshot = false;
     notifyListeners();
-    // remove lastDevUserId
-    unawaited(
-      Future(() async {
-        try {
-          final prefs = await SharedPreferences.getInstance();
-          await prefs.remove('lastDevUserId');
-        } catch (_) {}
-      }),
-    );
   }
 
-  /// Set a read-only profile that only contains an address. Useful for
-  /// desktop clients that receive the address from a paired mobile device
-  /// but do not possess private keys. This will enable balance refreshes.
+  /// Устанавливает профиль «только для чтения», который содержит только адрес.
+  ///
+  /// Зачем:
+  /// - полезно для десктоп-клиента, который знает только публичный адрес
+  ///   (например, получен извне) и не имеет приватных ключей;
+  /// - позволяет обновлять балансы без возможности отправки.
   Future<void> setReadOnlyAddress(String addressHex) async {
-    final profile = DevWalletProfile(
+    final profile = WalletProfile(
       walletId: '_remote',
-      name: 'Remote',
+      name: 'Только просмотр',
       userId: '_remote',
-      mnemonic: '',
-      privateKeyHex: '',
       addressHex: addressHex,
     );
     _setActiveProfile(profile);
-    // do not set privateKey
+    // В режиме «только для чтения» приватный ключ не устанавливаем.
+    _setBitcoinAddressInMemory(null);
+    _setBitcoinPrivateKeyWifInMemory(null);
     await refreshBalances(silent: false);
     notifyListeners();
   }
 
-  /// Initialize provider: try loading last dev profile (DEV mode only).
+  /// Инициализация провайдера: попытка восстановить последний DEV-профиль.
+  ///
+  /// В secure-режиме это не используется: там разблокировка происходит после логина,
+  /// когда пользователь вводит пароль.
   Future<void> init() async {
-    if (!devEnabled) return;
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final last = prefs.getString('lastDevUserId');
-      if (last != null && last.isNotEmpty) {
-        await loadDevWallets(last);
-      }
-    } catch (_) {}
+    // Secure-only: намеренно пусто.
+    // Разблокировка кошелька выполняется после логина, когда пользователь вводит пароль.
   }
 
   Future<void> refreshBalances({bool silent = false}) async {
     final addressHex = _activeProfile?.addressHex;
-    if (addressHex == null) {
+    final btcAddress = _bitcoinAddress;
+    if (addressHex == null && (btcAddress == null || btcAddress.isEmpty)) {
       _balances = WalletBalances.initial(kTrackedTokens);
       _hasBalanceSnapshot = false;
       notifyListeners();
@@ -731,16 +769,49 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final previousAssets = _balances.assets;
 
     try {
-      final owner = EthereumAddress.fromHex(addressHex);
+      final owner = addressHex == null
+          ? null
+          : EthereumAddress.fromHex(addressHex);
       final futures = kTrackedTokens
-          .map((token) => _fetchAssetBalance(token, owner))
+          .map((token) => _fetchAssetBalance(token, owner, btcAddress))
           .toList(growable: false);
-      final assetBalances = await Future.wait(futures);
+      final balances = await Future.wait(futures);
+
+      final ids = <String>{
+        for (final t in kTrackedTokens)
+          if (t.coinGeckoId != null && t.coinGeckoId!.isNotEmpty)
+            t.coinGeckoId!,
+      };
+      final priceMap = await prices.fetchUsdPrices(coinGeckoIds: ids);
+      final usdtUsd = prices.usdtUsdOrOne(priceMap['tether']);
+      final usdtNormalizer = usdtUsd <= 0 ? 1.0 : usdtUsd;
+
+      final assetBalances = balances
+          .map((asset) {
+            final id = asset.token.coinGeckoId;
+            if (id == null || id.isEmpty) return asset;
+            if (id == 'tether') {
+              return AssetBalance(
+                token: asset.token,
+                raw: asset.raw,
+                decimals: asset.decimals,
+                // считаем 1 USDT == $1.00 (как базовую единицу UI).
+                priceUsd: 1.0,
+              );
+            }
+            final p = priceMap[id];
+            return AssetBalance(
+              token: asset.token,
+              raw: asset.raw,
+              decimals: asset.decimals,
+              priceUsd: p == null ? null : (p / usdtNormalizer),
+            );
+          })
+          .toList(growable: false);
+
       await _detectIncomingTransfers(previousAssets, assetBalances);
-      final price = await blockchain.fetchBnbUsdPrice();
       _balances = _balances.copyWith(
         assets: assetBalances,
-        bnbUsdPrice: price ?? _balances.bnbUsdPrice,
         isLoading: false,
         clearError: true,
         updatedAt: DateTime.now(),
@@ -757,6 +828,174 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     notifyListeners();
   }
 
+  Future<SendPreflightResult> preflightSend({
+    required TokenMetadata token,
+    required String recipient,
+    required double amount,
+  }) async {
+    if (amount <= 0) {
+      throw ArgumentError.value(amount, 'amount', 'should be > 0');
+    }
+
+    if (token.isBitcoin) {
+      final from = _bitcoinAddress;
+      if (from == null || from.isEmpty) {
+        throw StateError('BTC адрес не инициализирован');
+      }
+      final amountSats = _toBaseUnits(amount, 8);
+      if (amountSats <= BigInt.zero) {
+        throw ArgumentError.value(amount, 'amount', 'слишком мало');
+      }
+
+      final feeRate = await bitcoin.fetchFeeRateSatsPerVbyte();
+      final utxos = await bitcoin.fetchConfirmedUtxos(from);
+      if (utxos.isEmpty) {
+        return SendPreflightResult(
+          token: token,
+          recipient: recipient,
+          amount: amount,
+          networkLabel: 'Bitcoin',
+          feeStatus: FeeStatus.ok,
+          feeLabel: '—',
+          speedLabel: 'Рынок ~10 мин.',
+          canSend: false,
+          amountUsdLabel: _amountUsdLabel(token: token, amount: amount),
+        );
+      }
+
+      BigInt selectedTotal = BigInt.zero;
+      BigInt? feeSats;
+
+      for (var i = 0; i < utxos.length; i++) {
+        selectedTotal += utxos[i].valueSats;
+        final inputs = i + 1;
+
+        final feeWithChange = _estimateP2pkhFeeSats(
+          inputs: inputs,
+          outputs: 2,
+          feeRateSatsPerVbyte: feeRate,
+        );
+        final requiredWithChange = amountSats + feeWithChange;
+        if (selectedTotal >= requiredWithChange) {
+          final change = selectedTotal - requiredWithChange;
+          if (change >= BigInt.from(546)) {
+            feeSats = feeWithChange;
+            break;
+          }
+        }
+
+        final feeNoChangeMin = _estimateP2pkhFeeSats(
+          inputs: inputs,
+          outputs: 1,
+          feeRateSatsPerVbyte: feeRate,
+        );
+        final requiredNoChange = amountSats + feeNoChangeMin;
+        if (selectedTotal >= requiredNoChange) {
+          final feeNoChange = selectedTotal - amountSats;
+          if (feeNoChange >= feeNoChangeMin) {
+            feeSats = feeNoChange;
+            break;
+          }
+        }
+      }
+
+      final canSend = feeSats != null;
+      return SendPreflightResult(
+        token: token,
+        recipient: recipient,
+        amount: amount,
+        networkLabel: 'Bitcoin',
+        feeStatus: FeeStatus.ok,
+        feeLabel: feeSats == null ? '—' : '${feeSats.toString()} sats',
+        speedLabel: 'Рынок ~10 мин.',
+        canSend: canSend,
+        amountUsdLabel: _amountUsdLabel(token: token, amount: amount),
+      );
+    }
+
+    final fromHex = _activeProfile?.addressHex;
+    if (fromHex == null || fromHex.isEmpty) {
+      throw StateError('Активный кошелёк не выбран');
+    }
+    final from = EthereumAddress.fromHex(fromHex);
+    final to = EthereumAddress.fromHex(recipient);
+
+    final ethBalanceWei = (await blockchain.getNativeBalance(from)).getInWei;
+
+    BigInt gasPriceWei;
+    try {
+      gasPriceWei = (await blockchain.getGasPrice()).getInWei;
+    } catch (_) {
+      gasPriceWei = BigInt.from(30) * BigInt.from(1000000000); // 30 gwei
+    }
+
+    BigInt gasLimit;
+    BigInt feeWei;
+    bool hasEnoughFee;
+    bool hasEnoughToken = true;
+
+    if (token.isNative) {
+      final valueWei = _toBaseUnits(amount, token.decimalsHint);
+      try {
+        gasLimit = await blockchain.estimateGasForNativeTransfer(
+          from: from,
+          to: to,
+          valueWei: valueWei,
+        );
+      } catch (_) {
+        gasLimit = BigInt.from(21000);
+      }
+      feeWei = (gasLimit * gasPriceWei * BigInt.from(12)) ~/ BigInt.from(10);
+      hasEnoughFee = ethBalanceWei >= (valueWei + feeWei);
+    } else {
+      final contract = EthereumAddress.fromHex(token.contractAddress!);
+      final decimals = token.fetchDecimalsFromChain
+          ? await blockchain.getTokenDecimals(contract)
+          : token.decimalsHint;
+      final amountRaw = _toBaseUnits(amount, decimals);
+
+      final tokenBal = await blockchain.getTokenBalance(contract, from);
+      hasEnoughToken = tokenBal >= amountRaw;
+
+      try {
+        gasLimit = await blockchain.estimateGasForErc20Transfer(
+          from: from,
+          contract: contract,
+          to: to,
+          amount: amountRaw,
+        );
+      } catch (_) {
+        gasLimit = BigInt.from(65000);
+      }
+      feeWei = (gasLimit * gasPriceWei * BigInt.from(12)) ~/ BigInt.from(10);
+      hasEnoughFee = ethBalanceWei >= feeWei;
+    }
+
+    final feeEthLabel = _formatEth(feeWei);
+    final feeUsdLabel = _feeUsdLabel(feeWei: feeWei);
+    final feeLabel = feeUsdLabel == null
+        ? '$feeEthLabel ETH'
+        : '$feeUsdLabel  $feeEthLabel ETH';
+
+    final feeStatus = hasEnoughFee ? FeeStatus.ok : FeeStatus.insufficientFee;
+    final canSend = hasEnoughToken && hasEnoughFee;
+
+    return SendPreflightResult(
+      token: token,
+      recipient: recipient,
+      amount: amount,
+      networkLabel: kEvmChainId == 1 ? 'Ethereum' : 'EVM',
+      feeStatus: feeStatus,
+      feeLabel: feeLabel,
+      speedLabel: 'Рынок ~12 сек.',
+      canSend: canSend,
+      feeWarningText: hasEnoughFee
+          ? null
+          : 'У вас на счету недостаточно ETH для оплаты комиссии сети.',
+      amountUsdLabel: _amountUsdLabel(token: token, amount: amount),
+    );
+  }
+
   Future<String> sendAsset({
     required TokenMetadata token,
     required String recipient,
@@ -769,31 +1008,95 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
         'should be greater than zero',
       );
     }
+    if (token.isBitcoin) {
+      final wif = _bitcoinPrivateKeyWif;
+      final fromBtc = _bitcoinAddress;
+      if (wif == null || wif.isEmpty || fromBtc == null || fromBtc.isEmpty) {
+        throw StateError('BTC ключ не инициализирован');
+      }
+
+      final sats = _toBaseUnits(amount, token.decimalsHint);
+      final feeRate = kColdWalletMode
+          ? 5
+          : await bitcoin.fetchFeeRateSatsPerVbyte();
+      final raw = await bitcoin.buildSignedP2pkhTransactionHex(
+        fromWif: wif,
+        fromAddress: fromBtc,
+        toAddress: recipient.trim(),
+        amountSats: sats,
+        feeRateSatsPerVbyte: feeRate,
+      );
+      final result = kColdWalletMode
+          ? raw
+          : await bitcoin.broadcastRawTransactionHex(raw);
+
+      if (!kColdWalletMode) {
+        await refreshBalances(silent: true);
+      }
+      final record = TransactionRecord(
+        id: _nextRecordId(),
+        tokenSymbol: token.symbol,
+        amount: amount,
+        incoming: false,
+        timestamp: DateTime.now(),
+        txHash: result,
+        note: '→ ${_shortenAddress(recipient)}',
+      );
+      await _appendHistory([record]);
+      return result;
+    }
+
     final key = privateKey;
     if (key == null) {
       throw StateError('Private key is not initialized');
     }
+
+    final fromHex = _activeProfile?.addressHex;
+    if (fromHex == null || fromHex.isEmpty) {
+      throw StateError('Active wallet is not selected');
+    }
+    final from = EthereumAddress.fromHex(fromHex);
     final to = EthereumAddress.fromHex(recipient);
+
     String txHash;
-    if (token.isNative) {
-      final wei = _toBaseUnits(amount, token.decimalsHint);
-      txHash = await blockchain.sendNative(
-        privateKeyHex: key,
-        to: to,
-        amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
-      );
-    } else {
-      final contract = EthereumAddress.fromHex(token.contractAddress!);
-      final decimals = token.fetchDecimalsFromChain
-          ? await blockchain.getTokenDecimals(contract)
-          : token.decimalsHint;
-      final raw = _toBaseUnits(amount, decimals);
-      txHash = await blockchain.sendToken(
-        privateKeyHex: key,
-        contract: contract,
-        to: to,
-        amount: raw,
-      );
+    try {
+      if (token.isNative) {
+        final wei = _toBaseUnits(amount, token.decimalsHint);
+        await _preflightEvmSendNative(from: from, to: to, valueWei: wei);
+        txHash = await blockchain.sendNative(
+          privateKeyHex: key,
+          to: to,
+          amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+        );
+      } else {
+        final contract = EthereumAddress.fromHex(token.contractAddress!);
+        final decimals = token.fetchDecimalsFromChain
+            ? await blockchain.getTokenDecimals(contract)
+            : token.decimalsHint;
+        final raw = _toBaseUnits(amount, decimals);
+        await _preflightEvmSendErc20(
+          from: from,
+          contract: contract,
+          to: to,
+          tokenSymbol: token.symbol,
+          amountRaw: raw,
+        );
+        txHash = await blockchain.sendToken(
+          privateKeyHex: key,
+          contract: contract,
+          to: to,
+          amount: raw,
+        );
+      }
+    } catch (e) {
+      final text = e.toString();
+      if (text.contains('insufficient funds for gas * price + value')) {
+        throw Exception(
+          'Недостаточно средств для отправки: не хватает ETH на сумму и/или комиссию сети (gas).\n'
+          'Пополните ETH на адрес $fromHex и попробуйте снова.',
+        );
+      }
+      rethrow;
     }
     if (!kColdWalletMode) {
       await refreshBalances(silent: true);
@@ -811,14 +1114,178 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return txHash;
   }
 
+  Future<void> _preflightEvmSendNative({
+    required EthereumAddress from,
+    required EthereumAddress to,
+    required BigInt valueWei,
+  }) async {
+    if (kColdWalletMode) return;
+
+    final balanceWei = (await blockchain.getNativeBalance(from)).getInWei;
+    if (balanceWei <= BigInt.zero) {
+      throw Exception('Недостаточно ETH для отправки и комиссии сети (gas).');
+    }
+
+    final feeWei = await _estimateFeeWeiForNative(
+      from: from,
+      to: to,
+      valueWei: valueWei,
+    );
+
+    // Если комиссию не удалось оценить (некоторые RPC могут падать на estimateGas),
+    // хотя бы проверим, что хватает на сам перевод.
+    if (feeWei <= BigInt.zero) {
+      if (balanceWei < valueWei) {
+        throw Exception(
+          'Недостаточно ETH для перевода: нужно ${_formatEth(valueWei)} ETH, доступно ${_formatEth(balanceWei)} ETH.',
+        );
+      }
+      return;
+    }
+    final requiredWei = valueWei + feeWei;
+    if (balanceWei < requiredWei) {
+      throw Exception(
+        'Недостаточно ETH: нужно ${_formatEth(requiredWei)} ETH (с учётом комиссии), доступно ${_formatEth(balanceWei)} ETH.',
+      );
+    }
+  }
+
+  Future<void> _preflightEvmSendErc20({
+    required EthereumAddress from,
+    required EthereumAddress contract,
+    required EthereumAddress to,
+    required String tokenSymbol,
+    required BigInt amountRaw,
+  }) async {
+    if (kColdWalletMode) return;
+
+    final tokenBal = await blockchain.getTokenBalance(contract, from);
+    if (tokenBal < amountRaw) {
+      throw Exception('Недостаточно $tokenSymbol для отправки.');
+    }
+
+    final balanceWei = (await blockchain.getNativeBalance(from)).getInWei;
+    if (balanceWei <= BigInt.zero) {
+      throw Exception(
+        'Недостаточно ETH для комиссии сети (gas). Пополните немного ETH и повторите отправку.',
+      );
+    }
+
+    final feeWei = await _estimateFeeWeiForErc20(
+      from: from,
+      contract: contract,
+      to: to,
+      amountRaw: amountRaw,
+    );
+    if (balanceWei < feeWei) {
+      throw Exception(
+        'Недостаточно ETH для комиссии сети (gas). Нужно примерно ${_formatEth(feeWei)} ETH, доступно ${_formatEth(balanceWei)} ETH.',
+      );
+    }
+  }
+
+  Future<BigInt> _estimateFeeWeiForNative({
+    required EthereumAddress from,
+    required EthereumAddress to,
+    required BigInt valueWei,
+  }) async {
+    try {
+      final gas = await blockchain.estimateGasForNativeTransfer(
+        from: from,
+        to: to,
+        valueWei: valueWei,
+      );
+      final gasPrice = (await blockchain.getGasPrice()).getInWei;
+      // +20% буфер, чтобы не упираться в погрешности оценки.
+      return (gas * gasPrice * BigInt.from(12)) ~/ BigInt.from(10);
+    } catch (_) {
+      return BigInt.zero;
+    }
+  }
+
+  Future<BigInt> _estimateFeeWeiForErc20({
+    required EthereumAddress from,
+    required EthereumAddress contract,
+    required EthereumAddress to,
+    required BigInt amountRaw,
+  }) async {
+    try {
+      final gas = await blockchain.estimateGasForErc20Transfer(
+        from: from,
+        contract: contract,
+        to: to,
+        amount: amountRaw,
+      );
+      final gasPrice = (await blockchain.getGasPrice()).getInWei;
+      return (gas * gasPrice * BigInt.from(12)) ~/ BigInt.from(10);
+    } catch (_) {
+      return BigInt.zero;
+    }
+  }
+
+  String _formatEth(BigInt wei) {
+    final eth = EtherAmount.fromBigInt(
+      EtherUnit.wei,
+      wei,
+    ).getValueInUnit(EtherUnit.ether);
+    final text = eth.toStringAsFixed(6);
+    return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+  }
+
+  String _formatFiat(double value) {
+    final text = value.toStringAsFixed(2);
+    return text.replaceAll('.', ',');
+  }
+
+  String? _feeUsdLabel({required BigInt feeWei}) {
+    final ethPrice = _priceUsdFor('ETH');
+    if (ethPrice == null || !ethPrice.isFinite || ethPrice <= 0) return null;
+    final feeEth = EtherAmount.fromBigInt(
+      EtherUnit.wei,
+      feeWei,
+    ).getValueInUnit(EtherUnit.ether);
+    final usd = feeEth * ethPrice;
+    return '${_formatFiat(usd)} \$';
+  }
+
+  String? _amountUsdLabel({
+    required TokenMetadata token,
+    required double amount,
+  }) {
+    final price = _priceUsdFor(token.symbol);
+    if (price == null || !price.isFinite || price <= 0) return null;
+    return '${_formatFiat(amount * price)} \$';
+  }
+
+  BigInt _estimateP2pkhFeeSats({
+    required int inputs,
+    required int outputs,
+    required int feeRateSatsPerVbyte,
+  }) {
+    final vbytes = 10 + (148 * inputs) + (34 * outputs);
+    final fee = BigInt.from(vbytes) * BigInt.from(feeRateSatsPerVbyte);
+    return fee <= BigInt.zero ? BigInt.from(1) : fee;
+  }
+
   double convertAmount({
     required TokenMetadata from,
     required TokenMetadata to,
     required double amount,
   }) {
     if (amount <= 0) return 0;
-    final tbnbValue = amount * from.tbnbRate;
-    return tbnbValue / to.tbnbRate;
+    final fromPrice = _priceUsdFor(from.symbol);
+    final toPrice = _priceUsdFor(to.symbol);
+    if (fromPrice == null || toPrice == null) return 0;
+    if (fromPrice <= 0 || toPrice <= 0) return 0;
+    return amount * fromPrice / toPrice;
+  }
+
+  double? _priceUsdFor(String symbol) {
+    for (final asset in _balances.assets) {
+      if (asset.token.symbol != symbol) continue;
+      return asset.priceUsd;
+    }
+    return null;
   }
 
   Future<void> refreshHistory() async {
@@ -846,13 +1313,13 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       notifyListeners();
     }
     try {
-      var records = await devHistoryStorage.loadHistory(profile.storageId);
-      // Backward compatibility: older builds stored history under userId.
+      var records = await historyStorage.loadHistory(profile.storageId);
+      // Обратная совместимость: в старых сборках история могла храниться по userId.
       if (records.isEmpty && profile.userId.isNotEmpty) {
-        final legacy = await devHistoryStorage.loadHistory(profile.userId);
+        final legacy = await historyStorage.loadHistory(profile.userId);
         if (legacy.isNotEmpty) {
           records = legacy;
-          await devHistoryStorage.saveHistory(profile.storageId, legacy);
+          await historyStorage.saveHistory(profile.storageId, legacy);
         }
       }
       _history = List.unmodifiable(records);
@@ -882,7 +1349,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     final profile = _activeProfile;
     if (profile == null) return;
     try {
-      await devHistoryStorage.saveHistory(profile.storageId, _history);
+      await historyStorage.saveHistory(profile.storageId, _history);
       if (_historyError != null) {
         _historyError = null;
         notifyListeners();
@@ -943,7 +1410,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return '${address.substring(0, 6)}...${address.substring(address.length - 4)}';
   }
 
-  void _setActiveProfile(DevWalletProfile? profile) {
+  void _setActiveProfile(WalletProfile? profile) {
     if (_activeProfile == null && profile == null) return;
     if (identical(_activeProfile, profile)) return;
     _activeProfile = profile;
@@ -961,8 +1428,26 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
   Future<AssetBalance> _fetchAssetBalance(
     TokenMetadata token,
-    EthereumAddress owner,
+    EthereumAddress? owner,
+    String? btcAddress,
   ) async {
+    if (token.isBitcoin) {
+      final address = btcAddress;
+      if (address == null || address.trim().isEmpty) {
+        return AssetBalance(token: token, raw: BigInt.zero, decimals: 8);
+      }
+      final sats = await bitcoin.fetchBalanceSats(address.trim());
+      return AssetBalance(token: token, raw: sats, decimals: 8);
+    }
+
+    if (owner == null) {
+      return AssetBalance(
+        token: token,
+        raw: BigInt.zero,
+        decimals: token.decimalsHint,
+      );
+    }
+
     if (token.isNative) {
       final balance = await blockchain.getNativeBalance(owner);
       return AssetBalance(
@@ -1008,6 +1493,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   void dispose() {
     _stopAutoRefresh();
     unawaited(blockchain.dispose());
+    bitcoin.dispose();
+    prices.dispose();
     super.dispose();
   }
 }

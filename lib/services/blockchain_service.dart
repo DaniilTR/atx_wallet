@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 import 'package:web3dart/web3dart.dart';
@@ -10,7 +9,7 @@ import 'config.dart';
 class BlockchainService {
   BlockchainService({http.Client? httpClient, Web3Client? web3client})
     : _httpClient = httpClient ?? http.Client() {
-    _client = web3client ?? Web3Client(kBscRpcUrl, _httpClient);
+    _client = web3client ?? Web3Client(kEvmRpcUrl, _httpClient);
   }
 
   final http.Client _httpClient;
@@ -21,6 +20,37 @@ class BlockchainService {
       <String, DeployedContract>{};
 
   Web3Client get client => _client;
+
+  Future<EtherAmount> getGasPrice() {
+    return _client.getGasPrice();
+  }
+
+  Future<BigInt> estimateGasForNativeTransfer({
+    required EthereumAddress from,
+    required EthereumAddress to,
+    required BigInt valueWei,
+  }) {
+    return _client.estimateGas(
+      sender: from,
+      to: to,
+      value: EtherAmount.fromBigInt(EtherUnit.wei, valueWei),
+    );
+  }
+
+  Future<BigInt> estimateGasForErc20Transfer({
+    required EthereumAddress from,
+    required EthereumAddress contract,
+    required EthereumAddress to,
+    required BigInt amount,
+  }) async {
+    final deployed = _erc20Contract(contract);
+    final tx = Transaction.callContract(
+      contract: deployed,
+      function: deployed.function('transfer'),
+      parameters: [to, amount],
+    );
+    return _client.estimateGas(sender: from, to: contract, data: tx.data);
+  }
 
   Future<EtherAmount> getNativeBalance(EthereumAddress address) {
     return _client.getBalance(address);
@@ -72,11 +102,11 @@ class BlockchainService {
       final signed = await _client.signTransaction(
         credentials,
         tx,
-        chainId: kBscChainId,
+        chainId: kEvmChainId,
       );
       return bytesToHex(signed, include0x: true);
     }
-    return _client.sendTransaction(credentials, tx, chainId: kBscChainId);
+    return _client.sendTransaction(credentials, tx, chainId: kEvmChainId);
   }
 
   Future<String> sendToken({
@@ -100,24 +130,11 @@ class BlockchainService {
       final signed = await _client.signTransaction(
         credentials,
         tx,
-        chainId: kBscChainId,
+        chainId: kEvmChainId,
       );
       return bytesToHex(signed, include0x: true);
     }
-    return _client.sendTransaction(credentials, tx, chainId: kBscChainId);
-  }
-
-  Future<double?> fetchBnbUsdPrice() async {
-    try {
-      final response = await _httpClient.get(Uri.parse(kBnbUsdPriceUrl));
-      if (response.statusCode != 200) return null;
-      final json = jsonDecode(response.body) as Map<String, dynamic>;
-      final price = json['price'] as String?;
-      if (price == null) return null;
-      return double.tryParse(price);
-    } catch (_) {
-      return null;
-    }
+    return _client.sendTransaction(credentials, tx, chainId: kEvmChainId);
   }
 
   Future<void> dispose() async {

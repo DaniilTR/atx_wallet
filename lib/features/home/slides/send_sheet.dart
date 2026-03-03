@@ -29,7 +29,11 @@ class _SendSheetState extends State<_SendSheet> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _selectedToken ??= WalletScope.read(context).supportedTokens.first;
+    final sendable = WalletScope.read(
+      context,
+    ).supportedTokens.toList(growable: false);
+    if (sendable.isEmpty) return;
+    _selectedToken ??= sendable.first;
   }
 
   @override
@@ -54,10 +58,21 @@ class _SendSheetState extends State<_SendSheet> {
   String? _validateAddress(String? value) {
     final trimmed = value?.trim() ?? '';
     if (trimmed.isEmpty) return 'Введите адрес получателя';
-    final pattern = RegExp(r'^0x[a-fA-F0-9]{40}$');
-    if (!pattern.hasMatch(trimmed)) {
-      return 'Некорректный адрес';
+    final token = _selectedToken;
+    if (token == null) return 'Некорректный адрес';
+
+    if (token.isBitcoin) {
+      // В этой версии поддерживаем legacy Base58 адреса.
+      // Только P2PKH (начинается с 1).
+      final pattern = RegExp(r'^1[a-km-zA-HJ-NP-Z1-9]{25,34}$');
+      if (!pattern.hasMatch(trimmed)) {
+        return 'Некорректный BTC адрес (только legacy 1…)';
+      }
+      return null;
     }
+
+    final pattern = RegExp(r'^0x[a-fA-F0-9]{40}$');
+    if (!pattern.hasMatch(trimmed)) return 'Некорректный адрес';
     return null;
   }
 
@@ -65,6 +80,9 @@ class _SendSheetState extends State<_SendSheet> {
     final parsed = _tryParseAmount(value);
     if (parsed == null || parsed <= 0) {
       return 'Введите сумму больше 0';
+    }
+    if (_selectedBalance == null) {
+      return 'Баланс ещё не загружен. Обновите баланс и попробуйте снова.';
     }
     final balance = _selectedBalance?.amount;
     if (balance != null && parsed > balance) {
@@ -116,11 +134,17 @@ class _SendSheetState extends State<_SendSheet> {
   @override
   Widget build(BuildContext context) {
     final wallet = WalletScope.read(context);
-    final tokens = wallet.supportedTokens;
-    final token = _selectedToken ?? tokens.first;
+    final tokens = wallet.supportedTokens.toList(growable: false);
+    final token = _selectedToken ?? (tokens.isNotEmpty ? tokens.first : null);
+    if (token == null) {
+      return const SizedBox.shrink();
+    }
     final balanceLabel =
         '${_formatNumber(_selectedBalance?.amount ?? 0, precision: 6)} ${token.symbol}';
-    final fromAddress = widget.address;
+    final fromAddress = token.isBitcoin
+        ? wallet.bitcoinAddress
+        : widget.address;
+    final addressHint = token.isBitcoin ? '1…' : '0x…';
 
     return _SheetContainer(
       title: 'Отправить средства',
@@ -172,7 +196,7 @@ class _SendSheetState extends State<_SendSheet> {
             const SizedBox(height: 14),
             _LabeledField(
               label: 'Адрес получателя',
-              hint: '0x…',
+              hint: addressHint,
               prefixIcon: Icons.account_balance_wallet_outlined,
               controller: _toCtrl,
               textInputAction: TextInputAction.next,

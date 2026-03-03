@@ -1,9 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import '../../../../providers/wallet_scope.dart';
-import '../../../../services/price_service.dart';
 
+/// Экран деталей монеты/актива.
+///
+/// Что показывает:
+/// - текущую цену (USD) и изменение (%), если они переданы извне;
+/// - баланс пользователя по этому символу из `WalletProvider`;
+/// - простой график цены за период через CoinGecko market_chart.
+///
+/// Примечание про цены:
+/// - В приложении «основная оценка» на главной считается в `WalletProvider`
+///   как USD-значение, нормализованное через USDT.
+/// - Здесь график берётся в “сырых” USD от CoinGecko и используется только
+///   для отображения, без пересчёта через USDT.
 class CoinDetailPage extends StatefulWidget {
   const CoinDetailPage({
     super.key,
@@ -25,7 +38,9 @@ class CoinDetailPage extends StatefulWidget {
 }
 
 class _CoinDetailPageState extends State<CoinDetailPage> {
-  final PriceService _priceService = PriceService();
+  // Внутренний сервис для чтения графика (отдельно от `AssetPriceService`,
+  // потому что тут нужен именно endpoint market_chart).
+  final _CoinGeckoPriceService _priceService = _CoinGeckoPriceService();
   bool _loading = false;
   String? _error;
   List<double> _series = const [];
@@ -75,6 +90,8 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
         .whereType<num>()
         .map((e) => e.toDouble())
         .toList(growable: false);
+
+    // change% считаем по первому и последнему значению.
     double? change;
     if (values.length >= 2) {
       final first = values.first;
@@ -624,4 +641,54 @@ void _showStub(BuildContext context, String text) {
       content: Text(text, style: GoogleFonts.inter(color: Colors.white)),
     ),
   );
+}
+
+class _CoinGeckoPriceService {
+  _CoinGeckoPriceService({http.Client? httpClient})
+    : _httpClient = httpClient ?? http.Client();
+
+  final http.Client _httpClient;
+
+  /// Возвращает список точек графика цены из CoinGecko market_chart.
+  ///
+  /// Формат элемента: `[timestampMs, priceUsd]`.
+  Future<List<List<num>>?> getMarketChart(
+    String coinId, {
+    required int days,
+  }) async {
+    final uri = Uri.https(
+      'api.coingecko.com',
+      '/api/v3/coins/$coinId/market_chart',
+      {'vs_currency': 'usd', 'days': days.toString()},
+    );
+
+    final res = await _httpClient.get(
+      uri,
+      headers: const {
+        'Accept': 'application/json',
+        'User-Agent': 'atx_wallet/1.0',
+      },
+    );
+    if (res.statusCode != 200) return null;
+
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map<String, dynamic>) return null;
+    final prices = decoded['prices'];
+    if (prices is! List) return null;
+
+    final out = <List<num>>[];
+    for (final item in prices) {
+      if (item is List &&
+          item.length >= 2 &&
+          item[0] is num &&
+          item[1] is num) {
+        out.add([item[0] as num, item[1] as num]);
+      }
+    }
+    return out;
+  }
+
+  void dispose() {
+    _httpClient.close();
+  }
 }

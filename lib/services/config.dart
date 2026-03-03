@@ -12,26 +12,42 @@ const bool kEnableDevWalletStorage = bool.fromEnvironment(
 /// The returned value from send methods becomes a raw signed transaction hex.
 const bool kColdWalletMode = bool.fromEnvironment(
   'COLD_WALLET',
-  defaultValue: true,
+  defaultValue: false,
 );
 
-/// RPC endpoint для BNB Smart Chain Testnet.
-const String kBscRpcUrl = String.fromEnvironment(
-  'BSC_RPC_URL',
-  defaultValue: 'https://bsc-testnet.publicnode.com',
+/// RPC endpoint для EVM-сети (по умолчанию Ethereum Mainnet).
+///
+/// Поддержаны env-переменные (по приоритету):
+/// - EVM_RPC_URL
+/// - ETH_RPC_URL
+/// - BSC_RPC_URL (backward-compatible)
+const String kEvmRpcUrl = String.fromEnvironment(
+  'EVM_RPC_URL',
+  defaultValue: String.fromEnvironment(
+    'ETH_RPC_URL',
+    defaultValue: String.fromEnvironment(
+      'BSC_RPC_URL',
+      defaultValue: 'https://ethereum.publicnode.com',
+    ),
+  ),
 );
 
-/// ChainId сети (97 для BSC Testnet).
-const int kBscChainId = int.fromEnvironment('BSC_CHAIN_ID', defaultValue: 97);
-
-/// Публичный REST endpoint для получения цены BNB в USDT.
-const String kBnbUsdPriceUrl = String.fromEnvironment(
-  'BNB_PRICE_URL',
-  defaultValue: 'https://api.binance.com/api/v3/ticker/price?symbol=BNBUSDT',
+/// ChainId EVM-сети (по умолчанию 1 для Ethereum Mainnet).
+///
+/// Поддержаны env-переменные (по приоритету):
+/// - EVM_CHAIN_ID
+/// - ETH_CHAIN_ID
+/// - BSC_CHAIN_ID (backward-compatible)
+const int kEvmChainId = int.fromEnvironment(
+  'EVM_CHAIN_ID',
+  defaultValue: int.fromEnvironment(
+    'ETH_CHAIN_ID',
+    defaultValue: int.fromEnvironment('BSC_CHAIN_ID', defaultValue: 1),
+  ),
 );
 
 /// Начальный маршрут — если хотите пропускать логин при отладке, смените на '/home'.
 const String kInitialRoute = String.fromEnvironment(
   'INITIAL_ROUTE',
-  defaultValue: '/home',
+  defaultValue: '/start',
 );

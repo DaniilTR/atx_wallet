@@ -159,11 +159,11 @@ Web (Chrome) поддерживается **для DEV-тестов**. На Web 
 
 ## 3.7. История транзакций (as-is)
 
-Хранилище: `DevTransactionStorage` (файл `lib/dev/dev_transaction_storage.dart`)
+Хранилище: `TransactionStorage` (файл `lib/WalletSecureStorage/history_model/transaction_storage.dart`)
 
 Поведение:
-- Android/iOS/Desktop: хранение в файле в `ApplicationSupportDirectory` (json)
-- Web (Chrome): хранение через `SharedPreferences` (ключ `tx_history_v1__<storageId>`)
+- Android/iOS/Desktop/Web: хранение через `SharedPreferences` под ключом
+  `tx_history_v1__<storageId>`.
 
 В `WalletProvider` история привязана к `profile.storageId` (формат `userId__walletId`).
 

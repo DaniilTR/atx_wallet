@@ -42,30 +42,25 @@ dependencies:
   bip39: ^1.0.6
   bip32: ^2.0.0
   hex: ^0.2.0
+  dartsv: ^2.1.0
   path_provider: ^2.1.4
   qr_flutter: ^4.1.0
   mobile_scanner: ^6.0.2
 
   cryptography: ^2.9.0
   argon2: ^1.0.1
-  unorm_dart: ^0.3.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0
 
 flutter_launcher_icons:
   android: true
   ios: true
   image_path: "assets/images/app_icon.png"
   remove_alpha_ios: true
-  # The "flutter_lints" package below contains a set of recommended lints to
-  # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
-  # package. See that file for information about deactivating specific lint
-  # rules and activating additional ones.
-  flutter_lints: ^6.0.0
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

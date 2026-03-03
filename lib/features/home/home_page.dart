@@ -7,14 +7,12 @@ import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';
 import 'activity/qr_page.dart';
-import '../../dev/dev_wallet_storage.dart';
 import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
-import '../../services/price_service.dart';
+import '../../services/config.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
-import 'home_route_args.dart';
 import 'widgets/bottom_nav.dart';
 
 part 'slides/sheet_container.dart';
@@ -26,6 +24,7 @@ part 'slides/wallets/wallets_sheet.dart';
 part 'slides/wallets/add_wallet_sheet.dart';
 part 'activity/market/market_screen.dart';
 part 'activity/rewards_page.dart';
+part 'activity/send_flow_page.dart';
 part 'slides/labeled_field.dart';
 part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
@@ -44,9 +43,9 @@ class SendSheet extends StatelessWidget {
 }
 
 const Map<String, Color> _tokenColors = <String, Color>{
-  'TBNB': Color(0xFF5782FF),
-  'ATX': Color(0xFF3DD5D0),
-  'LEV': Color(0xFFF7C344),
+  'ETH': Color(0xFF5782FF),
+  'USDT': Color(0xFF3DD5D0),
+  'BTC': Color(0xFFF7C344),
 };
 
 class HomePage extends StatefulWidget {
@@ -91,9 +90,13 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Future<void> _openSendSheet({String? recipient}) => _showNeonSheet<void>(
-    _SendSheet(address: _currentAddress, initialRecipient: recipient),
-  );
+  Future<void> _openSendFlow({String? recipient}) async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => _SendFlowPage(initialRecipient: recipient),
+      ),
+    );
+  }
 
   Future<void> _openReceiveSheet() =>
       _showNeonSheet(_ReceiveSheet(address: _currentAddress));
@@ -112,7 +115,7 @@ class _HomePageState extends State<HomePage> {
     );
     if (!mounted) return;
     if (scanned != null) {
-      await _openSendSheet(recipient: scanned);
+      await _openSendFlow(recipient: scanned);
     }
   }
 
@@ -264,7 +267,7 @@ class _HomePageState extends State<HomePage> {
                       const SizedBox(height: 22),
                       _ActionsRow(
                         isDark: isDark,
-                        onSend: _openSendSheet,
+                        onSend: _openSendFlow,
                         onReceive: _openReceiveSheet,
                         onBuy: _openBuySheet,
                         onSwap: _openSwapSheet,
@@ -312,7 +315,6 @@ class _HomePageState extends State<HomePage> {
                           color:
                               _tokenColors[balances.assets[i].token.symbol] ??
                               const Color(0xFF4C6BFF),
-                          bnbUsdPrice: balances.bnbUsdPrice,
                         ),
                         if (i != balances.assets.length - 1)
                           const SizedBox(height: 14),
@@ -367,7 +369,6 @@ class _BalanceCard extends StatelessWidget {
         : address!;
     final borderTint = Colors.white.withOpacity(0.22);
     final totalUsd = balances.totalUsd;
-    final totalTbnb = balances.totalTbnb;
     final loading = balances.isLoading;
     final updatedLabel = _formatTimestamp(balances.updatedAt);
 
@@ -441,7 +442,7 @@ class _BalanceCard extends StatelessWidget {
                       Text(
                         totalUsd != null
                             ? '\$${_formatNumber(totalUsd, precision: 2)}'
-                            : '${_formatNumber(totalTbnb, precision: 4)} TBNB',
+                            : '—',
                         style: GoogleFonts.inter(
                           color: Colors.white,
                           fontSize: 26,
@@ -452,7 +453,7 @@ class _BalanceCard extends StatelessWidget {
                       Text(
                         totalUsd == null
                             ? 'Без оценки в USD'
-                            : '≈ ${_formatNumber(totalTbnb, precision: 4)} TBNB',
+                            : 'USD оценка по курсу USDT',
                         style: GoogleFonts.inter(
                           color: const Color(0xFFB7C4EA),
                           fontSize: 13,
@@ -651,33 +652,21 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _AssetTile extends StatelessWidget {
-  const _AssetTile({
-    required this.balance,
-    required this.color,
-    this.bnbUsdPrice,
-  });
+  const _AssetTile({required this.balance, required this.color});
 
   final AssetBalance balance;
   final Color color;
-  final double? bnbUsdPrice;
 
   @override
   Widget build(BuildContext context) {
     final amountLabel =
         '${_formatNumber(balance.amount, precision: 6)} ${balance.token.symbol}';
-    final tbnbLabel =
-        '≈ ${_formatNumber(balance.tbnbValue, precision: 4)} TBNB';
-    final usdValue = bnbUsdPrice == null
-        ? null
-        : balance.tbnbValue * bnbUsdPrice!;
-    final tokenPriceUsd = bnbUsdPrice == null
-        ? null
-        : balance.token.tbnbRate * bnbUsdPrice!;
-    final coinId = PriceService.symbolToCoinGeckoId[balance.token.symbol];
+    final usdValue = balance.usdValue;
+    final tokenPriceUsd = balance.priceUsd;
     final valueLabel = usdValue == null
-        ? tbnbLabel
+        ? '—'
         : '\$${_formatNumber(usdValue, precision: 2)}';
-    final secondaryLabel = usdValue == null ? amountLabel : tbnbLabel;
+    final secondaryLabel = amountLabel;
 
     return GlassCard(
       borderRadius: 18,
@@ -690,7 +679,7 @@ class _AssetTile extends StatelessWidget {
               builder: (_) => CoinDetailPage(
                 symbol: balance.token.symbol,
                 name: balance.token.name,
-                coinId: coinId,
+                coinId: balance.token.coinGeckoId,
                 priceUsd: tokenPriceUsd,
               ),
             ),
@@ -924,50 +913,6 @@ class _GrowthPill extends StatelessWidget {
       ),
     );
   }
-}
-
-class _NavBarClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    final w = size.width;
-    final center = w / 2;
-
-    const notchRadius = 44.0;
-    const notchDepth = 16.0;
-
-    path.lineTo(center - notchRadius - 30, 0);
-
-    path.quadraticBezierTo(
-      center - notchRadius,
-      0,
-      center - notchRadius,
-      notchDepth,
-    );
-
-    path.arcToPoint(
-      Offset(center + notchRadius, notchDepth),
-      radius: const Radius.circular(notchRadius),
-      clockwise: false,
-    );
-
-    path.quadraticBezierTo(
-      center + notchRadius,
-      0,
-      center + notchRadius + 30,
-      0,
-    );
-
-    path.lineTo(w, 0);
-    path.lineTo(w, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(_) => false;
 }
 
 class _GlowCircle extends StatelessWidget {

@@ -7,7 +7,13 @@ class _ReceiveSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fallback = address ?? '0x0000...0000';
+    final wallet = WalletScope.of(context);
+    final evmAddress = address;
+    final btcAddress = wallet.bitcoinAddress;
+
+    final evmFallback = evmAddress ?? '0x0000...0000';
+    final btcFallback = btcAddress ?? '—';
+
     return _SheetContainer(
       title: 'Получить средства',
       subtitle: 'Покажите QR или поделитесь адресом',
@@ -29,8 +35,19 @@ class _ReceiveSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Ethereum (ETH / USDT)',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFB5BEDF),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           SelectableText(
-            fallback,
+            evmFallback,
             style: GoogleFonts.inter(
               color: Colors.white,
               fontWeight: FontWeight.w600,
@@ -39,15 +56,52 @@ class _ReceiveSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           _PrimaryButton(
-            label: 'Скопировать адрес',
+            label: 'Скопировать ETH адрес',
             onPressed: () {
-              Clipboard.setData(ClipboardData(text: fallback));
+              Clipboard.setData(ClipboardData(text: evmFallback));
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('Адрес скопирован', style: GoogleFonts.inter()),
                 ),
               );
             },
+          ),
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              'Bitcoin (BTC)',
+              style: GoogleFonts.inter(
+                color: const Color(0xFFB5BEDF),
+                fontSize: 13,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          SelectableText(
+            btcFallback,
+            style: GoogleFonts.inter(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 12),
+          _PrimaryButton(
+            label: 'Скопировать BTC адрес',
+            onPressed: btcAddress == null
+                ? null
+                : () {
+                    Clipboard.setData(ClipboardData(text: btcAddress));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          'Адрес скопирован',
+                          style: GoogleFonts.inter(),
+                        ),
+                      ),
+                    );
+                  },
           ),
         ],
       ),

@@ -1,20 +1,32 @@
+# Архитектура ATX Wallet (актуально: Ethereum + BTC)
 
-# Архитектура приложения ATX Wallet
+Документ описывает актуальное устройство приложения: где что лежит, какие сервисы за что отвечают и как проходят ключевые сценарии.
 
-Этот документ описывает, как устроено приложение, где что лежит, и за какие части системы отвечают папки/файлы.
+## Ключевые требования (текущая тема)
+
+- Сети: **EVM (по умолчанию Ethereum Mainnet)** + **Bitcoin**.
+- Основные активы в UI: **USDT / ETH / BTC**.
+- Отображение стоимости: **в USD**, при этом по ТЗ «в долларах по курсу USDT» — итоговые значения нормализуются через USDT.
+- Приложение клиентское: нет собственного backend’а для блокчейна/цен; используются публичные RPC/API.
+
+---
 
 ## Общая картина
 
-Проект состоит из одного основного приложения:
+Проект — это одно Flutter-приложение (папка `lib/`), в котором:
 
-1) **Flutter‑клиент (папка `lib/`)**
-	 - UI разбит по фичам (`lib/features/...`).
-	 - Состояние кошелька живёт в `WalletProvider` и раздаётся через `WalletScope`.
-	 - Аутентификация доступна через `AuthScope` (синглтон `AuthController`).
-	 - Низкоуровневые интеграции вынесены в `lib/services/...`.
-	 - DEV‑хранилища (кошельки и история) — в `lib/dev/...`.
+- UI разбит по фичам (`lib/features/...`).
+- Состояние кошелька находится в `WalletProvider` и раздаётся через `WalletScope`.
+- Аутентификация доступна через `AuthScope` (singleton `AuthController`).
+- Интеграции (EVM RPC, CoinGecko, Bitcoin-эксплорер) находятся в `lib/services/...`.
+- DEV-хранилища (демо-кошелёк и история) — в `lib/dev/...`.
+- Secure-режим хранения сид-фразы реализован через модуль `lib/WalletSecureStorage/...`.
 
-Отдельно: блокчейн‑часть работает через RPC BNB Smart Chain Testnet (web3dart) — это клиентская интеграция, а не отдельный сервер.
+Блокчейн-часть — это **прямые клиентские запросы**:
+
+- EVM: RPC-узел (по умолчанию Ethereum Mainnet).
+- Цены: публичный API CoinGecko.
+- BTC баланс: публичный API blockstream.info.
 
 ---
 
@@ -24,211 +36,203 @@
 
 Главный вход приложения:
 
-- Инициализация Flutter (`WidgetsFlutterBinding.ensureInitialized()`).
+- Инициализация Flutter.
 - Создание `WalletProvider` и вызов `walletProvider.init()`.
 - Запуск `MaterialApp`.
 
-Маршруты (`routes`) объявлены прямо в `MaterialApp`, ключевые:
+Маршруты (`routes`) объявлены в `MaterialApp`, ключевые:
 
 - `/start` → стартовый экран
 - `/login` → логин
 - `/register` → регистрация
-- `/home` → основной экран (главная фича)
-- `/market`, `/rewards`, `/history` → части home‑фичи
+- `/home` → главный экран кошелька
+- `/market`, `/history`, `/rewards` → разделы внутри home
 - `/settings` → настройки
 
-Важно: начальный маршрут можно переопределять через `--dart-define INITIAL_ROUTE=...` (по умолчанию `/start`).
+Начальный маршрут можно переопределить через `--dart-define INITIAL_ROUTE=...` (по умолчанию `/start`).
 
-### Глобальные скоупы
+### Глобальные scope’ы
 
 В `builder` приложения все экраны оборачиваются в:
 
 - `AuthScope` — доступ к `AuthController`
 - `WalletScope` — доступ к `WalletProvider`
 
-Это позволяет из любого экрана получать состояние через `AuthScope.of(context)` и `WalletScope.of(context)`.
-
 ---
 
-## Слой UI / Features (`lib/features`)
+## UI / Features (`lib/features`)
 
-Папка `lib/features/` — это “верхний” слой: экраны, виджеты, локальные модели/сервисы фич.
+### `lib/features/auth` — авторизация
 
-### `lib/features/auth/` — авторизация
+Основные экраны:
 
-Основные файлы:
-
-- `start_page.dart` — стартовый экран с выбором: создать кошелёк (регистрация) или войти.
+- `start_page.dart` — выбор: создать кошелёк (регистрация) или войти.
 - `login_page.dart` — логин:
-	- умеет **восстановить сессию** через `AuthController.tryRestoreSession()`.
-	- после входа подгружает DEV‑профиль кошелька (`wallet.loadDevProfile(user.id)`) и открывает `/home`.
-- `register_page.dart` — регистрация (аналогично логину, но создаёт пользователя).
-- `widgets/` — UI‑виджеты для auth‑экранов (фон/карточки/лоадер).
+  - умеет восстановить сессию через `AuthController.tryRestoreSession()`;
+  - после входа открывает кошелёк (см. сценарии ниже) и делает переход на `/home`.
+- `register_page.dart` — регистрация:
+  - создаёт пользователя;
+  - создаёт/инициализирует кошелёк (в зависимости от режима) и делает переход на `/home`.
 
-Логика: UI вызывает методы `AuthController`, который сам решает: идти в удалённый API или использовать локальное хранилище.
+### `lib/features/home` — главный экран
 
-### `lib/features/home/` — основной экран приложения
+`home_page.dart` — “хаб” кошелька: баланс, адрес, действия (send/receive/buy/swap), переходы к market/history/rewards.
 
-Это главный “хаб” приложения, основной файл:
+Стартовая логика:
 
-- **`home_page.dart`** — центральный экран кошелька: баланс, адрес, действия (send/receive/buy/swap), переходы к market/history/rewards.
+- В `initState()` вызывается `WalletScope.read(context).refreshBalances(silent: true)`.
 
-Важная особенность реализации: `home_page.dart` очень “плотный” и подключает множество частей через `part ...`:
+Рынок/графики:
 
-- bottom sheets (send/receive/buy/swap, wallets)
-- market/rewards как части home‑модуля
-- набор переиспользуемых UI‑компонентов (кнопки/чипы/карточки)
-
-Подпапки:
-
-- `activity/`
-	- `qr_page.dart` — QR для передачи/скана адреса
-	- `history_page.dart` — история транзакций (из `WalletProvider.history`)
-	- `market/` — рынок/графики/детали монеты (внутри есть свои модели/сервисы)
-	- `rewards_page.dart` — rewards
-- `widgets/` — компоненты навигации (например `bottom_nav.dart`)
-- `slides/` — “листы/шиты” и их UI‑части (подключаются через `part`)
-
-Как работает `HomePage` на старте:
-
-- В `initState()` вызывает `WalletScope.read(context).refreshBalances(silent: true)`.
-- Для отображения адреса/профиля использует `wallet.activeProfile`, а также может принимать DEV‑профиль через аргументы роутинга (`HomeRouteArgs`).
-
-### `lib/features/settings/` — настройки
-
-- `settings_screen.dart`:
-	- переключение темы (светлая/тёмная) на уровне `MaterialApp`
-	- отображение текущего пользователя и адреса
-	- (в релизной ветке) без server/pairing флоу
-
----
-
-## DEV‑слой (`lib/dev`)
-
-Папка `lib/dev/` — это инфраструктура для разработки/демо. Используется, когда включён флаг `kEnableDevWalletStorage` (по умолчанию `false` в релизной ветке; включайте только для локальной разработки).
-
-### `dev_wallet_storage.dart`
-
-- `DevWalletProfile` — модель DEV‑профиля (seed phrase, privateKey, address).
-- `DevWalletStorage` — хранение профиля:
-	- Mobile/Desktop: пишет/читает JSON в папку Application Support (`.../dev_wallets/<userId>.wallet.json`)
-	- Web: требует отдельной реализации (в релизной ветке сервер удалён)
-
-### `dev_transaction_storage.dart`
-
-- `DevTransactionStorage` — хранит историю транзакций:
-	- Mobile/Desktop: `.../dev_wallets/<userId>.history.json`
-	- Web: требует отдельной реализации (в релизной ветке сервер удалён)
-
-Это позволяет демонстрировать кошелёк без “настоящей” базы данных для истории.
-
----
-
-## Модели (`lib/models`)
-
-### `transaction_record.dart`
-
-Модель записи истории:
-
-- id, tokenSymbol, amount, incoming, timestamp
-- опционально: txHash, note
-
-Используется `WalletProvider` + `DevTransactionStorage` и отображается на UI (history).
+- Экран деталей монеты и график находятся в `lib/features/home/activity/market/...`.
+- Для графика используется endpoint CoinGecko `market_chart` (внутренний сервис в файле экрана), а не общий сервис простых цен.
 
 ---
 
 ## Управление состоянием (`lib/providers`)
 
-### `wallet_provider.dart`
+### `WalletProvider`
 
-`WalletProvider` — основной state‑контейнер кошелька (ChangeNotifier). Отвечает за:
+`WalletProvider` — центральный state-контейнер (ChangeNotifier). Он отвечает за:
 
-- генерацию seed‑фразы (BIP‑39), derivation приватного ключа (BIP‑32/BIP‑44 path)
-- вычисление публичного адреса
-- управление списком DEV‑кошельков пользователя (bundle, активный кошелёк)
-- загрузку/сохранение приватного ключа в SharedPreferences (в рамках dev‑флоу)
-- обновление балансов (`refreshBalances`) по tracked‑токенам (TBNB/ATX/LEV)
-- работу с историей транзакций через `DevTransactionStorage`
-- взаимодействие с блокчейном через `BlockchainService`
+- работу с сид-фразой:
+  - DEV-режим: создание/чтение из DEV-хранилища;
+  - secure-режим: создание/расшифровка из защищённого хранилища;
+- деривацию EVM-адреса и приватного ключа по BIP44 (coin type 60);
+- деривацию BTC-адреса из той же сид-фразы (через `BitcoinService`);
+- получение балансов:
+  - ETH (native) через EVM RPC;
+  - USDT (ERC-20) через EVM RPC;
+  - BTC (только чтение) через blockstream API;
+- получение цен через `AssetPriceService` и расчёт “USD-оценки по курсу USDT”;
+- локальную историю операций.
 
-Также здесь определены:
+Трекнутые активы (ключевая логика UI): USDT / ETH / BTC.
 
-- `TokenMetadata`, `AssetBalance`, `WalletBalances`
-- `kTrackedTokens` — список отслеживаемых токенов и их параметры
+### `WalletScope`
 
-### `wallet_scope.dart`
+`WalletScope` — `InheritedNotifier<WalletProvider>` для доступа к провайдеру без внешних state-менеджеров.
 
-`WalletScope` — `InheritedNotifier<WalletProvider>`.
+---
 
-- `WalletScope.of(context)` / `read(context)` — доступ к провайдеру
-- `maybeOf(context)` — безопасный вариант
+## Хранение данных: DEV-режим и secure-режим
 
-Смысл: UI подписывается на изменения `WalletProvider` без сторонних state‑менеджеров.
+В проекте есть 2 режима “где живут ключи/сид-фраза”. Переключение — через [lib/services/config.dart](lib/services/config.dart).
+
+### DEV-режим (`DEV_WALLET_STORAGE=true`)
+
+- Используется только для разработки/демо.
+- Сид-фраза/ключи и история сохраняются локально через `lib/dev/...` (JSON-файлы в Application Support).
+- После логина `login_page.dart` вызывает `wallet.loadDevProfile(user.id)`.
+
+### Secure-режим (`DEV_WALLET_STORAGE=false`)
+
+- Сид-фраза хранится в зашифрованном виде в `flutter_secure_storage`.
+- При логине/разблокировке `WalletProvider.unlockSecureWallets(...)`:
+  - расшифровывает сид-фразу;
+  - деривирует ключ/адрес EVM и BTC-адрес;
+  - держит приватный ключ EVM **только в памяти сессии**.
+
+Модуль secure-хранилища находится в `lib/WalletSecureStorage/...` (vault bundle, KDF и шифрование).
 
 ---
 
 ## Сервисы (`lib/services`)
 
-Папка `lib/services/` — “низкий уровень”: конфигурация, API‑клиент, auth‑логика, блокчейн, цены, платформенные штуки.
+### `config.dart`
 
-### `config.dart` (очень важный)
+Глобальная конфигурация приложения:
 
-Это центральная конфигурация клиента:
+- `DEV_WALLET_STORAGE` — включить DEV-хранилище.
+- `COLD_WALLET` — режим “холодного” кошелька:
+  - транзакции подписываются локально, но **не отправляются** в сеть;
+  - методы `send...` возвращают raw signed transaction hex.
+- `EVM_RPC_URL` — RPC endpoint EVM-сети (по умолчанию публичный Ethereum Mainnet).
+- `EVM_CHAIN_ID` — chainId EVM-сети (по умолчанию 1).
+- `INITIAL_ROUTE` — начальный маршрут.
 
-- Параметры через `--dart-define`:
-	- `DEV_WALLET_STORAGE` (DEV‑хранилище, по умолчанию `false` в релизной ветке)
-	- `BSC_RPC_URL`, `BSC_CHAIN_ID` (BSC Testnet)
-	- `BNB_PRICE_URL` (binance endpoint)
-	- `INITIAL_ROUTE`
+Также поддерживаются `ETH_RPC_URL/ETH_CHAIN_ID` и `BSC_RPC_URL/BSC_CHAIN_ID` как обратная совместимость по именам переменных.
 
-Практический смысл: приложение не зависит от backend-сервера.
+### `blockchain_service.dart`
 
-### HTTP и Auth
+Обёртка над `web3dart`:
 
-- `auth_user.dart` — модель пользователя.
-- `auth_service.dart` — **локальная** аутентификация (SharedPreferences), хранит пользователей и текущую сессию.
-- `auth_controller.dart` — контроллер локальной аутентификации (без удалённого режима).
-- `auth_scope.dart` — `InheritedWidget`, раздаёт глобальный singleton `AuthController` по дереву виджетов.
+- `getNativeBalance` — баланс ETH.
+- `getTokenBalance`, `getTokenDecimals` — балансы и decimals ERC-20.
+- `sendNative`, `sendToken` — отправка (или подпись без отправки в режиме `COLD_WALLET`).
 
-### Блокчейн и цены
+### `asset_price_service.dart`
 
-- `blockchain_service.dart` — обёртка над `web3dart`:
-	- `getNativeBalance` / `getTokenBalance`
-	- `sendNative` / `sendToken` (в `kColdWalletMode=true` возвращают raw signed tx и не отправляют в сеть)
-	- получение decimals для ERC‑20 (с кэшем)
-	- также умеет вытянуть цену BNB в USD из `kBnbUsdPriceUrl`
+Сервис цен на основе CoinGecko `simple/price`:
 
-- `price_service.dart` — цена/графики через CoinGecko (публичный API), с ретраями.
-	- использует публичные API, без обращения к backend.
+- возвращает USD-цены по `coinGeckoId`;
+- используется в `WalletProvider.refreshBalances`.
 
-### Платформы
+Нормализация “по курсу USDT” делается на уровне `WalletProvider`: USDT считается базовой единицей UI (1 USDT ≈ 1 USD).
 
-- `platform.dart` — условный экспорт
-- `platform_io.dart` / `platform_web.dart` — реализация флага `isDesktop` (и/или других платформенных различий)
+### `bitcoin_service.dart`
+
+Минимальная интеграция с Bitcoin:
+
+- деривация BTC-адреса из сид-фразы;
+- чтение баланса в сатоши через blockstream.info.
+
+Ограничение: отправка BTC не реализована (нужна полноценная UTXO-логика).
+
+### `auth_*` (`auth_user`/`auth_service`/`auth_controller`/`auth_scope`)
+
+Локальная аутентификация (без удалённого backend): пользователи и сессия хранятся локально.
+
+### `price_service.dart`
+
+На текущий момент это legacy-файл, в основной архитектуре не используется.
 
 ---
 
+## История операций
+
+История (`TransactionRecord`) — это локальная история действий приложения (а не парсинг ончейн-транзакций):
+
+- хранится через `DevTransactionStorage`;
+- пополняется при действиях пользователя (например, после отправки EVM-транзакции).
+
+Если потребуется “настоящая” история, нужно будет добавлять индексатор/эксплорер-интеграцию по txHash.
+
 ---
 
-## Ключевые сценарии (как это работает)
+## Ключевые сценарии
 
-### 1) Авторизация и переход в Home
+### 1) Регистрация
 
-1. Пользователь попадает на `/start`.
-2. Переходит на `/login` или `/register`.
-3. UI вызывает `AuthController`.
-4. `AuthController` использует локальный `AuthService`.
-5. После успешного входа `LoginPage`/`RegisterPage`:
-	 - (в DEV) загружает профиль кошелька через `WalletProvider.loadDevProfile(user.id)`
-	 - открывает `/home`.
+1. Пользователь открывает `/register`.
+2. UI вызывает `AuthController.register(...)`.
+3. Далее зависит от режима:
+   - DEV-режим: `WalletProvider.generateAndPersistForUser(...)`.
+   - secure-режим: `WalletProvider.createInitialSecureWallet(...)`.
+4. Переход на `/home` и загрузка балансов (`refreshBalances`).
 
-### 2) Кошелёк, балансы и история
+### 2) Логин
 
-- `WalletProvider` хранит активный профиль, список кошельков, балансы и историю.
-- Балансы берутся через `BlockchainService` (RPC BSC Testnet) по `kTrackedTokens`.
-- История читается/пишется через `DevTransactionStorage`.
+1. Пользователь открывает `/login`.
+2. UI вызывает `AuthController.login(...)`.
+3. Далее зависит от режима:
+   - DEV-режим: `WalletProvider.loadDevProfile(user.id)`.
+   - secure-режим: `WalletProvider.unlockSecureWallets(userId, password)`.
+4. Переход на `/home`.
 
-### 3) Pairing Desktop↔Mobile
+### 3) Обновление балансов и USD-оценки
 
-В релизной ветке pairing удалён.
+`WalletProvider.refreshBalances(...)`:
 
+- Получает EVM-балансы (ETH + ERC-20 USDT) через `BlockchainService`.
+- Получает BTC баланс через `BitcoinService`.
+- Получает USD-цены через `AssetPriceService`.
+- Формирует итоговую “стоимость в долларах по курсу USDT” для UI.
+
+---
+
+## Ограничения и важные заметки
+
+- BTC сейчас работает в режиме “адрес + баланс” (только чтение).
+- В режиме `COLD_WALLET=true` отправка EVM-транзакций не делает broadcast; возвращается raw tx.
+- Приложение не делает автоматический выбор RPC/API: стабильность зависит от доступности публичных endpoints.

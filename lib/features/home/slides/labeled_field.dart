@@ -45,7 +45,7 @@ class _LabeledField extends StatelessWidget {
             hintText: hint,
             hintStyle: GoogleFonts.inter(color: const Color(0xFF6A7398)),
             filled: true,
-            fillColor: const Color(0xFF1A223E),
+            fillColor: const Color(0xFF14191E),
             prefixIcon: Icon(prefixIcon, color: const Color(0xFF6FE1F5)),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),

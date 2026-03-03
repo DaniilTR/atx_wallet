@@ -64,14 +64,10 @@ class _LoginPageState extends State<LoginPage> {
         login: _loginCtrl.text.trim(),
         password: _passwordCtrl.text,
       );
-      if (wallet.devEnabled) {
-        await wallet.loadDevProfile(user.id);
-      } else {
-        await wallet.unlockSecureWallets(
-          userId: user.id,
-          password: _passwordCtrl.text,
-        );
-      }
+      await wallet.unlockSecureWallets(
+        userId: user.id,
+        password: _passwordCtrl.text,
+      );
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,

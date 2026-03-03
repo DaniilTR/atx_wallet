@@ -39,6 +39,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final auth = AuthScope.of(context);
     final wallet = WalletScope.maybeOf(context);
     final address = wallet?.activeProfile?.addressHex;
+    final btcAddress = wallet?.bitcoinAddress;
     final username = auth.currentUser?.username ?? '—';
     final userId = auth.currentUser?.id;
 
@@ -72,6 +73,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _InfoTile(
             label: 'Адрес (публичный)',
             value: address ?? '—',
+            isMonospace: true,
+          ),
+          const SizedBox(height: 10),
+          _InfoTile(
+            label: 'BTC адрес (публичный)',
+            value: btcAddress ?? '—',
             isMonospace: true,
           ),
           const SizedBox(height: 12),

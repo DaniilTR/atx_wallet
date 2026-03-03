@@ -77,14 +77,10 @@ class _RegisterPageState extends State<RegisterPage> {
         email: email.isEmpty ? null : email,
         password: _passwordCtrl.text,
       );
-      if (wallet.devEnabled) {
-        await wallet.generateAndPersistForUser(user.id);
-      } else {
-        await wallet.createInitialSecureWallet(
-          userId: user.id,
-          password: _passwordCtrl.text,
-        );
-      }
+      await wallet.createInitialSecureWallet(
+        userId: user.id,
+        password: _passwordCtrl.text,
+      );
       if (!mounted) return;
       Navigator.pushReplacementNamed(
         context,

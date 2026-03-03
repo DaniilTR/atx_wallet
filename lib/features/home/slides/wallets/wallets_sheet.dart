@@ -89,7 +89,7 @@ class _WalletRow extends StatelessWidget {
     required this.onTap,
   });
 
-  final DevWalletProfile profile;
+  final WalletProfile profile;
   final bool isActive;
   final VoidCallback? onTap;
 
