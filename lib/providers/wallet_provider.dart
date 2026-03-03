@@ -1063,10 +1063,33 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       if (token.isNative) {
         final wei = _toBaseUnits(amount, token.decimalsHint);
         await _preflightEvmSendNative(from: from, to: to, valueWei: wei);
+
+        BigInt gasPriceWei;
+        try {
+          gasPriceWei = (await blockchain.getGasPrice()).getInWei;
+        } catch (_) {
+          gasPriceWei = BigInt.from(30) * BigInt.from(1000000000); // 30 gwei
+        }
+        final bumpedGasPriceWei =
+            (gasPriceWei * BigInt.from(12)) ~/ BigInt.from(10);
+
+        BigInt gasLimit;
+        try {
+          gasLimit = await blockchain.estimateGasForNativeTransfer(
+            from: from,
+            to: to,
+            valueWei: wei,
+          );
+        } catch (_) {
+          gasLimit = BigInt.from(21000);
+        }
+
         txHash = await blockchain.sendNative(
           privateKeyHex: key,
           to: to,
           amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+          maxGas: gasLimit.toInt(),
+          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
         );
       } else {
         final contract = EthereumAddress.fromHex(token.contractAddress!);
@@ -1081,11 +1104,35 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
           tokenSymbol: token.symbol,
           amountRaw: raw,
         );
+
+        BigInt gasPriceWei;
+        try {
+          gasPriceWei = (await blockchain.getGasPrice()).getInWei;
+        } catch (_) {
+          gasPriceWei = BigInt.from(30) * BigInt.from(1000000000); // 30 gwei
+        }
+        final bumpedGasPriceWei =
+            (gasPriceWei * BigInt.from(12)) ~/ BigInt.from(10);
+
+        BigInt gasLimit;
+        try {
+          gasLimit = await blockchain.estimateGasForErc20Transfer(
+            from: from,
+            contract: contract,
+            to: to,
+            amount: raw,
+          );
+        } catch (_) {
+          gasLimit = BigInt.from(65000);
+        }
+
         txHash = await blockchain.sendToken(
           privateKeyHex: key,
           contract: contract,
           to: to,
           amount: raw,
+          maxGas: gasLimit.toInt(),
+          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
         );
       }
     } catch (e) {
