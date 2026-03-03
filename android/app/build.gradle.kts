@@ -39,6 +39,11 @@ android {
     }
 }
 
+dependencies {
+    implementation("androidx.biometric:biometric:1.1.0")
+    implementation("androidx.security:security-crypto:1.1.0")
+}
+
 flutter {
     source = "../.."
 }

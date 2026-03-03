@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import '../../biometrics/biometric_face.dart';
+import '../../services/biometric_prefs.dart';
 import '../home/home_route_args.dart';
 import 'widgets/animated_neon_background.dart';
 import 'widgets/auth_loading_view.dart';
@@ -20,11 +23,72 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _loading = false;
   bool _checkingSession = true;
+  bool _biometricAvailable = false;
+  String? _biometricUserId;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _attemptPrefillLogin());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _attemptPrefillLogin();
+      _checkBiometrics();
+    });
+  }
+
+  Future<void> _checkBiometrics() async {
+    try {
+      final avail = await BiometricFace.isAvailable();
+      String? last = await BiometricPrefs.getLastUser();
+      final enabled = last != null ? await BiometricPrefs.isEnabled(last) : false;
+      if (!mounted) return;
+      setState(() {
+        _biometricAvailable = avail && enabled;
+        if (_biometricAvailable) _biometricUserId = last;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _biometricAvailable = false);
+    }
+  }
+
+  Future<void> _biometricLogin() async {
+    final auth = AuthScope.of(context);
+    final wallet = WalletScope.read(context);
+    final loginName = _loginCtrl.text.trim();
+    final useId = _biometricUserId ?? (loginName.isEmpty ? null : loginName);
+    try {
+      setState(() => _loading = true);
+      final res = await BiometricFace.authenticate(userId: useId);
+      if (res == null) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия отменена или не удалась')));
+        return;
+      }
+      if (res is Map && res['secret'] is String) {
+        final secret = res['secret'] as String;
+        final user = await auth.login(login: loginName, password: secret);
+        await wallet.unlockSecureWallets(userId: user.id, password: secret);
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home', arguments: HomeRouteArgs(userId: user.id));
+      } else {
+        final restored = await auth.tryRestoreSession();
+        if (restored != null) {
+          if (!mounted) return;
+          Navigator.pushReplacementNamed(context, '/home', arguments: HomeRouteArgs(userId: restored.id));
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия прошла, но сессия не восстановлена')));
+        }
+      }
+    } on PlatformException catch (e) {
+      if (e.code == 'no_wrapped_dek') {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия не включена для этого пользователя')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: ${e.message ?? e.code}')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: $e')));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   @override
@@ -212,6 +276,13 @@ class _LoginPageState extends State<LoginPage> {
                                   : const Text('Войти'),
                             ),
                             const SizedBox(height: 12),
+                            if (_biometricAvailable)
+                              OutlinedButton.icon(
+                                onPressed: _loading ? null : _biometricLogin,
+                                icon: const Icon(Icons.fingerprint),
+                                label: const Text('Войти по биометрии'),
+                              ),
+                            const SizedBox(height: 8),
                             Wrap(
                               alignment: WrapAlignment.center,
                               spacing: 6,
