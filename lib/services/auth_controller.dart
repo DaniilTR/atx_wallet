@@ -50,6 +50,11 @@ class AuthController {
     return null;
   }
 
+  /// Найти внутренний `id` пользователя по `username`.
+  Future<String?> findUserIdByUsername(String username) async {
+    return await _auth.findUserId(username);
+  }
+
   Future<void> logout() async {
     await _auth.logout();
     _user = null;

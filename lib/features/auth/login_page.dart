@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../providers/wallet_scope.dart';
@@ -25,12 +26,35 @@ class _LoginPageState extends State<LoginPage> {
   bool _checkingSession = true;
   bool _biometricAvailable = false;
   String? _biometricUserId;
+  Timer? _bioDebounce;
+  late final _LoginLifecycleObserver _lifecycleObserver;
 
   @override
   void initState() {
     super.initState();
+    _lifecycleObserver = _LoginLifecycleObserver(onResumed: _scheduleCheckBiometrics);
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
+    _loginCtrl.addListener(_scheduleCheckBiometrics);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _attemptPrefillLogin();
+      _checkBiometrics();
+    });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    _bioDebounce?.cancel();
+    _loginCtrl.removeListener(_scheduleCheckBiometrics);
+    _loginCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  void _scheduleCheckBiometrics() {
+    _bioDebounce?.cancel();
+    _bioDebounce = Timer(const Duration(milliseconds: 180), () {
+      if (!mounted) return;
       _checkBiometrics();
     });
   }
@@ -38,12 +62,24 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _checkBiometrics() async {
     try {
       final avail = await BiometricFace.isAvailable();
-      String? last = await BiometricPrefs.getLastUser();
-      final enabled = last != null ? await BiometricPrefs.isEnabled(last) : false;
+      final loginName = _loginCtrl.text.trim();
+
+      final auth = AuthScope.of(context);
+
+      // Button visibility should not depend on per-user biometric setup.
+      // We still try to resolve the best userId to pass to native code.
+      String? resolvedId;
+      if (loginName.isNotEmpty) {
+        resolvedId = await BiometricPrefs.getUserIdForUsername(loginName) ??
+            await auth.findUserIdByUsername(loginName);
+      }
+      final last = await BiometricPrefs.getLastUser();
       if (!mounted) return;
       setState(() {
-        _biometricAvailable = avail && enabled;
-        if (_biometricAvailable) _biometricUserId = last;
+        _biometricAvailable = avail;
+        _biometricUserId = avail
+            ? (resolvedId ?? (loginName.isNotEmpty ? loginName : last))
+            : null;
       });
     } catch (_) {
       if (!mounted) return;
@@ -55,10 +91,38 @@ class _LoginPageState extends State<LoginPage> {
     final auth = AuthScope.of(context);
     final wallet = WalletScope.read(context);
     final loginName = _loginCtrl.text.trim();
-    final useId = _biometricUserId ?? (loginName.isEmpty ? null : loginName);
+
+    final mappedUserId = loginName.isEmpty
+      ? null
+      : await BiometricPrefs.getUserIdForUsername(loginName);
+    final resolvedFromAuth = loginName.isEmpty
+      ? null
+      : await auth.findUserIdByUsername(loginName);
+
+    final lastUserId = await BiometricPrefs.getLastUser();
+    final primaryUserId = mappedUserId ??
+      resolvedFromAuth ??
+      _biometricUserId ??
+      (loginName.isEmpty ? lastUserId : loginName);
+
     try {
       setState(() => _loading = true);
-      final res = await BiometricFace.authenticate(userId: useId);
+
+      dynamic res;
+      try {
+        res = await BiometricFace.authenticate(userId: primaryUserId);
+      } on PlatformException catch (e) {
+        if (e.code == 'no_wrapped_dek' &&
+            lastUserId != null &&
+            lastUserId.isNotEmpty &&
+            lastUserId != primaryUserId) {
+          // If userId resolution failed (e.g., username passed), try last known userId.
+          res = await BiometricFace.authenticate(userId: lastUserId);
+        } else {
+          rethrow;
+        }
+      }
+
       if (res == null) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия отменена или не удалась')));
         return;
@@ -89,13 +153,6 @@ class _LoginPageState extends State<LoginPage> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
-  }
-
-  @override
-  void dispose() {
-    _loginCtrl.dispose();
-    _passwordCtrl.dispose();
-    super.dispose();
   }
 
   Future<void> _attemptPrefillLogin() async {
@@ -311,6 +368,19 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+  }
+}
+
+class _LoginLifecycleObserver with WidgetsBindingObserver {
+  _LoginLifecycleObserver({required this.onResumed});
+
+  final void Function() onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResumed();
+    }
   }
 }
 

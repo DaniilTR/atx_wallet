@@ -240,6 +240,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final uname = auth.currentUser?.username;
                     if (uname != null && uname.isNotEmpty) {
                       await BiometricPrefs.setEnabled(uname, true);
+                      await BiometricPrefs.setUserIdForUsername(
+                        username: uname,
+                        userId: userId!,
+                      );
                     }
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Биометрия успешно включена')),

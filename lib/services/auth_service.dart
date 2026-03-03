@@ -167,6 +167,14 @@ class AuthService {
     _currentUser = null;
     await _persistCurrentUser();
   }
+
+  /// Найти внутренний `id` пользователя по `username`.
+  /// Важно: ключи SharedPreferences в Dart без префикса `flutter.`.
+  Future<String?> findUserId(String username) async {
+    await _ensureLoaded();
+    final record = _users[username];
+    return record?.user.id;
+  }
 }
 
 class _UserRecord {

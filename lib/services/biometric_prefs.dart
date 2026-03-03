@@ -8,6 +8,9 @@ class BiometricPrefs {
 
   static const _lastKey = 'biometric_last_user';
 
+  static String _userIdForUsernameKey(String username) =>
+      'biometric_userid_for_username_$username';
+
   /// Проверить, включена ли биометрия для userId или username
   static Future<bool> isEnabled(String id) async {
     final v = await _storage.read(key: _key(id));
@@ -35,5 +38,27 @@ class BiometricPrefs {
 
   static Future<void> clearLastUser() async {
     await _storage.delete(key: _lastKey);
+  }
+
+  /// Persist mapping from username -> userId (so Login can resolve correct userId).
+  static Future<void> setUserIdForUsername({
+    required String username,
+    required String userId,
+  }) async {
+    if (username.trim().isEmpty) return;
+    await _storage.write(
+      key: _userIdForUsernameKey(username.trim()),
+      value: userId,
+    );
+  }
+
+  static Future<String?> getUserIdForUsername(String username) async {
+    if (username.trim().isEmpty) return null;
+    return await _storage.read(key: _userIdForUsernameKey(username.trim()));
+  }
+
+  static Future<void> clearUserIdForUsername(String username) async {
+    if (username.trim().isEmpty) return;
+    await _storage.delete(key: _userIdForUsernameKey(username.trim()));
   }
 }
