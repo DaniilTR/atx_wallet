@@ -1,7 +1,9 @@
 package com.example.atx_wallet
 
 import android.content.Context
+import android.content.pm.PackageManager
 import android.util.Base64
+import android.os.Build
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
@@ -247,25 +249,84 @@ class MainActivity : FlutterFragmentActivity() {
 		val ks = KeyStore.getInstance("AndroidKeyStore")
 		ks.load(null)
 		if (!ks.containsAlias(alias)) {
-			val kgen = KeyGenerator.getInstance("AES", "AndroidKeyStore")
+			generateBiometricKeyWithFallback(alias)
+		}
+	}
+
+	private fun generateBiometricKeyWithFallback(alias: String) {
+		val kgen = KeyGenerator.getInstance("AES", "AndroidKeyStore")
+		val shouldTryStrongBox = deviceSupportsStrongBox()
+
+		fun buildSpec(useStrongBox: Boolean): android.security.keystore.KeyGenParameterSpec {
 			val specBuilder = android.security.keystore.KeyGenParameterSpec.Builder(
 				alias,
 				android.security.keystore.KeyProperties.PURPOSE_ENCRYPT or android.security.keystore.KeyProperties.PURPOSE_DECRYPT
-					).setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
+			)
+				.setBlockModes(android.security.keystore.KeyProperties.BLOCK_MODE_GCM)
 				.setEncryptionPaddings(android.security.keystore.KeyProperties.ENCRYPTION_PADDING_NONE)
-					.setUserAuthenticationRequired(true)
-						.setUserAuthenticationValidityDurationSeconds(0)
-						.setInvalidatedByBiometricEnrollment(true)
+				.setUserAuthenticationRequired(true)
+				.setUserAuthenticationValidityDurationSeconds(0)
+				.setInvalidatedByBiometricEnrollment(true)
 
-					try {
-						specBuilder.setIsStrongBoxBacked(true)
-					} catch (sb: Exception) {
-						// not available or not supported on this device/SDK - ignore
-					}
-
-			kgen.init(specBuilder.build())
-			kgen.generateKey()
+			if (useStrongBox && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+				// Even if the setter exists, key generation can still fail on some devices.
+				// We'll catch and retry without StrongBox.
+				specBuilder.setIsStrongBoxBacked(true)
+			}
+			return specBuilder.build()
 		}
+
+		var triedStrongBox = false
+		try {
+			if (shouldTryStrongBox) {
+				triedStrongBox = true
+				kgen.init(buildSpec(true))
+				kgen.generateKey()
+				return
+			}
+			kgen.init(buildSpec(false))
+			kgen.generateKey()
+		} catch (e: Exception) {
+			if (triedStrongBox && isStrongBoxUnavailable(e)) {
+				// Retry without StrongBox.
+				val ks = KeyStore.getInstance("AndroidKeyStore")
+				ks.load(null)
+				if (ks.containsAlias(alias)) {
+					try {
+						ks.deleteEntry(alias)
+					} catch (_: Exception) {
+						// ignore
+					}
+				}
+
+				val fallbackGen = KeyGenerator.getInstance("AES", "AndroidKeyStore")
+				fallbackGen.init(buildSpec(false))
+				fallbackGen.generateKey()
+				return
+			}
+			throw e
+		}
+	}
+
+	private fun deviceSupportsStrongBox(): Boolean {
+		return Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+			packageManager.hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE)
+	}
+
+	private fun isStrongBoxUnavailable(e: Throwable): Boolean {
+		var t: Throwable? = e
+		while (t != null) {
+			val name = t.javaClass.name
+			if (name.contains("StrongBoxUnavailable", ignoreCase = true) ||
+				name.contains("StrongBoxUnavailabl", ignoreCase = true) ||
+				(t.message?.contains("StrongBox", ignoreCase = true) == true &&
+					t.message?.contains("Unavailable", ignoreCase = true) == true)
+			) {
+				return true
+			}
+			t = t.cause
+		}
+		return false
 	}
 
 	private fun getSecretKey(alias: String): SecretKey {
