@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:bip32/bip32.dart' as bip32;
@@ -415,6 +416,83 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       key: key,
       entry: activeEntry,
     );
+    if (!bip39.validateMnemonic(mnemonic.trim())) {
+      throw StateError('Повреждённое хранилище: seed невалиден');
+    }
+    final pk = await getPrivateKey(mnemonic);
+    _setPrivateKeyInMemory(pk);
+    _updateDerivedAddressesFromMnemonic(mnemonic);
+
+    final activeProfile = profiles.firstWhere(
+      (p) => p.walletId == activeEntry.walletId,
+      orElse: () => profiles.first,
+    );
+    _setActiveProfile(activeProfile);
+    await refreshBalances(silent: true);
+    await _loadHistoryFromStorage(silent: true);
+    notifyListeners();
+  }
+
+  /// Деривировать ключ vault из пароля и KDF-параметров бандла.
+  ///
+  /// Используется для биометрии: вместо хранения/возврата пароля мы сохраняем
+  /// этот ключ (в зашифрованном виде на стороне Android).
+  Future<String> deriveBiometricVaultKeyB64({
+    required String userId,
+    required String password,
+  }) async {
+    SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
+
+    final bundle = await _secureVault.loadBundle(userId);
+    if (bundle == null || bundle.wallets.isEmpty) {
+      throw StateError('Кошелёк не найден. Создайте новый.');
+    }
+
+    final key = await _secureVault.deriveBundleKey(bundle: bundle, password: password);
+    final bytes = await key.extractBytes();
+    return base64Encode(bytes);
+  }
+
+  /// Разблокировать secure-кошельки напрямую ключом vault.
+  ///
+  /// Это используется для биометрического входа (ключ приходит из Android после
+  /// успешной биометрии). Пароль пользователя не требуется.
+  Future<void> unlockSecureWalletsWithKey({
+    required String userId,
+    required SecretKey key,
+  }) async {
+    SecureWalletVault.assertWebPolicy(devAllowed: kEnableDevWalletStorage);
+
+    final bundle = await _secureVault.loadBundle(userId);
+    if (bundle == null || bundle.wallets.isEmpty) {
+      throw StateError('Кошелёк не найден. Создайте новый.');
+    }
+
+    _secureKey = key;
+    _secureBundle = bundle;
+    _activeUserId = userId;
+
+    final profiles = bundle.wallets
+        .where((e) => e.userId.isNotEmpty && e.walletId.isNotEmpty)
+        .map(
+          (e) => WalletProfile(
+            walletId: e.walletId,
+            name: e.name,
+            userId: e.userId,
+            addressHex: e.addressHex,
+          ),
+        )
+        .toList(growable: false);
+    _wallets = List.unmodifiable(profiles);
+
+    final activeId = bundle.activeWalletId.isNotEmpty
+        ? bundle.activeWalletId
+        : (bundle.wallets.isNotEmpty ? bundle.wallets.first.walletId : '');
+    final activeEntry = bundle.wallets.firstWhere(
+      (w) => w.walletId == activeId,
+      orElse: () => bundle.wallets.first,
+    );
+    final mnemonic = await _secureVault.decryptMnemonic(key: key, entry: activeEntry);
     if (!bip39.validateMnemonic(mnemonic.trim())) {
       throw StateError('Повреждённое хранилище: seed невалиден');
     }

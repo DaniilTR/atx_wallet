@@ -218,6 +218,33 @@ class AuthService {
     _currentUser = null;
     await _persistCurrentUser();
   }
+
+  /// Установить текущего пользователя без проверки пароля.
+  ///
+  /// Используется после успешной биометрии, когда доступ к локальному vault уже
+  /// подтверждён устройством.
+  Future<AuthUser?> loginWithBiometrics(String username) async {
+    await _ensureLoaded();
+    final record = _users[username];
+    if (record == null) return null;
+    _currentUser = record.user;
+    await _persistCurrentUser();
+    return record.user;
+  }
+
+  /// Найти внутренний `id` пользователя по `username`.
+  /// Важно: ключи SharedPreferences в Dart без префикса `flutter.`.
+  Future<String?> findUserId(String username) async {
+    await _ensureLoaded();
+    final record = _users[username];
+    return record?.user.id;
+  }
+
+  /// Есть ли хоть один локальный пользователь на устройстве.
+  Future<bool> hasAnyUsers() async {
+    await _ensureLoaded();
+    return _users.isNotEmpty;
+  }
 }
 
 class _UserRecord {

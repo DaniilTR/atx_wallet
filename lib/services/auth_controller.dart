@@ -37,6 +37,14 @@ class AuthController extends ChangeNotifier {
     return user;
   }
 
+  /// Локальный "логин" без пароля после успешной биометрии.
+  Future<AuthUser?> loginWithBiometrics({required String username}) async {
+    final user = await _auth.loginWithBiometrics(username);
+    _user = user;
+    notifyListeners();
+    return user;
+  }
+
   Future<AuthUser?> tryRestoreSession() async {
     if (_user != null) return _user;
     try {
@@ -59,6 +67,16 @@ class AuthController extends ChangeNotifier {
     _user = updated;
     notifyListeners();
     return updated;
+  }
+
+  /// Найти внутренний `id` пользователя по `username`.
+  Future<String?> findUserIdByUsername(String username) async {
+    return await _auth.findUserId(username);
+  }
+
+  /// Есть ли хоть один локальный пользователь.
+  Future<bool> hasAnyUsers() async {
+    return await _auth.hasAnyUsers();
   }
 
   Future<void> logout() async {

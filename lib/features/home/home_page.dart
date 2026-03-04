@@ -465,11 +465,16 @@ class _BalanceCard extends StatelessWidget {
                           letterSpacing: .3,
                         ),
                       ),
-                      const Spacer(),
-                      _GrowthPill(
-                        value: loading
-                            ? 'Обновляем'
-                            : 'Обновлено: $updatedLabel',
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _GrowthPill(
+                            value: loading
+                                ? 'Обновляем'
+                                : 'Обновлено: $updatedLabel',
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -991,11 +996,16 @@ class _GrowthPill extends StatelessWidget {
         children: [
           Icon(Icons.trending_up, size: 16, color: iconColor),
           const SizedBox(width: 4),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w700,
-              color: textColor,
+          Expanded(
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              softWrap: false,
+              style: GoogleFonts.inter(
+                fontWeight: FontWeight.w700,
+                color: textColor,
+              ),
             ),
           ),
         ],
