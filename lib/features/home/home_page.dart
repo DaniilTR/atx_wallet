@@ -448,21 +448,10 @@ class _BalanceCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 24),
                   child: Row(
                     children: [
-                      Text(
-                        'Общий баланс',
-                        style: GoogleFonts.inter(
-                          color: isDark
-                              ? const Color(0xFFE8EEFF)
-                              : const Color(0xFF0F172A),
-                          fontSize: 13,
-                          letterSpacing: .3,
-                        ),
-                      ),
+                      Text('Общий баланс'),
                       const Spacer(),
                       _GrowthPill(
-                        value: loading
-                            ? 'Обновляем'
-                            : 'Обновлено: $updatedLabel',
+                        value: loading ? 'Обновляем' : ' $updatedLabel',
                       ),
                     ],
                   ),
@@ -476,6 +465,7 @@ class _BalanceCard extends StatelessWidget {
                       Text(
                         totalUsd != null
                             ? '\$${_formatNumber(totalUsd, precision: 2)}'
+                                  ' USD '
                             : '—',
                         style: GoogleFonts.inter(
                           color: primaryTextColor,
@@ -484,15 +474,6 @@ class _BalanceCard extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        totalUsd == null
-                            ? 'Без оценки в USD'
-                            : 'USD оценка по курсу USDT',
-                        style: GoogleFonts.inter(
-                          color: mutedTextColor,
-                          fontSize: 13,
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -965,21 +946,16 @@ class _GrowthPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark
-        ? Colors.white.withOpacity(0.85)
-        : Colors.black.withOpacity(0.06);
+
     final textColor = isDark
-        ? const Color(0xFF14191E)
-        : const Color(0xFF0F172A);
+        ? const Color.fromARGB(178, 255, 255, 255)
+        : const Color.fromARGB(195, 0, 0, 0);
     final iconColor = isDark
-        ? const Color(0xFF16273E)
-        : const Color(0xFF0F172A);
+        ? const Color.fromARGB(211, 255, 255, 255)
+        : const Color.fromARGB(197, 0, 0, 0);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(999),
-      ),
+      decoration: BoxDecoration(borderRadius: BorderRadius.circular(999)),
       child: Row(
         children: [
           Icon(Icons.trending_up, size: 16, color: iconColor),
