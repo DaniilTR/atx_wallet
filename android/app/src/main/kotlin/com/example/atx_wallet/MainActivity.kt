@@ -126,6 +126,13 @@ class MainActivity : FlutterFragmentActivity() {
 				}
 
 				override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+					// Treat explicit user cancellation / negative button as a normal cancellation.
+					if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
+						errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+						errorCode == BiometricPrompt.ERROR_CANCELED) {
+						result.success(null)
+						return
+					}
 					result.error("auth_error", errString.toString(), null)
 				}
 
@@ -216,6 +223,13 @@ class MainActivity : FlutterFragmentActivity() {
 				}
 
 				override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+					// Treat explicit user cancellation / negative button as a normal cancellation.
+					if (errorCode == BiometricPrompt.ERROR_NEGATIVE_BUTTON ||
+						errorCode == BiometricPrompt.ERROR_USER_CANCELED ||
+						errorCode == BiometricPrompt.ERROR_CANCELED) {
+						result.success(null)
+						return
+					}
 					result.error("auth_error", errString.toString(), null)
 				}
 

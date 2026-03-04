@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:cryptography/cryptography.dart' show SecretKey;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../providers/wallet_scope.dart';
@@ -37,19 +38,37 @@ class _LoginPageState extends State<LoginPage> {
   @override
   void initState() {
     super.initState();
-    _lifecycleObserver = _LoginLifecycleObserver(onResumed: _scheduleCheckBiometrics);
+    _lifecycleObserver = _LoginLifecycleObserver(
+      onResumed: _onAppResumed,
+      onBackgrounded: _onAppBackgrounded,
+    );
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
     _loginCtrl.addListener(() {
       final current = _loginCtrl.text.trim();
       if (_lastAutoBioLogin != null && current != _lastAutoBioLogin) {
         _lastAutoBioLogin = null;
       }
-      _scheduleCheckBiometrics();
+      _scheduleCheckBiometrics(allowAutoPrompt: false);
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _attemptPrefillLogin();
-      _checkBiometrics();
+      _scheduleCheckBiometrics(allowAutoPrompt: true);
     });
+  }
+
+  void _onAppBackgrounded() {
+    _autoBioInFlight = false;
+    _lastAutoBioLogin = null;
+    if (kDebugMode) {
+      debugPrint('[LoginPage] app backgrounded: reset auto-bio guard');
+    }
+  }
+
+  void _onAppResumed() {
+    if (kDebugMode) {
+      debugPrint('[LoginPage] app resumed');
+    }
+    _scheduleCheckBiometrics(allowAutoPrompt: true);
   }
 
   @override
@@ -61,15 +80,16 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
-  void _scheduleCheckBiometrics() {
+  void _scheduleCheckBiometrics({required bool allowAutoPrompt}) {
     _bioDebounce?.cancel();
+    final capturedAllowAutoPrompt = allowAutoPrompt;
     _bioDebounce = Timer(const Duration(milliseconds: 180), () {
       if (!mounted) return;
-      _checkBiometrics();
+      _checkBiometrics(allowAutoPrompt: capturedAllowAutoPrompt);
     });
   }
 
-  Future<void> _checkBiometrics() async {
+  Future<void> _checkBiometrics({required bool allowAutoPrompt}) async {
     try {
       final avail = await BiometricFace.isAvailable();
       final loginName = _loginCtrl.text.trim();
@@ -85,10 +105,17 @@ class _LoginPageState extends State<LoginPage> {
       }
       final last = await BiometricPrefs.getLastUser();
 
-      final shouldAutoPrompt = avail &&
+        final shouldAutoPrompt = allowAutoPrompt &&
+          avail &&
           loginName.isNotEmpty &&
-          resolvedId != null &&
-          await BiometricPrefs.isEnabled(resolvedId);
+          resolvedId != null;
+
+      if (kDebugMode) {
+        debugPrint(
+          '[LoginPage] checkBio allowAuto=$allowAutoPrompt avail=$avail login="$loginName" resolvedId=$resolvedId '
+          'checkingSession=$_checkingSession loading=$_loading lastAuto=$_lastAutoBioLogin',
+        );
+      }
 
       if (!mounted) return;
       setState(() {
@@ -120,19 +147,16 @@ class _LoginPageState extends State<LoginPage> {
     _autoBioInFlight = true;
     _lastAutoBioLogin = loginName;
     try {
-      // Double-check (in case state changed after debounce).
-      final enabled = await BiometricPrefs.isEnabled(userId);
-      if (!enabled) return;
       if (!mounted) return;
       if (_loginCtrl.text.trim() != loginName) return;
 
-      await _biometricLogin();
+      await _biometricLogin(auto: true);
     } finally {
       _autoBioInFlight = false;
     }
   }
 
-  Future<void> _biometricLogin() async {
+  Future<void> _biometricLogin({bool auto = false}) async {
     final auth = AuthScope.of(context);
     final wallet = WalletScope.read(context);
     final loginName = _loginCtrl.text.trim();
@@ -169,7 +193,7 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       if (res == null) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия отменена или не удалась')));
+        // User cancelled or biometric didn't complete: treat as a normal outcome.
         return;
       }
 
@@ -220,11 +244,17 @@ class _LoginPageState extends State<LoginPage> {
       );
     } on PlatformException catch (e) {
       if (e.code == 'biometric_migration_required') {
+        // Migration is actionable even for auto-trigger.
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Биометрию нужно включить заново в настройках')),
         );
       } else if (e.code == 'no_wrapped_dek') {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия не включена для этого пользователя')));
+        // If auto-triggered and biometrics aren't enabled for this user, stay silent.
+        if (!auto) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Биометрия не включена для этого пользователя')),
+          );
+        }
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: ${e.message ?? e.code}')));
       }
@@ -242,15 +272,18 @@ class _LoginPageState extends State<LoginPage> {
       if (!mounted) return;
       if (user == null) {
         setState(() => _checkingSession = false);
+        _scheduleCheckBiometrics(allowAutoPrompt: true);
         return;
       }
       // Безопасный режим: сессия пользователя может быть восстановлена,
       // но кошелёк остаётся заблокирован до ввода пароля.
       _loginCtrl.text = user.username;
       setState(() => _checkingSession = false);
+      _scheduleCheckBiometrics(allowAutoPrompt: true);
     } catch (_) {
       if (!mounted) return;
       setState(() => _checkingSession = false);
+      _scheduleCheckBiometrics(allowAutoPrompt: true);
     }
   }
 
@@ -452,14 +485,18 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _LoginLifecycleObserver with WidgetsBindingObserver {
-  _LoginLifecycleObserver({required this.onResumed});
+  _LoginLifecycleObserver({required this.onResumed, required this.onBackgrounded});
 
   final void Function() onResumed;
+  final void Function() onBackgrounded;
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       onResumed();
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      onBackgrounded();
     }
   }
 }
