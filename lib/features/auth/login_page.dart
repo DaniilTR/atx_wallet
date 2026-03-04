@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:convert';
+
+import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../providers/wallet_scope.dart';
@@ -27,6 +30,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _biometricAvailable = false;
   String? _biometricUserId;
   Timer? _bioDebounce;
+  bool _autoBioInFlight = false;
+  String? _lastAutoBioLogin;
   late final _LoginLifecycleObserver _lifecycleObserver;
 
   @override
@@ -34,7 +39,13 @@ class _LoginPageState extends State<LoginPage> {
     super.initState();
     _lifecycleObserver = _LoginLifecycleObserver(onResumed: _scheduleCheckBiometrics);
     WidgetsBinding.instance.addObserver(_lifecycleObserver);
-    _loginCtrl.addListener(_scheduleCheckBiometrics);
+    _loginCtrl.addListener(() {
+      final current = _loginCtrl.text.trim();
+      if (_lastAutoBioLogin != null && current != _lastAutoBioLogin) {
+        _lastAutoBioLogin = null;
+      }
+      _scheduleCheckBiometrics();
+    });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _attemptPrefillLogin();
       _checkBiometrics();
@@ -45,7 +56,6 @@ class _LoginPageState extends State<LoginPage> {
   void dispose() {
     WidgetsBinding.instance.removeObserver(_lifecycleObserver);
     _bioDebounce?.cancel();
-    _loginCtrl.removeListener(_scheduleCheckBiometrics);
     _loginCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
@@ -74,6 +84,12 @@ class _LoginPageState extends State<LoginPage> {
             await auth.findUserIdByUsername(loginName);
       }
       final last = await BiometricPrefs.getLastUser();
+
+      final shouldAutoPrompt = avail &&
+          loginName.isNotEmpty &&
+          resolvedId != null &&
+          await BiometricPrefs.isEnabled(resolvedId);
+
       if (!mounted) return;
       setState(() {
         _biometricAvailable = avail;
@@ -81,9 +97,38 @@ class _LoginPageState extends State<LoginPage> {
             ? (resolvedId ?? (loginName.isNotEmpty ? loginName : last))
             : null;
       });
+
+      if (shouldAutoPrompt && resolvedId != null) {
+        await _maybeAutoBiometricLogin(loginName: loginName, userId: resolvedId);
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _biometricAvailable = false);
+    }
+  }
+
+  Future<void> _maybeAutoBiometricLogin({
+    required String loginName,
+    required String userId,
+  }) async {
+    if (!mounted) return;
+    if (_autoBioInFlight || _loading || _checkingSession) return;
+    if (!_biometricAvailable) return;
+    if (_loginCtrl.text.trim() != loginName) return;
+    if (_lastAutoBioLogin == loginName) return;
+
+    _autoBioInFlight = true;
+    _lastAutoBioLogin = loginName;
+    try {
+      // Double-check (in case state changed after debounce).
+      final enabled = await BiometricPrefs.isEnabled(userId);
+      if (!enabled) return;
+      if (!mounted) return;
+      if (_loginCtrl.text.trim() != loginName) return;
+
+      await _biometricLogin();
+    } finally {
+      _autoBioInFlight = false;
     }
   }
 
@@ -127,23 +172,58 @@ class _LoginPageState extends State<LoginPage> {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия отменена или не удалась')));
         return;
       }
-      if (res is Map && res['secret'] is String) {
-        final secret = res['secret'] as String;
-        final user = await auth.login(login: loginName, password: secret);
-        await wallet.unlockSecureWallets(userId: user.id, password: secret);
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, '/home', arguments: HomeRouteArgs(userId: user.id));
-      } else {
-        final restored = await auth.tryRestoreSession();
-        if (restored != null) {
-          if (!mounted) return;
-          Navigator.pushReplacementNamed(context, '/home', arguments: HomeRouteArgs(userId: restored.id));
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия прошла, но сессия не восстановлена')));
+
+      if (res is Map && (res['vaultKeyB64'] is String || res['secretB64'] is String)) {
+        final vaultKeyB64 = (res['vaultKeyB64'] as String?) ?? (res['secretB64'] as String?);
+        if (vaultKeyB64 == null || vaultKeyB64.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Биометрия не вернула ключ разблокировки')),
+          );
+          return;
         }
+
+        final vaultKey = SecretKey(base64Decode(vaultKeyB64));
+
+        var usernameToUse = loginName;
+        if (usernameToUse.isEmpty) {
+          final restored = await auth.tryRestoreSession();
+          if (restored == null) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Введите никнейм для входа по биометрии')),
+            );
+            return;
+          }
+          usernameToUse = restored.username;
+          _loginCtrl.text = usernameToUse;
+        }
+
+        final user = await auth.loginWithBiometrics(username: usernameToUse);
+        if (user == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Пользователь не найден на устройстве')),
+          );
+          return;
+        }
+
+        await wallet.unlockSecureWalletsWithKey(userId: user.id, key: vaultKey);
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: HomeRouteArgs(userId: user.id),
+        );
+        return;
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Биометрия прошла, но ключ не получен. Включите быстрый вход заново.')),
+      );
     } on PlatformException catch (e) {
-      if (e.code == 'no_wrapped_dek') {
+      if (e.code == 'biometric_migration_required') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Биометрию нужно включить заново в настройках')),
+        );
+      } else if (e.code == 'no_wrapped_dek') {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Биометрия не включена для этого пользователя')));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: ${e.message ?? e.code}')));

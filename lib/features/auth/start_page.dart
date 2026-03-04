@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../services/auth_scope.dart';
+
 class StartPage extends StatefulWidget {
   const StartPage({super.key});
 
@@ -8,6 +10,20 @@ class StartPage extends StatefulWidget {
 }
 
 class _StartPageState extends State<StartPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final auth = AuthScope.of(context);
+      final hasUsers = await auth.hasAnyUsers();
+      if (!mounted) return;
+      if (hasUsers) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
