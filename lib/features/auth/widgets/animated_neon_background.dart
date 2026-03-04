@@ -42,8 +42,8 @@ class _AnimatedNeonBackgroundState extends State<AnimatedNeonBackground>
               // Лёгкий тёмный вуаль, чтобы контент читался
               Container(
                 color: widget.isDark
-                    ? Colors.black.withOpacity(0.15)
-                    : Colors.white.withOpacity(0.65),
+                    ? Colors.black.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.65),
               ),
             ],
           ),

@@ -180,10 +180,10 @@ class _SendFlowPageState extends State<_SendFlowPage> {
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final infoSurface = isDark
         ? const Color(0x331B2430)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final infoBorder = isDark
         ? const Color(0x113D7CFF)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
 
     await showModalBottomSheet<void>(
       context: context,
@@ -361,11 +361,11 @@ class _SendFlowPageState extends State<_SendFlowPage> {
         : const Color(0xFF475569);
     final hintColor = isDark
         ? const Color(0xFF6A7398)
-        : Colors.black.withOpacity(0.45);
+        : Colors.black.withValues(alpha: 0.45);
     final fieldFill = isDark ? const Color(0xFF14191E) : Colors.white;
     final borderTint = isDark
-        ? Colors.white.withOpacity(0.22)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.22)
+        : Colors.black.withValues(alpha: 0.08);
     final cs = theme.colorScheme;
 
     return SafeArea(
@@ -380,7 +380,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: (_tokenColors[token.symbol] ?? cs.primary).withOpacity(
+                  color: (_tokenColors[token.symbol] ?? cs.primary).withValues(alpha: 
                     0.22,
                   ),
                   shape: BoxShape.circle,
@@ -436,8 +436,8 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                   suffixIcon: Icon(
                     Icons.bookmark_border_rounded,
                     color: isDark
-                        ? Colors.white.withOpacity(0.55)
-                        : Colors.black.withOpacity(0.45),
+                        ? Colors.white.withValues(alpha: 0.55)
+                        : Colors.black.withValues(alpha: 0.45),
                   ),
                 ),
               ),
@@ -595,7 +595,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
               height: 64,
               decoration: BoxDecoration(
                 color: (_tokenColors[token.symbol] ?? const Color(0xFF7A5AF8))
-                    .withOpacity(0.22),
+                    .withValues(alpha: 0.22),
                 shape: BoxShape.circle,
               ),
               alignment: Alignment.center,
@@ -836,7 +836,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isDark
                             ? const Color(0xFF2A2F36)
-                            : Colors.black.withOpacity(0.05),
+                            : Colors.black.withValues(alpha: 0.05),
                         foregroundColor: primaryTextColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),

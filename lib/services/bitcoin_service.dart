@@ -131,7 +131,7 @@ class BitcoinService {
   }
 
   /// UTXO записи с blockstream: `GET /api/address/<address>/utxo`.
-  Future<List<_BtcUtxo>> fetchConfirmedUtxos(String address) async {
+  Future<List<BtcUtxo>> fetchConfirmedUtxos(String address) async {
     final uri = Uri.https('blockstream.info', '/api/address/$address/utxo');
     final res = await _httpClient.get(uri, headers: _jsonHeaders);
     if (res.statusCode != 200) {
@@ -143,7 +143,7 @@ class BitcoinService {
       throw StateError('Неожиданный формат ответа BTC-эксплорера');
     }
 
-    final utxos = <_BtcUtxo>[];
+    final utxos = <BtcUtxo>[];
     for (final item in decoded) {
       if (item is! Map<String, dynamic>) continue;
       final txid = item['txid']?.toString() ?? '';
@@ -158,7 +158,7 @@ class BitcoinService {
       if (vout is! int) continue;
       if (value is! int) continue;
       utxos.add(
-        _BtcUtxo(txid: txid, vout: vout, valueSats: BigInt.from(value)),
+        BtcUtxo(txid: txid, vout: vout, valueSats: BigInt.from(value)),
       );
     }
 
@@ -248,7 +248,7 @@ class BitcoinService {
       from,
     ).getScriptPubkey();
 
-    final selected = <_BtcUtxo>[];
+    final selected = <BtcUtxo>[];
     BigInt selectedTotal = BigInt.zero;
 
     // Подбираем UTXO так, чтобы хватило на amount + fee.
@@ -384,8 +384,8 @@ class BitcoinService {
   }
 }
 
-class _BtcUtxo {
-  _BtcUtxo({required this.txid, required this.vout, required this.valueSats});
+class BtcUtxo {
+  BtcUtxo({required this.txid, required this.vout, required this.valueSats});
 
   final String txid;
   final int vout;

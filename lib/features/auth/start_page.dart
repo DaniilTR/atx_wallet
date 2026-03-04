@@ -97,7 +97,7 @@ class _StartPageState extends State<StartPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.5),
+                      color: Colors.white.withValues(alpha: 0.5),
                       height: 1.5,
                     ),
                   ),

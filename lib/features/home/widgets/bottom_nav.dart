@@ -38,7 +38,7 @@ class BottomNav extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: isDark
                       ? const Color.fromARGB(20, 255, 255, 255)
-                      : Colors.white.withOpacity(0.72),
+                      : Colors.white.withValues(alpha: 0.72),
                 ),
               ),
             ),
@@ -96,7 +96,7 @@ class BottomNav extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: const Color(0xFF4D6CFF).withOpacity(.6),
+                      color: const Color(0xFF4D6CFF).withValues(alpha: .6),
                       blurRadius: 30,
                       spreadRadius: 4,
                     ),

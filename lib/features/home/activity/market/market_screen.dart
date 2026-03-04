@@ -224,7 +224,7 @@ class _MarketRow extends StatelessWidget {
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final surfaceColor = isDark
         ? const Color.fromARGB(20, 255, 255, 255)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final avatarBg = isDark ? const Color(0xFF151B2D) : Colors.white;
     final isNegative = coin.change24h < 0;
     return InkWell(

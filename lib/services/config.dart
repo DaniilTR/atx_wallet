@@ -1,6 +1,7 @@
 // lib/services/config.dart
-/// Глобальная конфигурация клиента.
-/// При необходимости переопределяйте через --dart-define.
+// Глобальная конфигурация клиента.
+// При необходимости переопределяйте через --dart-define.
+
 
 /// DEV storage для локального кошелька (по умолчанию включён, отключайте в релизе через --dart-define).
 const bool kEnableDevWalletStorage = bool.fromEnvironment(

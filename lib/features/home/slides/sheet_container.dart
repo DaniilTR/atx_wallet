@@ -16,13 +16,13 @@ class _SheetContainer extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark
         ? const Color(0xFF14191E)
-        : Colors.white.withOpacity(0.92);
+        : Colors.white.withValues(alpha: 0.92);
     final borderColor = isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
     final shadowColor = isDark
         ? const Color(0x66040A1A)
-        : Colors.black.withOpacity(0.12);
+        : Colors.black.withValues(alpha: 0.12);
     final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final subtitleColor = isDark
         ? const Color(0xFF8E99C0)

@@ -182,106 +182,130 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
-            onPressed: (wallet == null || userId == null) ? null : () async {
-              final controller = TextEditingController();
-              try {
-                final available = await BiometricFace.isAvailable();
-                if (!available) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Биометрия недоступна на этом устройстве')),
-                  );
-                  return;
-                }
+            onPressed: (wallet == null || userId == null)
+                ? null
+                : () async {
+                    final walletController = wallet;
+                    final activeUserId = userId;
 
-                final password = await showDialog<String>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (context) {
-                    return AlertDialog(
-                      title: const Text('Подтверждение для включения биометрии'),
-                      content: TextField(
-                        controller: controller,
-                        obscureText: true,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        decoration: const InputDecoration(labelText: 'Пароль'),
-                      ),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.of(context).pop(null),
-                          child: const Text('Отмена'),
-                        ),
-                        FilledButton(
-                          onPressed: () => Navigator.of(context).pop(controller.text),
-                          child: const Text('Включить'),
-                        ),
-                      ],
-                    );
-                  },
-                );
+                    final controller = TextEditingController();
+                    try {
+                      final available = await BiometricFace.isAvailable();
+                      if (!available) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Биометрия недоступна на этом устройстве',
+                            ),
+                          ),
+                        );
+                        return;
+                      }
 
-                final trimmed = password?.trim() ?? '';
-                if (trimmed.isEmpty) return;
-                if (!context.mounted) return;
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Запуск включения биометрии...')),
-                );
-
-                try {
-                  final uname = auth.currentUser?.username;
-                  if (uname == null || uname.isEmpty) {
-                    throw StateError('Пользователь не найден');
-                  }
-
-                  // Verify password against local auth (fast fail for typos).
-                  await auth.login(login: uname, password: trimmed);
-
-                  final vaultKeyB64 = await wallet!.deriveBiometricVaultKeyB64(
-                    userId: userId!,
-                    password: trimmed,
-                  );
-
-                  final res = await BiometricFace.enableFaceAuth(
-                    userId: userId!,
-                    vaultKeyB64: vaultKeyB64,
-                  );
-                  if (!context.mounted) return;
-                  if (res != null) {
-                    // Save a marker in secure prefs so login page can map to correct userId
-                    await BiometricPrefs.setEnabled(userId!, true);
-                    await BiometricPrefs.setLastUser(userId!);
-                    // also save by username to increase chance of matching (if username used at login)
-                    if (uname != null && uname.isNotEmpty) {
-                      await BiometricPrefs.setEnabled(uname, true);
-                      await BiometricPrefs.setUserIdForUsername(
-                        username: uname,
-                        userId: userId!,
+                      final password = await showDialog<String>(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: const Text(
+                              'Подтверждение для включения биометрии',
+                            ),
+                            content: TextField(
+                              controller: controller,
+                              obscureText: true,
+                              autocorrect: false,
+                              enableSuggestions: false,
+                              decoration: const InputDecoration(
+                                labelText: 'Пароль',
+                              ),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(null),
+                                child: const Text('Отмена'),
+                              ),
+                              FilledButton(
+                                onPressed: () =>
+                                    Navigator.of(context).pop(controller.text),
+                                child: const Text('Включить'),
+                              ),
+                            ],
+                          );
+                        },
                       );
+
+                      final trimmed = password?.trim() ?? '';
+                      if (trimmed.isEmpty) return;
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Запуск включения биометрии...'),
+                        ),
+                      );
+
+                      try {
+                        final uname = auth.currentUser?.username;
+                        if (uname == null || uname.isEmpty) {
+                          throw StateError('Пользователь не найден');
+                        }
+
+                        // Verify password against local auth (fast fail for typos).
+                        await auth.login(login: uname, password: trimmed);
+
+                        final vaultKeyB64 = await walletController
+                            .deriveBiometricVaultKeyB64(
+                              userId: activeUserId,
+                              password: trimmed,
+                            );
+
+                        final res = await BiometricFace.enableFaceAuth(
+                          userId: activeUserId,
+                          vaultKeyB64: vaultKeyB64,
+                        );
+                        if (!context.mounted) return;
+                        if (res != null) {
+                          // Save a marker in secure prefs so login page can map to correct userId
+                          await BiometricPrefs.setEnabled(activeUserId, true);
+                          await BiometricPrefs.setLastUser(activeUserId);
+                          // also save by username to increase chance of matching (if username used at login)
+                          if (uname.isNotEmpty) {
+                            await BiometricPrefs.setEnabled(uname, true);
+                            await BiometricPrefs.setUserIdForUsername(
+                              username: uname,
+                              userId: activeUserId,
+                            );
+                          }
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Биометрия успешно включена'),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Не удалось включить биометрию'),
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (!context.mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Ошибка при включении биометрии: $e'),
+                          ),
+                        );
+                      }
+                    } finally {
+                      try {
+                        FocusScope.of(context).unfocus();
+                      } catch (_) {}
+                      await Future.delayed(const Duration(milliseconds: 100));
+                      controller.dispose();
                     }
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Биометрия успешно включена')),
-                    );
-                  } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Не удалось включить биометрию')),
-                    );
-                  }
-                } catch (e) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Ошибка при включении биометрии: $e')),
-                  );
-                }
-              } finally {
-                try {
-                  FocusScope.of(context).unfocus();
-                } catch (_) {}
-                await Future.delayed(const Duration(milliseconds: 100));
-                controller.dispose();
-              }
-            },
+                  },
             icon: const Icon(Icons.fingerprint),
             label: const Text('включить быстрый вход по биометрии'),
           ),

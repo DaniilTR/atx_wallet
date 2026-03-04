@@ -383,8 +383,8 @@ class _BalanceCard extends StatelessWidget {
         : address!;
 
     final borderTint = isDark
-        ? Colors.white.withOpacity(0.22)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.22)
+        : Colors.black.withValues(alpha: 0.08);
 
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final mutedTextColor = isDark
@@ -397,18 +397,18 @@ class _BalanceCard extends StatelessWidget {
 
     final addressPanelBg = isDark
         ? const Color(0xFF3A3F52)
-        : Colors.white.withOpacity(0.72);
+        : Colors.white.withValues(alpha: 0.72);
     final addressPanelShadow = isDark
         ? const Color(0x33090F23)
-        : Colors.black.withOpacity(0.10);
+        : Colors.black.withValues(alpha: 0.10);
     final addressLabelColor = primaryTextColor;
     final addressValueColor = isDark ? const Color(0xFFD3DAED) : mutedTextColor;
     final copyBg = isDark
-        ? Colors.white.withOpacity(.08)
-        : Colors.black.withOpacity(.04);
+        ? Colors.white.withValues(alpha: .08)
+        : Colors.black.withValues(alpha: .04);
     final copyBorder = isDark
-        ? Colors.white.withOpacity(.2)
-        : Colors.black.withOpacity(.08);
+        ? Colors.white.withValues(alpha: .2)
+        : Colors.black.withValues(alpha: .08);
     final copyIconColor = primaryTextColor;
 
     return Align(
@@ -649,7 +649,7 @@ class _ActionButton extends StatelessWidget {
                 BoxShadow(
                   color: isDark
                       ? const Color(0x44090F25)
-                      : Colors.black.withOpacity(0.08),
+                      : Colors.black.withValues(alpha: 0.08),
                   blurRadius: 22,
                   offset: const Offset(0, 14),
                 ),
@@ -690,7 +690,7 @@ class _AssetTile extends StatelessWidget {
     final isDark = theme.brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final secondaryTextColor = isDark
-        ? Colors.white.withOpacity(0.85)
+        ? Colors.white.withValues(alpha: 0.85)
         : const Color(0xFF475569);
     final tertiaryTextColor = isDark
         ? const Color(0xFF9FB3D8)
@@ -725,7 +725,7 @@ class _AssetTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark
                 ? const Color.fromARGB(19, 255, 255, 255)
-                : const Color.fromARGB(255, 255, 255, 255).withOpacity(0.03),
+                : const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(18),
             boxShadow: isDark
                 ? const [
@@ -754,7 +754,7 @@ class _AssetTile extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [color, color.withOpacity(.45)],
+                    colors: [color, color.withValues(alpha: .45)],
                   ),
                   border: Border.all(
                     color: isDark
@@ -762,7 +762,7 @@ class _AssetTile extends StatelessWidget {
                         : const Color.fromARGB(20, 255, 255, 255),
                   ),
                   boxShadow: [
-                    BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
+                    BoxShadow(color: color.withValues(alpha: .45), blurRadius: 20),
                   ],
                 ),
                 child: const Icon(
@@ -930,7 +930,7 @@ class _NeonAvatar extends StatelessWidget {
         border: Border.all(
           color: isDark
               ? const Color(0xFFDADADA)
-              : Colors.black.withOpacity(0.12),
+              : Colors.black.withValues(alpha: 0.12),
           width: 2,
         ),
       ),
@@ -1008,7 +1008,7 @@ class _GlowCircle extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withOpacity(opacity), color.withOpacity(0.0)],
+            colors: [color.withValues(alpha: opacity), color.withValues(alpha: 0.0)],
           ),
         ),
       ),

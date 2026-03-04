@@ -104,13 +104,13 @@ class _WalletRow extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final surfaceColor = isDark
         ? const Color(0xFF14191E)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final borderColor = isDark
         ? const Color(0x113D7CFF)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
     final iconBorder = isDark
-        ? Colors.white.withOpacity(0.08)
-        : Colors.black.withOpacity(0.08);
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final mutedTextColor = isDark
         ? const Color(0xFF8E99C0)

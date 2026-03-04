@@ -5,9 +5,9 @@ import 'wallet_provider.dart';
 class WalletScope extends InheritedNotifier<WalletProvider> {
   const WalletScope({
     required WalletProvider controller,
-    required Widget child,
+    required super.child,
     super.key,
-  }) : super(notifier: controller, child: child);
+  }) : super(notifier: controller);
 
   static WalletProvider? maybeOf(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<WalletScope>();

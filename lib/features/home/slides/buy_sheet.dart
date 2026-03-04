@@ -8,10 +8,10 @@ class _BuySheet extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardBg = isDark
         ? const Color(0xFF14191E)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final borderColor = isDark
         ? const Color(0x22FFFFFF)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final mutedTextColor = isDark
         ? const Color(0xFF9CA9D4)

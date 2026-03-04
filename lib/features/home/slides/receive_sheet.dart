@@ -32,11 +32,11 @@ class _ReceiveSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(24),
               color: isDark
                   ? const Color(0xFF14191E)
-                  : Colors.black.withOpacity(0.03),
+                  : Colors.black.withValues(alpha: 0.03),
               border: Border.all(
                 color: isDark
                     ? const Color(0x33FFFFFF)
-                    : Colors.black.withOpacity(0.08),
+                    : Colors.black.withValues(alpha: 0.08),
               ),
             ),
             alignment: Alignment.center,

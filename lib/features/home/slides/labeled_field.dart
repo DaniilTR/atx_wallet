@@ -30,11 +30,11 @@ class _LabeledField extends StatelessWidget {
     final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final hintColor = isDark
         ? const Color(0xFF6A7398)
-        : Colors.black.withOpacity(0.45);
+        : Colors.black.withValues(alpha: 0.45);
     final fillColor = isDark ? const Color(0xFF14191E) : Colors.white;
     final borderColor = isDark
         ? const Color(0x332E9AFF)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

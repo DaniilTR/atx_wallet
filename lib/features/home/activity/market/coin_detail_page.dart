@@ -124,10 +124,10 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
         : const Color(0xFF475569);
     final surfaceColor = isDark
         ? const Color(0x151E2542)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final surfaceBorderColor = isDark
         ? const Color(0x221B2546)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
     final wallet = WalletScope.of(context);
     final balance = wallet.balanceForSymbol(widget.symbol);
     final priceText = _price == null
@@ -341,10 +341,10 @@ class _BalanceFrame extends StatelessWidget {
         : const Color(0xFF475569);
     final surfaceColor = isDark
         ? const Color(0x151E2542)
-        : Colors.black.withOpacity(0.03);
+        : Colors.black.withValues(alpha: 0.03);
     final surfaceBorderColor = isDark
         ? const Color(0x221B2546)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: surfaceColor,
@@ -561,7 +561,7 @@ class _TimeRangeButton extends StatelessWidget {
             backgroundColor: active
                 ? (isDark
                       ? const Color(0xFF1C233D)
-                      : Colors.black.withOpacity(0.05))
+                      : Colors.black.withValues(alpha: 0.05))
                 : Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -595,7 +595,7 @@ class _ActionButton extends StatelessWidget {
     final background = filled ? const Color(0xFF4DE8A4) : Colors.transparent;
     final borderColor = filled
         ? Colors.transparent
-        : (isDark ? const Color(0xFF2E3654) : Colors.black.withOpacity(0.12));
+        : (isDark ? const Color(0xFF2E3654) : Colors.black.withValues(alpha: 0.12));
     final textColor = filled ? const Color(0xFF0F172A) : primaryTextColor;
     return SizedBox(
       height: 48,

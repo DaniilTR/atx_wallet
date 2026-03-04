@@ -88,7 +88,7 @@ class WalletProfile {
   /// Идентификатор для привязки локальной истории.
   ///
   /// Делаем ключ стабильным и уникальным в пределах пользователя.
-  String get storageId => '${userId}__${walletId}';
+  String get storageId => '${userId}__$walletId';
 }
 
 enum AssetKind { evmNative, evmErc20, bitcoin }

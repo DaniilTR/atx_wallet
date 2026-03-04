@@ -94,7 +94,7 @@ class _SwapSheetState extends State<_SwapSheet> {
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<TokenMetadata>(
-            value: _fromToken,
+            initialValue: _fromToken,
             decoration: InputDecoration(
               labelText: 'Токен списания',
               filled: true,
@@ -157,7 +157,7 @@ class _SwapSheetState extends State<_SwapSheet> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<TokenMetadata>(
-            value: _toToken,
+            initialValue: _toToken,
             decoration: InputDecoration(
               labelText: 'Токен получения',
               filled: true,

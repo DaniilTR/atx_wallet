@@ -17,7 +17,7 @@ class _SwapCard extends StatelessWidget {
     final bgColor = isDark ? const Color(0xFF14191E) : Colors.white;
     final borderColor = isDark
         ? const Color(0x1AFFFFFF)
-        : Colors.black.withOpacity(0.08);
+        : Colors.black.withValues(alpha: 0.08);
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final mutedTextColor = isDark
         ? const Color(0xFF8E99C0)

@@ -194,7 +194,7 @@ class _RewardsPageState extends State<RewardsPage> {
                           scrollDirection: Axis.horizontal,
                           physics: const BouncingScrollPhysics(),
                           itemCount: _RewardItem.samples.length,
-                          separatorBuilder: (_, __) =>
+                          separatorBuilder: (context, index) =>
                               const SizedBox(width: 12),
                           itemBuilder: (context, index) {
                             return _RewardCard(
@@ -262,7 +262,7 @@ class _RewardsIllustration extends StatelessWidget {
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF34D399).withOpacity(0.4),
+                  color: const Color(0xFF34D399).withValues(alpha: 0.4),
                   blurRadius: 30,
                 ),
               ],
@@ -472,7 +472,7 @@ class _RewardCard extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: item.gradient.first.withOpacity(0.4),
+                      color: item.gradient.first.withValues(alpha: 0.4),
                       blurRadius: 24,
                       offset: const Offset(0, 12),
                     ),
@@ -499,7 +499,7 @@ class _RewardCard extends StatelessWidget {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A).withOpacity(0.75),
+                      color: const Color(0xFF0F172A).withValues(alpha: 0.75),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Row(

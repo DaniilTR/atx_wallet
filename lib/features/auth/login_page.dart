@@ -361,15 +361,15 @@ class _LoginPageState extends State<LoginPage> {
                                 labelText: 'Никнейм',
                                 prefixIcon: const Icon(Icons.alternate_email),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {
@@ -397,15 +397,15 @@ class _LoginPageState extends State<LoginPage> {
                                       setState(() => _obscure = !_obscure),
                                 ),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {

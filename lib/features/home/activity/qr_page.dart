@@ -229,13 +229,13 @@ class _QrModeButton extends StatelessWidget {
     final bgColor = isDark
         ? (active ? const Color(0xFF1F2642) : const Color(0xFF141A2B))
         : (active
-              ? Colors.black.withOpacity(0.05)
-              : Colors.black.withOpacity(0.03));
+              ? Colors.black.withValues(alpha: 0.05)
+              : Colors.black.withValues(alpha: 0.03));
     final borderColor = isDark
         ? (active ? const Color(0xFF4C63FF) : const Color(0x332F3A5F))
         : (active
-              ? Colors.black.withOpacity(0.12)
-              : Colors.black.withOpacity(0.08));
+              ? Colors.black.withValues(alpha: 0.12)
+              : Colors.black.withValues(alpha: 0.08));
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
@@ -287,13 +287,13 @@ class _MyQrPane extends StatelessWidget {
                   border: Border.all(
                     color: isDark
                         ? const Color(0x22FFFFFF)
-                        : Colors.black.withOpacity(0.08),
+                        : Colors.black.withValues(alpha: 0.08),
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: isDark
                           ? const Color(0x55121C3C)
-                          : Colors.black.withOpacity(0.12),
+                          : Colors.black.withValues(alpha: 0.12),
                       blurRadius: 30,
                       offset: const Offset(0, 22),
                     ),
@@ -352,7 +352,7 @@ class _ScannerPane extends StatelessWidget {
                         colors: [Color(0xFF0F1323), Color(0xFF131A2F)],
                       ),
                     )
-                  : BoxDecoration(color: Colors.black.withOpacity(0.03)),
+                  : BoxDecoration(color: Colors.black.withValues(alpha: 0.03)),
               child: MobileScanner(controller: controller, onDetect: onDetect),
             ),
           ),
@@ -367,7 +367,7 @@ class _ScannerPane extends StatelessWidget {
               border: Border.all(
                 color: scanError
                     ? const Color(0xFFFF8F8F)
-                    : (isDark ? Colors.white : Colors.black.withOpacity(0.18)),
+                    : (isDark ? Colors.white : Colors.black.withValues(alpha: 0.18)),
                 width: 2,
               ),
             ),

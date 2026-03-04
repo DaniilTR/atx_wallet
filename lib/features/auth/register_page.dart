@@ -140,15 +140,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                 labelText: 'Никнейм',
                                 prefixIcon: const Icon(Icons.alternate_email),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {
@@ -167,15 +167,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                 labelText: 'Почта',
                                 prefixIcon: const Icon(Icons.email_outlined),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {
@@ -203,15 +203,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                       setState(() => _obscure1 = !_obscure1),
                                 ),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {
@@ -240,15 +240,15 @@ class _RegisterPageState extends State<RegisterPage> {
                                       setState(() => _obscure2 = !_obscure2),
                                 ),
                                 filled: true,
-                                fillColor: Colors.white.withOpacity(0.06),
+                                fillColor: Colors.white.withValues(alpha: 0.06),
                                 enabledBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                                 focusedBorder: _glassBorder(
-                                  Colors.white.withOpacity(0.35),
+                                  Colors.white.withValues(alpha: 0.35),
                                 ),
                                 border: _glassBorder(
-                                  Colors.white.withOpacity(0.15),
+                                  Colors.white.withValues(alpha: 0.15),
                                 ),
                               ),
                               validator: (v) {

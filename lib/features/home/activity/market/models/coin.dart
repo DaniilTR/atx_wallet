@@ -55,12 +55,10 @@ class Coin {
     final spark =
         (json['sparkline_in_7d'] as Map<String, dynamic>?)?['price']
             as List<dynamic>?;
-    final sparkline = spark == null
-        ? null
-        : spark
-              .whereType<num>()
-              .map((v) => v.toDouble())
-              .toList(growable: false);
+    final sparkline = spark
+        ?.whereType<num>()
+        .map((value) => value.toDouble())
+        .toList(growable: false);
 
     return Coin(
       id: id,
