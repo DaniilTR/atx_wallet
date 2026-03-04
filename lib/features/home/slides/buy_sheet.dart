@@ -5,6 +5,18 @@ class _BuySheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark
+        ? const Color(0xFF14191E)
+        : Colors.black.withOpacity(0.03);
+    final borderColor = isDark
+        ? const Color(0x22FFFFFF)
+        : Colors.black.withOpacity(0.08);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF9CA9D4)
+        : const Color(0xFF475569);
+
     final items = [
       ('ATX', 'Пополнение через карту'),
       ('BNB', 'Перевод из Binance Pay'),
@@ -24,17 +36,17 @@ class _BuySheet extends StatelessWidget {
                 ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
-                  color: const Color(0xFF14191E),
-                  border: Border.all(color: const Color(0x22FFFFFF)),
+                  color: cardBg,
+                  border: Border.all(color: borderColor),
                 ),
                 child: Row(
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: const Color(0xFF14191E),
+                      backgroundColor: cardBg,
                       child: Text(
                         item.$1,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: primaryTextColor),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -45,14 +57,14 @@ class _BuySheet extends StatelessWidget {
                           Text(
                             item.$1,
                             style: GoogleFonts.inter(
-                              color: Colors.white,
+                              color: primaryTextColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
                             item.$2,
                             style: GoogleFonts.inter(
-                              color: const Color(0xFF9CA9D4),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),

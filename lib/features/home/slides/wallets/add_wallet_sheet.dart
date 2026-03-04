@@ -92,6 +92,18 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final hintColor = isDark
+        ? const Color(0xFF6A7398)
+        : Colors.black.withOpacity(0.45);
+    final fillColor = isDark ? const Color(0xFF14191E) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0x332E9AFF)
+        : Colors.black.withOpacity(0.08);
     return _SheetContainer(
       title: 'Добавить кошелёк',
       subtitle: 'Импорт по 12 словам или создание нового',
@@ -114,10 +126,7 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
               children: [
                 Text(
                   '12 секретных слов',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFB5BEDF),
-                    fontSize: 13,
-                  ),
+                  style: GoogleFonts.inter(color: labelColor, fontSize: 13),
                 ),
                 const SizedBox(height: 6),
                 TextFormField(
@@ -126,26 +135,24 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
                   minLines: 3,
                   maxLines: 5,
                   textInputAction: TextInputAction.done,
-                  style: GoogleFonts.inter(color: Colors.white),
+                  style: GoogleFonts.inter(color: textColor),
                   decoration: InputDecoration(
                     hintText:
                         'Введите 12 слов через пробел чтобы импортировать, или оставьте пустым для создания нового кошелька',
-                    hintStyle: GoogleFonts.inter(
-                      color: const Color(0xFF6A7398),
-                    ),
+                    hintStyle: GoogleFonts.inter(color: hintColor),
                     filled: true,
-                    fillColor: const Color(0xFF14191E),
+                    fillColor: fillColor,
                     prefixIcon: const Icon(
                       Icons.key_rounded,
                       color: Color(0xFF6FE1F5),
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(color: Color(0x332E9AFF)),
+                      borderSide: BorderSide(color: borderColor),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(color: Color(0x332E9AFF)),
+                      borderSide: BorderSide(color: borderColor),
                     ),
                   ),
                 ),

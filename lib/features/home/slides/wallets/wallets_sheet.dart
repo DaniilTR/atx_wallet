@@ -24,6 +24,10 @@ class _WalletsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final emptyTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
     final wallet = WalletScope.of(context);
     final auth = AuthScope.of(context);
     final userId = auth.currentUser?.id;
@@ -42,10 +46,7 @@ class _WalletsSheet extends StatelessWidget {
               child: Text(
                 'Пока нет добавленных кошельков',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.inter(
-                  color: const Color(0xFF8E99C0),
-                  fontSize: 13,
-                ),
+                style: GoogleFonts.inter(color: emptyTextColor, fontSize: 13),
               ),
             )
           else
@@ -100,6 +101,21 @@ class _WalletRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final surfaceColor = isDark
+        ? const Color(0xFF14191E)
+        : Colors.black.withOpacity(0.03);
+    final borderColor = isDark
+        ? const Color(0x113D7CFF)
+        : Colors.black.withOpacity(0.08);
+    final iconBorder = isDark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.black.withOpacity(0.08);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: onTap,
@@ -107,8 +123,8 @@ class _WalletRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
-          color: const Color(0xFF14191E),
-          border: Border.all(color: const Color(0x113D7CFF)),
+          color: surfaceColor,
+          border: Border.all(color: borderColor),
         ),
         child: Row(
           children: [
@@ -117,8 +133,8 @@ class _WalletRow extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withOpacity(0.08)),
-                color: const Color(0xFF14191E),
+                border: Border.all(color: iconBorder),
+                color: surfaceColor,
               ),
               child: const Icon(
                 Icons.account_balance_wallet_rounded,
@@ -139,7 +155,7 @@ class _WalletRow extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: primaryTextColor,
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -154,7 +170,7 @@ class _WalletRow extends StatelessWidget {
                         ? '—'
                         : _short(profile.addressHex),
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF8E99C0),
+                      color: mutedTextColor,
                       fontSize: 13,
                     ),
                   ),

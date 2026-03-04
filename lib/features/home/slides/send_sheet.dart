@@ -113,9 +113,15 @@ class _SendSheetState extends State<_SendSheet> {
         SnackBar(
           content: Text(
             'Транзакция отправлена: $txHash',
-            style: GoogleFonts.inter(color: Colors.white),
+            style: GoogleFonts.inter(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.white
+                  : const Color(0xFF0F172A),
+            ),
           ),
-          backgroundColor: const Color(0xFF14191E),
+          backgroundColor: Theme.of(context).brightness == Brightness.dark
+              ? const Color(0xFF14191E)
+              : Colors.white,
         ),
       );
     } catch (e) {
@@ -133,6 +139,13 @@ class _SendSheetState extends State<_SendSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+    final fieldFill = isDark ? const Color(0xFF14191E) : Colors.white;
+
     final wallet = WalletScope.read(context);
     final tokens = wallet.supportedTokens.toList(growable: false);
     final token = _selectedToken ?? (tokens.isNotEmpty ? tokens.first : null);
@@ -160,7 +173,9 @@ class _SendSheetState extends State<_SendSheet> {
                 child: Text(
                   'С вашего адреса: ${_shortAddress(fromAddress)}',
                   style: GoogleFonts.inter(
-                    color: const Color(0xFF8B96B8),
+                    color: isDark
+                        ? const Color(0xFF8B96B8)
+                        : const Color(0xFF475569),
                     fontSize: 12,
                   ),
                 ),
@@ -171,19 +186,22 @@ class _SendSheetState extends State<_SendSheet> {
               initialValue: token,
               decoration: InputDecoration(
                 labelText: 'Токен',
-                labelStyle: GoogleFonts.inter(color: const Color(0xFFB5BEDF)),
+                labelStyle: GoogleFonts.inter(color: mutedTextColor),
                 filled: true,
-                fillColor: const Color(0xFF14191E),
+                fillColor: fieldFill,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
               ),
-              dropdownColor: const Color(0xFF14191E),
+              dropdownColor: fieldFill,
               items: tokens
                   .map(
                     (t) => DropdownMenuItem<TokenMetadata>(
                       value: t,
-                      child: Text('${t.name} (${t.symbol})'),
+                      child: Text(
+                        '${t.name} (${t.symbol})',
+                        style: GoogleFonts.inter(color: primaryTextColor),
+                      ),
                     ),
                   )
                   .toList(),

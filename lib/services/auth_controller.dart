@@ -1,9 +1,8 @@
 import 'package:flutter/foundation.dart';
 
 import 'auth_service.dart';
-import 'auth_user.dart';
 
-class AuthController {
+class AuthController extends ChangeNotifier {
   AuthController({AuthService? authService})
     : _auth = authService ?? AuthService();
 
@@ -24,6 +23,7 @@ class AuthController {
       email: email,
     );
     _user = user;
+    notifyListeners();
     return user;
   }
 
@@ -33,6 +33,7 @@ class AuthController {
   }) async {
     final user = await _auth.login(login: login, password: password);
     _user = user;
+    notifyListeners();
     return user;
   }
 
@@ -42,6 +43,7 @@ class AuthController {
       final restored = await _auth.restore();
       if (restored != null) {
         _user = restored;
+        notifyListeners();
         return restored;
       }
     } catch (e) {
@@ -50,8 +52,18 @@ class AuthController {
     return null;
   }
 
+  Future<AuthUser> setPrefersDarkTheme(bool prefersDarkTheme) async {
+    final updated = await _auth.setThemePreference(
+      prefersDarkTheme: prefersDarkTheme,
+    );
+    _user = updated;
+    notifyListeners();
+    return updated;
+  }
+
   Future<void> logout() async {
     await _auth.logout();
     _user = null;
+    notifyListeners();
   }
 }

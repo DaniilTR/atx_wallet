@@ -13,22 +13,28 @@ class _SwapCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF14191E) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0x1AFFFFFF)
+        : Colors.black.withOpacity(0.08);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
-        color: const Color(0xFF14191E),
-        border: Border.all(color: const Color(0x1AFFFFFF)),
+        color: bgColor,
+        border: Border.all(color: borderColor),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             label,
-            style: GoogleFonts.inter(
-              color: const Color(0xFF8E99C0),
-              fontSize: 12,
-            ),
+            style: GoogleFonts.inter(color: mutedTextColor, fontSize: 12),
           ),
           const SizedBox(height: 8),
           Row(
@@ -47,16 +53,12 @@ class _SwapCard extends StatelessWidget {
                     Text(
                       token,
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: primaryTextColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(
-                      Icons.expand_more,
-                      color: Colors.white,
-                      size: 18,
-                    ),
+                    Icon(Icons.expand_more, color: primaryTextColor, size: 18),
                   ],
                 ),
               ),
@@ -65,7 +67,7 @@ class _SwapCard extends StatelessWidget {
                 child: Text(
                   amount,
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),

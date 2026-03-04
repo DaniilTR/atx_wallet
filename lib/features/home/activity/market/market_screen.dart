@@ -85,42 +85,44 @@ class _MarketScreenState extends State<MarketScreen> {
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
-          const Positioned(
-            top: -40,
-            right: -10,
-            child: _GlowCircle(
-              diameter: 240,
-              color: Color.fromARGB(255, 125, 71, 250),
-              opacity: 0.8,
+          if (isDark) ...[
+            const Positioned(
+              top: -40,
+              right: -10,
+              child: _GlowCircle(
+                diameter: 240,
+                color: Color.fromARGB(255, 125, 71, 250),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            top: 250,
-            left: -70,
-            child: _GlowCircle(
-              diameter: 200,
-              color: Color(0xFF60A5FA),
-              opacity: 0.7,
+            const Positioned(
+              top: 250,
+              left: -70,
+              child: _GlowCircle(
+                diameter: 200,
+                color: Color(0xFF60A5FA),
+                opacity: 0.7,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            left: -40,
-            child: _GlowCircle(
-              diameter: 210,
-              color: Color(0xFF7C3AED),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              left: -40,
+              child: _GlowCircle(
+                diameter: 210,
+                color: Color(0xFF7C3AED),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            right: -40,
-            child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF34D399),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              right: -40,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color(0xFF34D399),
+                opacity: 0.8,
+              ),
             ),
-          ),
+          ],
           SafeArea(
             child: Stack(
               children: [
@@ -175,7 +177,9 @@ class _MarketScreenState extends State<MarketScreen> {
                               child: Center(
                                 child: Text(
                                   'Ошибка загрузки курсов. Проверьте интернет и попробуйте позже.',
-                                  style: GoogleFonts.inter(color: Colors.white),
+                                  style: GoogleFonts.inter(
+                                    color: primaryTextColor,
+                                  ),
                                   textAlign: TextAlign.center,
                                 ),
                               ),
@@ -216,6 +220,12 @@ class _MarketRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final surfaceColor = isDark
+        ? const Color.fromARGB(20, 255, 255, 255)
+        : Colors.black.withOpacity(0.03);
+    final avatarBg = isDark ? const Color(0xFF151B2D) : Colors.white;
     final isNegative = coin.change24h < 0;
     return InkWell(
       borderRadius: BorderRadius.circular(20),
@@ -236,18 +246,18 @@ class _MarketRow extends StatelessWidget {
         margin: const EdgeInsets.symmetric(vertical: 6),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         decoration: BoxDecoration(
-          color: const Color.fromARGB(20, 255, 255, 255),
+          color: surfaceColor,
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
           children: [
             CircleAvatar(
               radius: 20,
-              backgroundColor: const Color(0xFF151B2D),
+              backgroundColor: avatarBg,
               child: Text(
                 coin.symbol.substring(0, 1),
                 style: GoogleFonts.inter(
-                  color: Colors.white,
+                  color: primaryTextColor,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -260,7 +270,7 @@ class _MarketRow extends StatelessWidget {
                   Text(
                     coin.symbol,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: primaryTextColor,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -288,7 +298,7 @@ class _MarketRow extends StatelessWidget {
                 Text(
                   coin.formattedPrice,
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
                   ),

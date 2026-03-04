@@ -30,6 +30,12 @@ part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
 part 'slides/swap_card.dart';
 
+class HomeRouteArgs {
+  const HomeRouteArgs({required this.userId});
+
+  final String userId;
+}
+
 class SendSheet extends StatelessWidget {
   const SendSheet({required this.address, this.initialRecipient, super.key});
 
@@ -163,42 +169,44 @@ class _HomePageState extends State<HomePage> {
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
-          const Positioned(
-            top: -40,
-            right: -10,
-            child: _GlowCircle(
-              diameter: 240,
-              color: Color.fromARGB(255, 125, 71, 250),
-              opacity: 0.8,
+          if (isDark) ...[
+            const Positioned(
+              top: -40,
+              right: -10,
+              child: _GlowCircle(
+                diameter: 240,
+                color: Color.fromARGB(255, 125, 71, 250),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            top: 250,
-            left: -70,
-            child: _GlowCircle(
-              diameter: 200,
-              color: Color(0xFF60A5FA),
-              opacity: 0.7,
+            const Positioned(
+              top: 250,
+              left: -70,
+              child: _GlowCircle(
+                diameter: 200,
+                color: Color(0xFF60A5FA),
+                opacity: 0.7,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            left: -40,
-            child: _GlowCircle(
-              diameter: 210,
-              color: Color(0xFF7C3AED),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              left: -40,
+              child: _GlowCircle(
+                diameter: 210,
+                color: Color(0xFF7C3AED),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            right: -40,
-            child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF34D399),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              right: -40,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color(0xFF34D399),
+                opacity: 0.8,
+              ),
             ),
-          ),
+          ],
           SafeArea(
             child: Stack(
               children: [
@@ -255,10 +263,16 @@ class _HomePageState extends State<HomePage> {
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              backgroundColor: const Color(0xFF1C1F33),
+                              backgroundColor: isDark
+                                  ? const Color(0xFF1C1F33)
+                                  : Colors.white,
                               content: Text(
                                 'Address copied',
-                                style: GoogleFonts.inter(color: Colors.white),
+                                style: GoogleFonts.inter(
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                                ),
                               ),
                             ),
                           );
@@ -367,10 +381,35 @@ class _BalanceCard extends StatelessWidget {
         : address!.length > 12
         ? '${address!.substring(0, 6)}...${address!.substring(address!.length - 4)}'
         : address!;
-    final borderTint = Colors.white.withOpacity(0.22);
+
+    final borderTint = isDark
+        ? Colors.white.withOpacity(0.22)
+        : Colors.black.withOpacity(0.08);
+
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB7C4EA)
+        : const Color(0xFF475569);
+
     final totalUsd = balances.totalUsd;
     final loading = balances.isLoading;
     final updatedLabel = _formatTimestamp(balances.updatedAt);
+
+    final addressPanelBg = isDark
+        ? const Color(0xFF3A3F52)
+        : Colors.white.withOpacity(0.72);
+    final addressPanelShadow = isDark
+        ? const Color(0x33090F23)
+        : Colors.black.withOpacity(0.10);
+    final addressLabelColor = primaryTextColor;
+    final addressValueColor = isDark ? const Color(0xFFD3DAED) : mutedTextColor;
+    final copyBg = isDark
+        ? Colors.white.withOpacity(.08)
+        : Colors.black.withOpacity(.04);
+    final copyBorder = isDark
+        ? Colors.white.withOpacity(.2)
+        : Colors.black.withOpacity(.08);
+    final copyIconColor = primaryTextColor;
 
     return Align(
       child: ConstrainedBox(
@@ -419,7 +458,9 @@ class _BalanceCard extends StatelessWidget {
                       Text(
                         'Общий баланс',
                         style: GoogleFonts.inter(
-                          color: const Color(0xFFE8EEFF),
+                          color: isDark
+                              ? const Color(0xFFE8EEFF)
+                              : const Color(0xFF0F172A),
                           fontSize: 13,
                           letterSpacing: .3,
                         ),
@@ -444,7 +485,7 @@ class _BalanceCard extends StatelessWidget {
                             ? '\$${_formatNumber(totalUsd, precision: 2)}'
                             : '—',
                         style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: primaryTextColor,
                           fontSize: 26,
                           fontWeight: FontWeight.w800,
                         ),
@@ -455,7 +496,7 @@ class _BalanceCard extends StatelessWidget {
                             ? 'Без оценки в USD'
                             : 'USD оценка по курсу USDT',
                         style: GoogleFonts.inter(
-                          color: const Color(0xFFB7C4EA),
+                          color: mutedTextColor,
                           fontSize: 13,
                         ),
                       ),
@@ -470,12 +511,12 @@ class _BalanceCard extends StatelessWidget {
                     vertical: 14,
                   ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3A3F52),
-                    boxShadow: const [
+                    color: addressPanelBg,
+                    boxShadow: [
                       BoxShadow(
-                        color: Color(0x33090F23),
+                        color: addressPanelShadow,
                         blurRadius: 24,
-                        offset: Offset(0, 18),
+                        offset: const Offset(0, 18),
                       ),
                     ],
                   ),
@@ -490,7 +531,7 @@ class _BalanceCard extends StatelessWidget {
                               style: GoogleFonts.inter(
                                 fontSize: 14,
                                 fontWeight: FontWeight.w700,
-                                color: Colors.white,
+                                color: addressLabelColor,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -498,7 +539,7 @@ class _BalanceCard extends StatelessWidget {
                               displayAddress ?? '—',
                               style: GoogleFonts.inter(
                                 fontSize: 13,
-                                color: const Color(0xFFD3DAED),
+                                color: addressValueColor,
                                 letterSpacing: .2,
                               ),
                             ),
@@ -513,14 +554,12 @@ class _BalanceCard extends StatelessWidget {
                           height: 42,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(14),
-                            color: Colors.white.withOpacity(.08),
-                            border: Border.all(
-                              color: Colors.white.withOpacity(.2),
-                            ),
+                            color: copyBg,
+                            border: Border.all(color: copyBorder),
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.copy_rounded,
-                            color: Colors.white,
+                            color: copyIconColor,
                             size: 20,
                           ),
                         ),
@@ -617,7 +656,10 @@ class _ActionButton extends StatelessWidget {
                         Color.fromARGB(255, 30, 30, 45),
                         Color.fromARGB(255, 30, 30, 45),
                       ]
-                    : const [Color(0xFFF6F9FF), Color(0xFFE0E7F3)],
+                    : const [
+                        Color.fromARGB(255, 228, 230, 236),
+                        Color.fromARGB(255, 208, 211, 216),
+                      ],
               ),
 
               boxShadow: [
@@ -632,7 +674,9 @@ class _ActionButton extends StatelessWidget {
             ),
             child: Icon(
               icon,
-              color: isDark ? const Color(0xFFEFF2FF) : const Color(0xFF0F172A),
+              color: isDark
+                  ? const Color.fromARGB(255, 186, 188, 197)
+                  : const Color(0xFF0F172A),
             ),
           ),
           const SizedBox(height: 10),
@@ -659,6 +703,15 @@ class _AssetTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final secondaryTextColor = isDark
+        ? Colors.white.withOpacity(0.85)
+        : const Color(0xFF475569);
+    final tertiaryTextColor = isDark
+        ? const Color(0xFF9FB3D8)
+        : const Color(0xFF475569);
     final amountLabel =
         '${_formatNumber(balance.amount, precision: 6)} ${balance.token.symbol}';
     final usdValue = balance.usdValue;
@@ -687,15 +740,25 @@ class _AssetTile extends StatelessWidget {
         },
         child: Container(
           decoration: BoxDecoration(
-            color: const Color.fromARGB(20, 255, 255, 255),
+            color: isDark
+                ? const Color.fromARGB(19, 255, 255, 255)
+                : const Color.fromARGB(255, 255, 255, 255).withOpacity(0.03),
             borderRadius: BorderRadius.circular(18),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x33090F23),
-                blurRadius: 18,
-                offset: Offset(0, 18),
-              ),
-            ],
+            boxShadow: isDark
+                ? const [
+                    BoxShadow(
+                      color: Color(0x33090F23),
+                      blurRadius: 12,
+                      offset: Offset(0, 8),
+                    ),
+                  ]
+                : const [
+                    BoxShadow(
+                      color: Color.fromARGB(164, 255, 255, 255),
+                      blurRadius: 18,
+                      offset: Offset(0, 18),
+                    ),
+                  ],
           ),
           padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 18),
           child: Row(
@@ -711,7 +774,9 @@ class _AssetTile extends StatelessWidget {
                     colors: [color, color.withOpacity(.45)],
                   ),
                   border: Border.all(
-                    color: const Color.fromARGB(20, 255, 255, 255),
+                    color: isDark
+                        ? const Color.fromARGB(60, 255, 255, 255)
+                        : const Color.fromARGB(20, 255, 255, 255),
                   ),
                   boxShadow: [
                     BoxShadow(color: color.withOpacity(.45), blurRadius: 20),
@@ -730,7 +795,7 @@ class _AssetTile extends StatelessWidget {
                     Text(
                       balance.token.name,
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: primaryTextColor,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -738,7 +803,7 @@ class _AssetTile extends StatelessWidget {
                     Text(
                       amountLabel,
                       style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.85),
+                        color: secondaryTextColor,
                         fontSize: 13,
                       ),
                     ),
@@ -753,7 +818,7 @@ class _AssetTile extends StatelessWidget {
                   Text(
                     valueLabel,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: primaryTextColor,
                       fontWeight: FontWeight.w700,
                       fontSize: 16,
                     ),
@@ -762,7 +827,7 @@ class _AssetTile extends StatelessWidget {
                   Text(
                     secondaryLabel,
                     style: GoogleFonts.inter(
-                      color: const Color(0xFF9FB3D8),
+                      color: tertiaryTextColor,
                       fontSize: 12,
                     ),
                   ),
@@ -872,19 +937,28 @@ class _NeonAvatar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: 33,
       height: 33,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: const Color(0xFFDADADA), width: 2),
+        border: Border.all(
+          color: isDark
+              ? const Color(0xFFDADADA)
+              : Colors.black.withOpacity(0.12),
+          width: 2,
+        ),
       ),
-      child: const CircleAvatar(
-        backgroundColor: Color(0xFF14191E),
+      child: CircleAvatar(
+        backgroundColor: isDark ? const Color(0xFF14191E) : Colors.white,
         child: Icon(
           Icons.person,
           size: 22,
-          color: Color.fromARGB(255, 219, 219, 219),
+          color: isDark
+              ? const Color.fromARGB(255, 219, 219, 219)
+              : const Color(0xFF0F172A),
         ),
       ),
     );
@@ -897,16 +971,31 @@ class _GrowthPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark
+        ? Colors.white.withOpacity(0.85)
+        : Colors.black.withOpacity(0.06);
+    final textColor = isDark
+        ? const Color(0xFF14191E)
+        : const Color(0xFF0F172A);
+    final iconColor = isDark
+        ? const Color(0xFF16273E)
+        : const Color(0xFF0F172A);
     return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(999),
+      ),
       child: Row(
         children: [
-          const Icon(Icons.trending_up, size: 16, color: Color(0xFF16273E)),
+          Icon(Icons.trending_up, size: 16, color: iconColor),
           const SizedBox(width: 4),
           Text(
             value,
             style: GoogleFonts.inter(
               fontWeight: FontWeight.w700,
-              color: const Color.fromARGB(255, 76, 82, 90),
+              color: textColor,
             ),
           ),
         ],

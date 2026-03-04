@@ -176,6 +176,15 @@ class _SendFlowPageState extends State<_SendFlowPage> {
 
     final isRed = preflight.feeStatus == FeeStatus.insufficientFee;
 
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final infoSurface = isDark
+        ? const Color(0x331B2430)
+        : Colors.black.withOpacity(0.03);
+    final infoBorder = isDark
+        ? const Color(0x113D7CFF)
+        : Colors.black.withOpacity(0.08);
+
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
@@ -215,7 +224,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0x331B2430),
+                        color: infoSurface,
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(color: const Color(0x22FF5C5C)),
                       ),
@@ -223,7 +232,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                         preflight.feeWarningText ??
                             'У вас на счету недостаточно ETH для оплаты комиссии сети.',
                         style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: primaryTextColor,
                           fontSize: 13,
                         ),
                       ),
@@ -253,15 +262,15 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0x331B2430),
+                        color: infoSurface,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0x113D7CFF)),
+                        border: Border.all(color: infoBorder),
                       ),
                       child: Text(
                         'Комиссия сети (gas) — это плата майнерам/валидаторам за выполнение транзакции в сети Ethereum.\n\n'
                         'Комиссия оплачивается в ETH и зависит от загруженности сети и сложности операции.',
                         style: GoogleFonts.inter(
-                          color: Colors.white,
+                          color: primaryTextColor,
                           fontSize: 13,
                         ),
                       ),
@@ -287,18 +296,26 @@ class _SendFlowPageState extends State<_SendFlowPage> {
     final tokens = wallet.supportedTokens.toList(growable: false);
     final token = _selectedToken ?? (tokens.isNotEmpty ? tokens.first : null);
 
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+
     return Scaffold(
-      backgroundColor: const Color(0xFF0F1317),
+      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
+        foregroundColor: primaryTextColor,
         leading: IconButton(
           onPressed: _handleBack,
           icon: const Icon(Icons.arrow_back_rounded),
         ),
         title: Text(
           _step == 0 ? 'Отправить' : 'Проверить',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: primaryTextColor,
+          ),
         ),
         centerTitle: true,
       ),
@@ -336,8 +353,20 @@ class _SendFlowPageState extends State<_SendFlowPage> {
     final amountLabel =
         '${_formatNumber(amount, precision: 6)} ${token.symbol}';
 
-    final cs = Theme.of(context).colorScheme;
-    final borderTint = Colors.white.withOpacity(0.22);
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+    final hintColor = isDark
+        ? const Color(0xFF6A7398)
+        : Colors.black.withOpacity(0.45);
+    final fieldFill = isDark ? const Color(0xFF14191E) : Colors.white;
+    final borderTint = isDark
+        ? Colors.white.withOpacity(0.22)
+        : Colors.black.withOpacity(0.08);
+    final cs = theme.colorScheme;
 
     return SafeArea(
       child: Padding(
@@ -360,7 +389,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                   child: Text(
                     token.symbol,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: primaryTextColor,
                       fontWeight: FontWeight.w800,
                     ),
                   ),
@@ -370,7 +399,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
               Text(
                 token.symbol,
                 style: GoogleFonts.inter(
-                  color: Colors.white,
+                  color: primaryTextColor,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -380,10 +409,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Место назначения',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFB5BEDF),
-                    fontSize: 13,
-                  ),
+                  style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
                 ),
               ),
               const SizedBox(height: 8),
@@ -391,14 +417,14 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 controller: _toCtrl,
                 validator: _validateAddress,
                 textInputAction: TextInputAction.next,
-                style: GoogleFonts.inter(color: Colors.white),
+                style: GoogleFonts.inter(color: primaryTextColor),
                 decoration: InputDecoration(
                   hintText: token.isBitcoin
                       ? '1…'
                       : 'Введите или вставьте адрес',
-                  hintStyle: GoogleFonts.inter(color: const Color(0xFF6A7398)),
+                  hintStyle: GoogleFonts.inter(color: hintColor),
                   filled: true,
-                  fillColor: const Color(0xFF14191E),
+                  fillColor: fieldFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(color: borderTint, width: 1),
@@ -409,7 +435,9 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                   ),
                   suffixIcon: Icon(
                     Icons.bookmark_border_rounded,
-                    color: Colors.white.withOpacity(0.55),
+                    color: isDark
+                        ? Colors.white.withOpacity(0.55)
+                        : Colors.black.withOpacity(0.45),
                   ),
                 ),
               ),
@@ -418,10 +446,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'Сумма',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFFB5BEDF),
-                    fontSize: 13,
-                  ),
+                  style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
                 ),
               ),
               const SizedBox(height: 8),
@@ -431,12 +456,12 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
-                style: GoogleFonts.inter(color: Colors.white),
+                style: GoogleFonts.inter(color: primaryTextColor),
                 decoration: InputDecoration(
                   hintText: '0',
-                  hintStyle: GoogleFonts.inter(color: const Color(0xFF6A7398)),
+                  hintStyle: GoogleFonts.inter(color: hintColor),
                   filled: true,
-                  fillColor: const Color(0xFF14191E),
+                  fillColor: fieldFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
                     borderSide: BorderSide(color: borderTint, width: 1),
@@ -448,15 +473,17 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                   suffixIcon: DropdownButtonHideUnderline(
                     child: DropdownButton<TokenMetadata>(
                       value: _selectedToken,
-                      dropdownColor: const Color(0xFF14191E),
-                      iconEnabledColor: Colors.white,
+                      dropdownColor: fieldFill,
+                      iconEnabledColor: primaryTextColor,
                       items: tokens
                           .map(
                             (t) => DropdownMenuItem<TokenMetadata>(
                               value: t,
                               child: Text(
                                 t.symbol,
-                                style: GoogleFonts.inter(color: Colors.white),
+                                style: GoogleFonts.inter(
+                                  color: primaryTextColor,
+                                ),
                               ),
                             ),
                           )
@@ -478,7 +505,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                     child: Text(
                       amountLabel,
                       style: GoogleFonts.inter(
-                        color: const Color(0xFFB5BEDF),
+                        color: mutedTextColor,
                         fontSize: 12,
                       ),
                     ),
@@ -527,6 +554,13 @@ class _SendFlowPageState extends State<_SendFlowPage> {
   }
 
   Widget _buildStepConfirm(BuildContext context, TokenMetadata token) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+
     final wallet = WalletScope.read(context);
     final fromName = wallet.activeProfile?.name ?? 'Кошелёк';
     final fromAddr = token.isBitcoin
@@ -540,7 +574,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
 
     final feeColor = preflight.feeStatus == FeeStatus.insufficientFee
         ? const Color(0xFFFF5C5C)
-        : Colors.white;
+        : primaryTextColor;
 
     final feeLabel = preflight.feeLabel;
     final speedLabel = preflight.speedLabel;
@@ -568,7 +602,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
               child: Text(
                 token.symbol,
                 style: GoogleFonts.inter(
-                  color: Colors.white,
+                  color: primaryTextColor,
                   fontWeight: FontWeight.w800,
                 ),
               ),
@@ -577,7 +611,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
             Text(
               amountLabel,
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
               ),
@@ -585,10 +619,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
             const SizedBox(height: 4),
             Text(
               preflight.amountUsdLabel ?? '—',
-              style: GoogleFonts.inter(
-                color: const Color(0xFFB5BEDF),
-                fontSize: 13,
-              ),
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
             ),
             const SizedBox(height: 16),
             GlassCard(
@@ -604,7 +635,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             'Из',
                             style: GoogleFonts.inter(
-                              color: const Color(0xFFB5BEDF),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),
@@ -612,7 +643,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             fromName,
                             style: GoogleFonts.inter(
-                              color: Colors.white,
+                              color: primaryTextColor,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -620,17 +651,14 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             _shortAddress(fromAddr),
                             style: GoogleFonts.inter(
-                              color: const Color(0xFFB5BEDF),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.chevron_right_rounded,
-                      color: Colors.white,
-                    ),
+                    Icon(Icons.chevron_right_rounded, color: primaryTextColor),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -638,7 +666,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             'Место назначения',
                             style: GoogleFonts.inter(
-                              color: const Color(0xFFB5BEDF),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),
@@ -646,7 +674,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             'Получатель',
                             style: GoogleFonts.inter(
-                              color: Colors.white,
+                              color: primaryTextColor,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
@@ -654,7 +682,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             _shortAddress(preflight.recipient),
                             style: GoogleFonts.inter(
-                              color: const Color(0xFFB5BEDF),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),
@@ -678,15 +706,15 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                           Text(
                             'Сеть',
                             style: GoogleFonts.inter(
-                              color: const Color(0xFFB5BEDF),
+                              color: mutedTextColor,
                               fontSize: 12,
                             ),
                           ),
                           const SizedBox(width: 6),
-                          const Icon(
+                          Icon(
                             Icons.info_outline_rounded,
                             size: 16,
-                            color: Color(0xFFB5BEDF),
+                            color: mutedTextColor,
                           ),
                         ],
                       ),
@@ -694,7 +722,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                     Text(
                       preflight.networkLabel,
                       style: GoogleFonts.inter(
-                        color: Colors.white,
+                        color: primaryTextColor,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -733,10 +761,10 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                                     color: Color(0xFFFF5C5C),
                                   )
                                 else
-                                  const Icon(
+                                  Icon(
                                     Icons.edit,
                                     size: 16,
-                                    color: Color(0xFFB5BEDF),
+                                    color: mutedTextColor,
                                   ),
                               ],
                             ),
@@ -757,7 +785,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                         Text(
                           'Скорость',
                           style: GoogleFonts.inter(
-                            color: const Color(0xFFB5BEDF),
+                            color: mutedTextColor,
                             fontSize: 12,
                           ),
                         ),
@@ -765,7 +793,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                         Text(
                           speedLabel,
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: primaryTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -778,7 +806,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                         Text(
                           'Получатель получит',
                           style: GoogleFonts.inter(
-                            color: const Color(0xFFB5BEDF),
+                            color: mutedTextColor,
                             fontSize: 12,
                           ),
                         ),
@@ -786,7 +814,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                         Text(
                           receiveLabel,
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: primaryTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -806,8 +834,10 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                     child: ElevatedButton(
                       onPressed: _sending ? null : _handleBack,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2A2F36),
-                        foregroundColor: Colors.white,
+                        backgroundColor: isDark
+                            ? const Color(0xFF2A2F36)
+                            : Colors.black.withOpacity(0.05),
+                        foregroundColor: primaryTextColor,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),

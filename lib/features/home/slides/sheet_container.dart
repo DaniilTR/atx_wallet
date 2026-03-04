@@ -13,6 +13,24 @@ class _SheetContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark
+        ? const Color(0xFF14191E)
+        : Colors.white.withOpacity(0.92);
+    final borderColor = isDark
+        ? Colors.white.withOpacity(0.08)
+        : Colors.black.withOpacity(0.08);
+    final shadowColor = isDark
+        ? const Color(0x66040A1A)
+        : Colors.black.withOpacity(0.12);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final closeColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+
     return Material(
       color: Colors.transparent,
       child: ClipRRect(
@@ -21,13 +39,13 @@ class _SheetContainer extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
           decoration: BoxDecoration(
-            color: const Color(0xFF14191E),
-            border: Border.all(color: Colors.white.withOpacity(0.08)),
-            boxShadow: const [
+            color: bgColor,
+            border: Border.all(color: borderColor),
+            boxShadow: [
               BoxShadow(
-                color: Color(0x66040A1A),
+                color: shadowColor,
                 blurRadius: 40,
-                offset: Offset(0, 24),
+                offset: const Offset(0, 24),
               ),
             ],
           ),
@@ -44,7 +62,7 @@ class _SheetContainer extends StatelessWidget {
                         Text(
                           title,
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: titleColor,
                             fontSize: 20,
                             fontWeight: FontWeight.w700,
                           ),
@@ -54,7 +72,7 @@ class _SheetContainer extends StatelessWidget {
                           Text(
                             subtitle!,
                             style: GoogleFonts.inter(
-                              color: const Color(0xFF8E99C0),
+                              color: subtitleColor,
                               fontSize: 13,
                             ),
                           ),
@@ -64,10 +82,7 @@ class _SheetContainer extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).maybePop(),
-                    icon: const Icon(
-                      Icons.close_rounded,
-                      color: Color(0xFFB5BEDF),
-                    ),
+                    icon: Icon(Icons.close_rounded, color: closeColor),
                   ),
                 ],
               ),

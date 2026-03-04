@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'services/auth_scope.dart';
+import 'services/auth_controller.dart';
 import 'features/settings/settings_screen.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'features/auth/start_page.dart';
@@ -48,9 +49,47 @@ class AtxWalletApp extends StatefulWidget {
 
 class _AtxWalletAppState extends State<AtxWalletApp> {
   ThemeMode _themeMode = ThemeMode.dark;
+  late final AuthController _auth;
+
+  @override
+  void initState() {
+    super.initState();
+    _auth = AuthController();
+    _auth.addListener(_syncThemeFromAccount);
+    _restoreThemeFromSession();
+  }
+
+  @override
+  void dispose() {
+    _auth.removeListener(_syncThemeFromAccount);
+    _auth.dispose();
+    super.dispose();
+  }
+
+  Future<void> _restoreThemeFromSession() async {
+    await _auth.tryRestoreSession();
+    if (!mounted) return;
+    _syncThemeFromAccount();
+  }
+
+  void _syncThemeFromAccount() {
+    final user = _auth.currentUser;
+    final nextMode = user == null
+        ? ThemeMode.dark
+        : (user.prefersDarkTheme ? ThemeMode.dark : ThemeMode.light);
+    if (_themeMode == nextMode) return;
+    setState(() => _themeMode = nextMode);
+  }
 
   void _setThemeMode(ThemeMode mode) {
     setState(() => _themeMode = mode);
+
+    final user = _auth.currentUser;
+    if (user == null) return;
+    final prefersDarkTheme = mode != ThemeMode.light;
+    if (user.prefersDarkTheme == prefersDarkTheme) return;
+    // Сохраняем в аккаунт асинхронно.
+    unawaited(_auth.setPrefersDarkTheme(prefersDarkTheme));
   }
 
   @override
@@ -179,6 +218,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
       builder: (context, child) {
         final actualChild = child ?? const SizedBox.shrink();
         return AuthScope(
+          controller: _auth,
           child: WalletScope(
             controller: widget.walletProvider,
             child: actualChild,

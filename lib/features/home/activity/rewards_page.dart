@@ -89,33 +89,35 @@ class _RewardsPageState extends State<RewardsPage> {
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
-          const Positioned(
-            top: -30,
-            right: -10,
-            child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF7D47FA),
-              opacity: 0.75,
+          if (isDark) ...[
+            const Positioned(
+              top: -30,
+              right: -10,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color(0xFF7D47FA),
+                opacity: 0.75,
+              ),
             ),
-          ),
-          const Positioned(
-            top: 260,
-            left: -80,
-            child: _GlowCircle(
-              diameter: 200,
-              color: Color(0xFF60A5FA),
-              opacity: 0.6,
+            const Positioned(
+              top: 260,
+              left: -80,
+              child: _GlowCircle(
+                diameter: 200,
+                color: Color(0xFF60A5FA),
+                opacity: 0.6,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -40,
-            right: -30,
-            child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF34D399),
-              opacity: 0.7,
+            const Positioned(
+              bottom: -40,
+              right: -30,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color(0xFF34D399),
+                opacity: 0.7,
+              ),
             ),
-          ),
+          ],
           SafeArea(
             child: Stack(
               children: [
@@ -299,6 +301,11 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark
+        ? const Color(0xFF9AA8D1)
+        : const Color(0xFF475569);
+    final valueColor = isDark ? Colors.white : const Color(0xFF0F172A);
     return GlassCard(
       borderRadius: 18,
       padding: const EdgeInsets.all(16),
@@ -308,7 +315,7 @@ class _StatCard extends StatelessWidget {
           Text(
             title,
             style: GoogleFonts.inter(
-              color: const Color(0xFF9AA8D1),
+              color: titleColor,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -317,7 +324,7 @@ class _StatCard extends StatelessWidget {
           Text(
             value,
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: valueColor,
               fontSize: 16,
               fontWeight: FontWeight.w700,
               height: 1.2,
@@ -337,13 +344,18 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: GoogleFonts.inter(
-            color: Colors.white,
+            color: titleColor,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -351,10 +363,7 @@ class _SectionTitle extends StatelessWidget {
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: GoogleFonts.inter(
-            color: const Color(0xFF8E99C0),
-            fontSize: 12,
-          ),
+          style: GoogleFonts.inter(color: subtitleColor, fontSize: 12),
         ),
       ],
     );
@@ -440,6 +449,11 @@ class _RewardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final subtitleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final xpCostColor = isDark
+        ? const Color(0xFF9FB1FF)
+        : const Color(0xFF475569);
     return SizedBox(
       width: 170,
       child: Column(
@@ -514,7 +528,7 @@ class _RewardCard extends StatelessWidget {
           Text(
             item.subtitle,
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: subtitleColor,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -523,7 +537,7 @@ class _RewardCard extends StatelessWidget {
           Text(
             item.xpCost,
             style: GoogleFonts.inter(
-              color: const Color(0xFF9FB1FF),
+              color: xpCostColor,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -560,6 +574,11 @@ class _TrustCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
     return GlassCard(
       borderRadius: 18,
       padding: const EdgeInsets.all(16),
@@ -584,17 +603,14 @@ class _TrustCard extends StatelessWidget {
                 Text(
                   'Alpha rewards',
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: titleColor,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Получите доступ к закрытым бонусам и\nперсональным предложениям.',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF8E99C0),
-                    fontSize: 12,
-                  ),
+                  style: GoogleFonts.inter(color: subtitleColor, fontSize: 12),
                 ),
               ],
             ),

@@ -7,6 +7,12 @@ class _ReceiveSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+
     final wallet = WalletScope.of(context);
     final evmAddress = address;
     final btcAddress = wallet.bitcoinAddress;
@@ -24,8 +30,14 @@ class _ReceiveSheet extends StatelessWidget {
             height: 180,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
-              color: const Color(0xFF14191E),
-              border: Border.all(color: const Color(0x33FFFFFF)),
+              color: isDark
+                  ? const Color(0xFF14191E)
+                  : Colors.black.withOpacity(0.03),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0x33FFFFFF)
+                    : Colors.black.withOpacity(0.08),
+              ),
             ),
             alignment: Alignment.center,
             child: const Icon(
@@ -39,17 +51,14 @@ class _ReceiveSheet extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Ethereum (ETH / USDT)',
-              style: GoogleFonts.inter(
-                color: const Color(0xFFB5BEDF),
-                fontSize: 13,
-              ),
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
             ),
           ),
           const SizedBox(height: 8),
           SelectableText(
             evmFallback,
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: primaryTextColor,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
@@ -71,17 +80,14 @@ class _ReceiveSheet extends StatelessWidget {
             alignment: Alignment.centerLeft,
             child: Text(
               'Bitcoin (BTC)',
-              style: GoogleFonts.inter(
-                color: const Color(0xFFB5BEDF),
-                fontSize: 13,
-              ),
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
             ),
           ),
           const SizedBox(height: 8),
           SelectableText(
             btcFallback,
             style: GoogleFonts.inter(
-              color: Colors.white,
+              color: primaryTextColor,
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,

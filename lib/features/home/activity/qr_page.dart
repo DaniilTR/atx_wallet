@@ -75,6 +75,14 @@ class _QrPageState extends State<QrPage> {
   Widget build(BuildContext context) {
     final fallback = widget.address ?? 'Адрес недоступен';
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final infoTextColor = isDark
+        ? const Color(0xFF9AA5CC)
+        : const Color(0xFF475569);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -89,7 +97,7 @@ class _QrPageState extends State<QrPage> {
             Text(
               'QR & Сканер',
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
@@ -97,10 +105,7 @@ class _QrPageState extends State<QrPage> {
             const SizedBox(height: 6),
             Text(
               'Покажите свой адрес или отсканируйте чужой',
-              style: GoogleFonts.inter(
-                color: const Color(0xFF8E99C0),
-                fontSize: 13,
-              ),
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
             ),
           ],
         ),
@@ -156,10 +161,8 @@ class _QrPageState extends State<QrPage> {
                   ? Column(
                       children: [
                         Text(
-                          'Наведите камеру на QR-код. Работает оффлайн.',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF9AA5CC),
-                          ),
+                          'Наведите камеру на QR-код.',
+                          style: GoogleFonts.inter(color: infoTextColor),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
@@ -180,16 +183,14 @@ class _QrPageState extends State<QrPage> {
                       children: [
                         Text(
                           'Сканируйте, чтобы поделиться адресом',
-                          style: GoogleFonts.inter(
-                            color: const Color(0xFF9AA5CC),
-                          ),
+                          style: GoogleFonts.inter(color: infoTextColor),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 6),
                         SelectableText(
                           fallback,
                           style: GoogleFonts.inter(
-                            color: Colors.white,
+                            color: primaryTextColor,
                             fontWeight: FontWeight.w600,
                           ),
                           textAlign: TextAlign.center,
@@ -219,15 +220,28 @@ class _QrModeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? Colors.white : const Color(0xFF7F8CB7);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final activeColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final inactiveColor = isDark
+        ? const Color(0xFF7F8CB7)
+        : const Color(0xFF64748B);
+    final color = active ? activeColor : inactiveColor;
+    final bgColor = isDark
+        ? (active ? const Color(0xFF1F2642) : const Color(0xFF141A2B))
+        : (active
+              ? Colors.black.withOpacity(0.05)
+              : Colors.black.withOpacity(0.03));
+    final borderColor = isDark
+        ? (active ? const Color(0xFF4C63FF) : const Color(0x332F3A5F))
+        : (active
+              ? Colors.black.withOpacity(0.12)
+              : Colors.black.withOpacity(0.08));
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       decoration: BoxDecoration(
-        color: active ? const Color(0xFF1F2642) : const Color(0xFF141A2B),
+        color: bgColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: active ? const Color(0xFF4C63FF) : const Color(0x332F3A5F),
-        ),
+        border: Border.all(color: borderColor),
       ),
       child: TextButton.icon(
         onPressed: onTap,
@@ -248,6 +262,7 @@ class _MyQrPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return LayoutBuilder(
       builder: (context, constraints) {
         final shortestSide = constraints.biggest.shortestSide;
@@ -263,15 +278,24 @@ class _MyQrPane extends StatelessWidget {
               child: Container(
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(32),
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF1E2645), Color(0xFF12162B)],
+                  color: isDark ? null : Colors.white,
+                  gradient: isDark
+                      ? const LinearGradient(
+                          colors: [Color(0xFF1E2645), Color(0xFF12162B)],
+                        )
+                      : null,
+                  border: Border.all(
+                    color: isDark
+                        ? const Color(0x22FFFFFF)
+                        : Colors.black.withOpacity(0.08),
                   ),
-                  border: Border.all(color: const Color(0x22FFFFFF)),
-                  boxShadow: const [
+                  boxShadow: [
                     BoxShadow(
-                      color: Color(0x55121C3C),
+                      color: isDark
+                          ? const Color(0x55121C3C)
+                          : Colors.black.withOpacity(0.12),
                       blurRadius: 30,
-                      offset: Offset(0, 22),
+                      offset: const Offset(0, 22),
                     ),
                   ],
                 ),
@@ -315,17 +339,20 @@ class _ScannerPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Stack(
       children: [
         Positioned.fill(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(32),
             child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF0F1323), Color(0xFF131A2F)],
-                ),
-              ),
+              decoration: isDark
+                  ? const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Color(0xFF0F1323), Color(0xFF131A2F)],
+                      ),
+                    )
+                  : BoxDecoration(color: Colors.black.withOpacity(0.03)),
               child: MobileScanner(controller: controller, onDetect: onDetect),
             ),
           ),
@@ -338,7 +365,9 @@ class _ScannerPane extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(28),
               border: Border.all(
-                color: scanError ? const Color(0xFFFF8F8F) : Colors.white,
+                color: scanError
+                    ? const Color(0xFFFF8F8F)
+                    : (isDark ? Colors.white : Colors.black.withOpacity(0.18)),
                 width: 2,
               ),
             ),

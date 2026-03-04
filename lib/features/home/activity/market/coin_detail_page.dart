@@ -117,6 +117,17 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final surfaceColor = isDark
+        ? const Color(0x151E2542)
+        : Colors.black.withOpacity(0.03);
+    final surfaceBorderColor = isDark
+        ? const Color(0x221B2546)
+        : Colors.black.withOpacity(0.08);
     final wallet = WalletScope.of(context);
     final balance = wallet.balanceForSymbol(widget.symbol);
     final priceText = _price == null
@@ -158,16 +169,13 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
             Text(
               widget.symbol,
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontWeight: FontWeight.w700,
               ),
             ),
             Text(
               widget.name,
-              style: GoogleFonts.inter(
-                color: const Color(0xFF8E99C0),
-                fontSize: 12,
-              ),
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 12),
             ),
           ],
         ),
@@ -181,7 +189,7 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
             Text(
               '$priceText \$',
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontSize: 28,
                 fontWeight: FontWeight.w700,
               ),
@@ -217,9 +225,9 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
               height: 220,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  color: const Color(0x151E2542),
+                  color: surfaceColor,
                   borderRadius: BorderRadius.circular(22),
-                  border: Border.all(color: const Color(0x221B2546)),
+                  border: Border.all(color: surfaceBorderColor),
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -326,11 +334,22 @@ class _BalanceFrame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final surfaceColor = isDark
+        ? const Color(0x151E2542)
+        : Colors.black.withOpacity(0.03);
+    final surfaceBorderColor = isDark
+        ? const Color(0x221B2546)
+        : Colors.black.withOpacity(0.08);
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0x151E2542),
+        color: surfaceColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x221B2546)),
+        border: Border.all(color: surfaceBorderColor),
         boxShadow: const [
           BoxShadow(
             color: Color(0x33090F23),
@@ -371,7 +390,7 @@ class _BalanceFrame extends StatelessWidget {
                   Text(
                     name,
                     style: GoogleFonts.inter(
-                      color: Colors.white,
+                      color: primaryTextColor,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -392,7 +411,7 @@ class _BalanceFrame extends StatelessWidget {
                 Text(
                   usdLabel,
                   style: GoogleFonts.inter(
-                    color: Colors.white,
+                    color: primaryTextColor,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
                   ),
@@ -400,10 +419,7 @@ class _BalanceFrame extends StatelessWidget {
                 const SizedBox(height: 2),
                 Text(
                   'Мой баланс',
-                  style: GoogleFonts.inter(
-                    color: const Color(0xFF8E99C0),
-                    fontSize: 12,
-                  ),
+                  style: GoogleFonts.inter(color: mutedTextColor, fontSize: 12),
                 ),
               ],
             ),
@@ -470,6 +486,10 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark
+        ? const Color(0xFFCAD0E4)
+        : const Color(0xFF475569);
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -504,7 +524,7 @@ class _QuickActionButton extends StatelessWidget {
               fontSize: 13,
               fontWeight: FontWeight.w500,
               letterSpacing: .1,
-              color: const Color(0xFFCAD0E4),
+              color: labelColor,
             ),
           ),
         ],
@@ -526,7 +546,12 @@ class _TimeRangeButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = active ? Colors.white : const Color(0xFF8E99C0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final color = active ? primaryTextColor : mutedTextColor;
     return Expanded(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -534,7 +559,9 @@ class _TimeRangeButton extends StatelessWidget {
           onPressed: onTap,
           style: TextButton.styleFrom(
             backgroundColor: active
-                ? const Color(0xFF1C233D)
+                ? (isDark
+                      ? const Color(0xFF1C233D)
+                      : Colors.black.withOpacity(0.05))
                 : Colors.transparent,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
@@ -563,9 +590,13 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final background = filled ? const Color(0xFF4DE8A4) : Colors.transparent;
-    final borderColor = filled ? Colors.transparent : const Color(0xFF2E3654);
-    final textColor = filled ? const Color(0xFF0F172A) : Colors.white;
+    final borderColor = filled
+        ? Colors.transparent
+        : (isDark ? const Color(0xFF2E3654) : Colors.black.withOpacity(0.12));
+    final textColor = filled ? const Color(0xFF0F172A) : primaryTextColor;
     return SizedBox(
       height: 48,
       child: OutlinedButton(
@@ -635,10 +666,16 @@ String _formatNumber(double value, {int precision = 2}) {
 }
 
 void _showStub(BuildContext context, String text) {
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   ScaffoldMessenger.of(context).showSnackBar(
     SnackBar(
-      backgroundColor: const Color(0xFF1C1F33),
-      content: Text(text, style: GoogleFonts.inter(color: Colors.white)),
+      backgroundColor: isDark ? const Color(0xFF1C1F33) : Colors.white,
+      content: Text(
+        text,
+        style: GoogleFonts.inter(
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
+      ),
     ),
   );
 }

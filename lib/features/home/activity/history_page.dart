@@ -145,21 +145,21 @@ class _HistoryPageState extends State<HistoryPage> {
                 color: const Color(0x222E9AFF),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(icon, color: Colors.white),
+              child: Icon(icon, color: primaryTextColor),
             ),
             title: Text(
               isIncoming
                   ? 'Получение ${entry.tokenSymbol}'
                   : 'Отправка ${entry.tokenSymbol}',
               style: GoogleFonts.inter(
-                color: Colors.white,
+                color: primaryTextColor,
                 fontWeight: FontWeight.w600,
               ),
             ),
             subtitle: Text(
               _formatHistorySubtitle(entry.timestamp, note),
               style: GoogleFonts.inter(
-                color: const Color(0xFF7C86B2),
+                color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
                 fontSize: 12,
               ),
             ),
@@ -202,33 +202,35 @@ class _HistoryPageState extends State<HistoryPage> {
       body: Stack(
         children: [
           AnimatedNeonBackground(isDark: isDark),
-          const Positioned(
-            top: -40,
-            right: -10,
-            child: _GlowCircle(
-              diameter: 240,
-              color: Color.fromARGB(255, 125, 71, 250),
-              opacity: 0.8,
+          if (isDark) ...[
+            const Positioned(
+              top: -40,
+              right: -10,
+              child: _GlowCircle(
+                diameter: 240,
+                color: Color.fromARGB(255, 125, 71, 250),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            left: -40,
-            child: _GlowCircle(
-              diameter: 210,
-              color: Color(0xFF7C3AED),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              left: -40,
+              child: _GlowCircle(
+                diameter: 210,
+                color: Color(0xFF7C3AED),
+                opacity: 0.8,
+              ),
             ),
-          ),
-          const Positioned(
-            bottom: -20,
-            right: -40,
-            child: _GlowCircle(
-              diameter: 220,
-              color: Color(0xFF34D399),
-              opacity: 0.8,
+            const Positioned(
+              bottom: -20,
+              right: -40,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color(0xFF34D399),
+                opacity: 0.8,
+              ),
             ),
-          ),
+          ],
           SafeArea(
             child: Column(
               children: [
@@ -354,13 +356,16 @@ class _GlowCircle extends StatelessWidget {
 
 Future<void> _copyTxHash(BuildContext context, String hash) async {
   final messenger = ScaffoldMessenger.of(context);
+  final isDark = Theme.of(context).brightness == Brightness.dark;
   await Clipboard.setData(ClipboardData(text: hash));
   messenger.showSnackBar(
     SnackBar(
-      backgroundColor: const Color(0xFF1C1F33),
+      backgroundColor: isDark ? const Color(0xFF1C1F33) : Colors.white,
       content: Text(
         'Хеш скопирован',
-        style: GoogleFonts.inter(color: Colors.white),
+        style: GoogleFonts.inter(
+          color: isDark ? Colors.white : const Color(0xFF0F172A),
+        ),
       ),
       duration: const Duration(seconds: 2),
     ),

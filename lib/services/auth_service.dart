@@ -7,7 +7,34 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../WalletSecureStorage/password_kdf.dart';
 import '../WalletSecureStorage/random_bytes.dart';
-import 'auth_user.dart';
+
+class AuthUser {
+  const AuthUser({
+    required this.id,
+    required this.username,
+    this.email,
+    this.prefersDarkTheme = true,
+  });
+
+  final String id;
+  final String username;
+  final String? email;
+  final bool prefersDarkTheme;
+
+  AuthUser copyWith({
+    String? id,
+    String? username,
+    String? email,
+    bool? prefersDarkTheme,
+  }) {
+    return AuthUser(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      prefersDarkTheme: prefersDarkTheme ?? this.prefersDarkTheme,
+    );
+  }
+}
 
 class AuthService {
   AuthService({SharedPreferences? preferences})
@@ -162,6 +189,30 @@ class AuthService {
     return _currentUser;
   }
 
+  Future<AuthUser> setThemePreference({required bool prefersDarkTheme}) async {
+    await _ensureLoaded();
+    final current = _currentUser;
+    if (current == null) {
+      throw AuthException('Пользователь не авторизован');
+    }
+
+    final record = _users[current.username];
+    if (record == null) {
+      // На всякий случай не падаем, просто обновим текущего.
+      final updated = current.copyWith(prefersDarkTheme: prefersDarkTheme);
+      _currentUser = updated;
+      await _persistCurrentUser();
+      return updated;
+    }
+
+    final updatedUser = current.copyWith(prefersDarkTheme: prefersDarkTheme);
+    _users[current.username] = record.copyWith(user: updatedUser);
+    _currentUser = updatedUser;
+    await _persistUsers();
+    await _persistCurrentUser();
+    return updatedUser;
+  }
+
   Future<void> logout() async {
     await _ensureLoaded();
     _currentUser = null;
@@ -208,6 +259,7 @@ class _UserRecord {
     'id': user.id,
     'username': user.username,
     'email': user.email,
+    'prefersDarkTheme': user.prefersDarkTheme,
     'password': legacyPassword,
     'passwordAlg': passwordAlg,
     'passwordIterations': passwordIterations,
@@ -223,6 +275,7 @@ class _UserRecord {
             'local_${DateTime.now().millisecondsSinceEpoch}',
         username: json['username'] as String? ?? 'unknown',
         email: json['email'] as String?,
+        prefersDarkTheme: json['prefersDarkTheme'] as bool? ?? true,
       ),
       legacyPassword: json['password'] as String?,
       passwordAlg: (json['passwordAlg'] as String?) ?? PasswordKdf.alg,

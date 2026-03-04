@@ -17,6 +17,10 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final activeColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final inactiveColor = isDark
+        ? const Color(0xFFD2D8F6)
+        : const Color(0xFF475569);
     return SizedBox(
       height: 110 + bottomPadding,
       child: Stack(
@@ -31,8 +35,10 @@ class BottomNav extends StatelessWidget {
               clipper: _NavBarClipper(),
               child: Container(
                 height: 85 + bottomPadding,
-                decoration: const BoxDecoration(
-                  color: Color.fromARGB(20, 255, 255, 255),
+                decoration: BoxDecoration(
+                  color: isDark
+                      ? const Color.fromARGB(20, 255, 255, 255)
+                      : Colors.white.withOpacity(0.72),
                 ),
               ),
             ),
@@ -48,26 +54,30 @@ class BottomNav extends StatelessWidget {
                   icon: Icons.home_rounded,
                   active: index == 0,
                   onTap: () => onChanged(0),
-                  activeColor: Colors.white,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
                 ),
                 _NavIcon(
                   icon: Icons.pie_chart_rounded,
                   active: index == 1,
                   onTap: () => onChanged(1),
-                  activeColor: Colors.white,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
                 ),
                 const SizedBox(width: 80),
                 _NavIcon(
                   icon: Icons.card_giftcard_rounded,
                   active: index == 2,
                   onTap: () => onChanged(2),
-                  activeColor: Colors.white,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
                 ),
                 _NavIcon(
                   icon: Icons.table_rows_rounded,
                   active: index == 3,
                   onTap: () => onChanged(3),
-                  activeColor: Colors.white,
+                  activeColor: activeColor,
+                  inactiveColor: inactiveColor,
                 ),
               ],
             ),
@@ -156,22 +166,20 @@ class _NavIcon extends StatelessWidget {
     required this.active,
     required this.onTap,
     required this.activeColor,
+    required this.inactiveColor,
   });
 
   final IconData icon;
   final bool active;
   final VoidCallback onTap;
   final Color activeColor;
+  final Color inactiveColor;
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onTap,
-      icon: Icon(
-        icon,
-        color: active ? activeColor : const Color(0xFFD2D8F6),
-        size: 26,
-      ),
+      icon: Icon(icon, color: active ? activeColor : inactiveColor, size: 26),
     );
   }
 }

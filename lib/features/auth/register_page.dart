@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
-import '../home/home_route_args.dart';
+import '../home/home_page.dart' show HomeRouteArgs;
 import 'widgets/animated_neon_background.dart';
 import 'widgets/auth_loading_view.dart';
 import 'widgets/glass_card.dart';
