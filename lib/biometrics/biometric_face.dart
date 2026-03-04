@@ -10,13 +10,19 @@ class BiometricFace {
     return result ?? false;
   }
 
-  /// Включить биометрию: нативный код вернёт map с результатом.
-  /// Раньше возвращался wrapped DEK/iv; сейчас нативный код может вернуть
-  /// `{'enabled': true}` или другую структуру. Значения могут быть разных типов.
-  static Future<Map<String, dynamic>?> enableFaceAuth({required String userId, required String password}) async {
+  /// Включить биометрию.
+  ///
+  /// Важно: мы НЕ передаём и НЕ сохраняем реальный пароль пользователя.
+  /// Вместо этого передаём локальный ключ разблокировки vault (base64), который
+  /// хранится на устройстве только в зашифрованном виде и доступен только после
+  /// успешной биометрии.
+  static Future<Map<String, dynamic>?> enableFaceAuth({
+    required String userId,
+    required String vaultKeyB64,
+  }) async {
     final res = await _channel.invokeMethod<Map>('enableFaceAuth', {
       'userId': userId,
-      'password': password,
+      'vaultKeyB64': vaultKeyB64,
     });
     if (res == null) return null;
     return Map<String, dynamic>.from(res);

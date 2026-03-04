@@ -36,9 +36,9 @@ class MainActivity : FlutterFragmentActivity() {
 				"isAvailable" -> result.success(isBiometricAvailable())
 				"enableFaceAuth" -> {
 					val userId = call.argument<String>("userId") ?: ""
-					val password = call.argument<String>("password")
+					val vaultKeyB64 = call.argument<String>("vaultKeyB64")
 					// MethodChannel: enableFaceAuth called for userId (logging removed in production)
-					handleEnableFaceAuth(userId, password, result)
+					handleEnableFaceAuth(userId, vaultKeyB64, result)
 				}
 				"authenticate" -> {
 					val userId = call.argument<String>("userId") ?: ""
@@ -58,13 +58,24 @@ class MainActivity : FlutterFragmentActivity() {
 		return biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) == BiometricManager.BIOMETRIC_SUCCESS
 	}
 
-	private fun handleEnableFaceAuth(userId: String, password: String?, result: MethodChannel.Result) {
+	private fun handleEnableFaceAuth(userId: String, vaultKeyB64: String?, result: MethodChannel.Result) {
 		try {
 			// Generate a random DEK (kept only in native). If a password/secret is provided,
 			// encrypt that secret with DEK and store the ciphertext in prefs so native can later
 			// decrypt it after unwrapping DEK. We DO NOT expose raw DEK to Dart.
 			val dek = ByteArray(32)
 			SecureRandom().nextBytes(dek)
+
+			// We do NOT accept plaintext password anymore. Dart must send vaultKeyB64.
+			val secretBytes: ByteArray? = if (vaultKeyB64 != null && vaultKeyB64.isNotEmpty()) {
+				Base64.decode(vaultKeyB64, Base64.NO_WRAP)
+			} else {
+				null
+			}
+			if (secretBytes == null) {
+				result.error("enable_error", "Missing vaultKeyB64", null)
+				return
+			}
 
 			// ensure KEK exists in AndroidKeyStore
 			val alias = keyAliasFor(userId)
@@ -89,18 +100,18 @@ class MainActivity : FlutterFragmentActivity() {
 							prefs.edit().putString("wrapped_dek_$userId", Base64.encodeToString(wrappedDek, Base64.NO_WRAP)).apply()
 							prefs.edit().putString("wrapped_dek_iv_$userId", Base64.encodeToString(wrappedDekIv, Base64.NO_WRAP)).apply()
 
-							// If caller provided a password/secret, encrypt it with DEK and store ciphertext+iv
-							if (password != null) {
-							val secretBytes = password.toByteArray(Charsets.UTF_8)
-							val secretCipher = Cipher.getInstance("AES/GCM/NoPadding")
-							val dekKey = SecretKeySpec(dek, "AES")
-							secretCipher.init(Cipher.ENCRYPT_MODE, dekKey)
-							val secretCiphertext = secretCipher.doFinal(secretBytes)
-							val secretIv = secretCipher.iv
-							prefs.edit().putString("secret_cipher_$userId", Base64.encodeToString(secretCiphertext, Base64.NO_WRAP)).apply()
-							prefs.edit().putString("secret_iv_$userId", Base64.encodeToString(secretIv, Base64.NO_WRAP)).apply()
-							java.util.Arrays.fill(secretBytes, 0)
-						}
+							// If caller provided a vault unlock key, encrypt it with DEK and store ciphertext+iv.
+							if (secretBytes != null) {
+								val secretCipher = Cipher.getInstance("AES/GCM/NoPadding")
+								val dekKey = SecretKeySpec(dek, "AES")
+								secretCipher.init(Cipher.ENCRYPT_MODE, dekKey)
+								val secretCiphertext = secretCipher.doFinal(secretBytes)
+								val secretIv = secretCipher.iv
+								prefs.edit().putString("secret_cipher_$userId", Base64.encodeToString(secretCiphertext, Base64.NO_WRAP)).apply()
+								prefs.edit().putString("secret_iv_$userId", Base64.encodeToString(secretIv, Base64.NO_WRAP)).apply()
+								prefs.edit().putString("secret_kind_$userId", "vault_key_b64_v1").apply()
+								java.util.Arrays.fill(secretBytes, 0)
+							}
 
 							// zeroize DEK and return only a success marker to Dart
 							java.util.Arrays.fill(dek, 0)
@@ -164,6 +175,16 @@ class MainActivity : FlutterFragmentActivity() {
 							val c = resultPrompt.cryptoObject?.cipher ?: cipher
 							val dek = c.doFinal(wrapped)
 						val prefs = getEncryptedPrefs()
+						val kind = prefs.getString("secret_kind_$userId", null)
+						if (kind != "vault_key_b64_v1") {
+							java.util.Arrays.fill(dek, 0)
+							result.error(
+								"biometric_migration_required",
+								"Biometric setup is outdated; please re-enable biometric login",
+								null
+							)
+							return
+						}
 						val secretCipherB64 = prefs.getString("secret_cipher_$userId", null)
 						val secretIvB64 = prefs.getString("secret_iv_$userId", null)
 						if (secretCipherB64 != null && secretIvB64 != null) {
@@ -174,11 +195,11 @@ class MainActivity : FlutterFragmentActivity() {
 							val secretSpec = GCMParameterSpec(128, secretIv)
 							secretDecCipher.init(Cipher.DECRYPT_MODE, dekKey, secretSpec)
 							val secretPlain = secretDecCipher.doFinal(secretCiphertext)
-							val secretStr = String(secretPlain, Charsets.UTF_8)
+							val secretB64 = Base64.encodeToString(secretPlain, Base64.NO_WRAP)
 							java.util.Arrays.fill(secretPlain, 0)
 							java.util.Arrays.fill(dek, 0)
 							val map: HashMap<String, Any?> = HashMap()
-							map["secret"] = secretStr
+							map["vaultKeyB64"] = secretB64
 							map["fallback"] = false
 							result.success(map)
 						} else {
@@ -233,6 +254,9 @@ class MainActivity : FlutterFragmentActivity() {
 			val prefs = getEncryptedPrefs()
 			prefs.edit().remove("wrapped_dek_$userId").apply()
 			prefs.edit().remove("wrapped_dek_iv_$userId").apply()
+			prefs.edit().remove("secret_cipher_$userId").apply()
+			prefs.edit().remove("secret_iv_$userId").apply()
+			prefs.edit().remove("secret_kind_$userId").apply()
 			val alias = keyAliasFor(userId)
 			val ks = KeyStore.getInstance("AndroidKeyStore")
 			ks.load(null)

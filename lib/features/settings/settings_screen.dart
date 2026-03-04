@@ -230,14 +230,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
 
                 try {
-                  final res = await BiometricFace.enableFaceAuth(userId: userId!, password: trimmed);
+                  final uname = auth.currentUser?.username;
+                  if (uname == null || uname.isEmpty) {
+                    throw StateError('Пользователь не найден');
+                  }
+
+                  // Verify password against local auth (fast fail for typos).
+                  await auth.login(login: uname, password: trimmed);
+
+                  final vaultKeyB64 = await wallet!.deriveBiometricVaultKeyB64(
+                    userId: userId!,
+                    password: trimmed,
+                  );
+
+                  final res = await BiometricFace.enableFaceAuth(
+                    userId: userId!,
+                    vaultKeyB64: vaultKeyB64,
+                  );
                   if (!context.mounted) return;
                   if (res != null) {
                     // Save a marker in secure prefs so login page can map to correct userId
                     await BiometricPrefs.setEnabled(userId!, true);
                     await BiometricPrefs.setLastUser(userId!);
                     // also save by username to increase chance of matching (if username used at login)
-                    final uname = auth.currentUser?.username;
                     if (uname != null && uname.isNotEmpty) {
                       await BiometricPrefs.setEnabled(uname, true);
                       await BiometricPrefs.setUserIdForUsername(
