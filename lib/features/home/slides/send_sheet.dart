@@ -183,7 +183,7 @@ class _SendSheetState extends State<_SendSheet> {
               const SizedBox(height: 12),
             ],
             DropdownButtonFormField<TokenMetadata>(
-              initialValue: token,
+              value: token,
               decoration: InputDecoration(
                 labelText: 'Токен',
                 labelStyle: GoogleFonts.inter(color: mutedTextColor),

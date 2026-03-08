@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
+import 'package:atx_wallet/core/compat/color_with_values.dart';
+
 class QrPage extends StatefulWidget {
   const QrPage({super.key, required this.address});
 

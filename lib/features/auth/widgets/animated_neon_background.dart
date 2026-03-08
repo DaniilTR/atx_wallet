@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/compat/color_with_values.dart';
+
 class AnimatedNeonBackground extends StatefulWidget {
   const AnimatedNeonBackground({this.isDark = true, super.key});
 

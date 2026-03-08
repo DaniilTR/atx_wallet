@@ -5,6 +5,8 @@ import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
+import '../../core/compat/color_with_values.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../biometrics/biometric_face.dart';

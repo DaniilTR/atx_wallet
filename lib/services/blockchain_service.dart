@@ -33,7 +33,7 @@ class BlockchainService {
     return _client.estimateGas(
       sender: from,
       to: to,
-      value: EtherAmount.fromBigInt(EtherUnit.wei, valueWei),
+      value: EtherAmount.inWei(valueWei),
     );
   }
 

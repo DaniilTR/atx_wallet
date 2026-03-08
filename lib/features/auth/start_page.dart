@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/compat/color_with_values.dart';
 import '../../services/auth_scope.dart';
 
 class StartPage extends StatefulWidget {
@@ -15,11 +16,15 @@ class _StartPageState extends State<StartPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      final auth = AuthScope.of(context);
-      final hasUsers = await auth.hasAnyUsers();
-      if (!mounted) return;
-      if (hasUsers) {
-        Navigator.pushReplacementNamed(context, '/login');
+      try {
+        final auth = AuthScope.of(context);
+        final hasUsers = await auth.hasAnyUsers();
+        if (!mounted) return;
+        if (hasUsers) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      } catch (_) {
+        // Keep the start screen visible if local auth state can't be read.
       }
     });
   }

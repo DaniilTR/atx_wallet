@@ -1,5 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kDebugMode, kProfileMode;
+
+import 'core/compat/color_with_values.dart';
 
 import 'services/auth_scope.dart';
 import 'services/auth_controller.dart';
@@ -14,9 +17,34 @@ import 'providers/wallet_provider.dart';
 import 'providers/wallet_scope.dart';
 
 Future<void> main() async {
-  // Global Flutter error handler
+  // Make framework/build errors visible in release builds (instead of a blank screen).
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    final message = kDebugMode || kProfileMode
+        ? details.toString()
+        : 'Произошла ошибка при запуске приложения.';
+    return Material(
+      color: const Color(0xFFFFFFFF),
+      child: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Text(
+            message,
+            style: const TextStyle(color: Colors.black87),
+          ),
+        ),
+      ),
+    );
+  };
+
+  // Global Flutter error handler: forward to the current zone.
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.dumpErrorToConsole(details);
+    if (kDebugMode || kProfileMode) {
+      FlutterError.dumpErrorToConsole(details);
+    }
+    Zone.current.handleUncaughtError(
+      details.exception,
+      details.stack ?? StackTrace.current,
+    );
   };
 
   // Run initialization and app inside the same zone to avoid "Zone mismatch" warnings
@@ -26,7 +54,14 @@ Future<void> main() async {
       final walletProvider = WalletProvider();
       try {
         await walletProvider.init();
-      } catch (_) {}
+      } catch (e, st) {
+        if (kDebugMode || kProfileMode) {
+          // ignore: avoid_print
+          print('WalletProvider.init failed: $e');
+          // ignore: avoid_print
+          print(st);
+        }
+      }
       runApp(AtxWalletApp(walletProvider: walletProvider));
     },
     (Object error, StackTrace stack) {
@@ -125,7 +160,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
           borderSide: BorderSide(color: colorSchemeDark.primary, width: 1.4),
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: const Color(0xFF14191E),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -155,7 +190,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         ),
       ),
       dividerColor: const Color(0xFFE6EAF2),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: const Color(0xFFFFFFFF),
         elevation: 1,
         shadowColor: const Color(0x1A1B2C5B),

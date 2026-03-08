@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:atx_wallet/core/compat/color_with_values.dart';
+
 import 'package:atx_wallet/features/auth/widgets/animated_neon_background.dart';
 import 'package:atx_wallet/features/home/activity/qr_page.dart';
 import 'package:atx_wallet/features/home/home_page.dart';

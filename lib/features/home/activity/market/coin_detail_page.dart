@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:atx_wallet/core/compat/color_with_values.dart';
+
 import '../../../../providers/wallet_scope.dart';
 
 /// Экран деталей монеты/актива.

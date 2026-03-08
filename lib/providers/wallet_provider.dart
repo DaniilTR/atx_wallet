@@ -225,8 +225,9 @@ class WalletBalances {
   }
 }
 
-const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
-  TokenMetadata(
+final List<TokenMetadata> kTrackedTokens = List<TokenMetadata>.unmodifiable(
+  <TokenMetadata>[
+    TokenMetadata(
     symbol: 'USDT',
     name: 'Tether USD',
     kind: AssetKind.evmErc20,
@@ -236,22 +237,23 @@ const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
     decimalsHint: 6,
     fetchDecimalsFromChain: false,
     coinGeckoId: 'tether',
-  ),
-  TokenMetadata(
+    ),
+    TokenMetadata(
     symbol: 'ETH',
     name: 'Ethereum',
     kind: AssetKind.evmNative,
     decimalsHint: 18,
     coinGeckoId: 'ethereum',
-  ),
-  TokenMetadata(
+    ),
+    TokenMetadata(
     symbol: 'BTC',
     name: 'Bitcoin',
     kind: AssetKind.bitcoin,
     decimalsHint: 8,
     coinGeckoId: 'bitcoin',
-  ),
-];
+    ),
+  ],
+);
 
 class WalletProvider extends ChangeNotifier implements WalletAddressService {
   WalletProvider({
@@ -1165,9 +1167,9 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
         txHash = await blockchain.sendNative(
           privateKeyHex: key,
           to: to,
-          amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+          amount: EtherAmount.inWei(wei),
           maxGas: gasLimit.toInt(),
-          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
+          gasPrice: EtherAmount.inWei(bumpedGasPriceWei),
         );
       } else {
         final contract = EthereumAddress.fromHex(token.contractAddress!);
@@ -1210,7 +1212,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
           to: to,
           amount: raw,
           maxGas: gasLimit.toInt(),
-          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
+          gasPrice: EtherAmount.inWei(bumpedGasPriceWei),
         );
       }
     } catch (e) {
@@ -1349,10 +1351,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   }
 
   String _formatEth(BigInt wei) {
-    final eth = EtherAmount.fromBigInt(
-      EtherUnit.wei,
-      wei,
-    ).getValueInUnit(EtherUnit.ether);
+    final eth = EtherAmount.inWei(wei).getValueInUnit(EtherUnit.ether);
     final text = eth.toStringAsFixed(6);
     return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   }
@@ -1365,10 +1364,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   String? _feeUsdLabel({required BigInt feeWei}) {
     final ethPrice = _priceUsdFor('ETH');
     if (ethPrice == null || !ethPrice.isFinite || ethPrice <= 0) return null;
-    final feeEth = EtherAmount.fromBigInt(
-      EtherUnit.wei,
-      feeWei,
-    ).getValueInUnit(EtherUnit.ether);
+    final feeEth = EtherAmount.inWei(feeWei).getValueInUnit(EtherUnit.ether);
     final usd = feeEth * ethPrice;
     return '${_formatFiat(usd)} \$';
   }

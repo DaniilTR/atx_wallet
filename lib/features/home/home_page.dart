@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../core/compat/color_with_values.dart';
+
 import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';

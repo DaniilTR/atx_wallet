@@ -14,6 +14,11 @@ import Security
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
 
+    let didFinish = super.application(application, didFinishLaunchingWithOptions: launchOptions)
+
+    // `window`/`rootViewController` may be initialized by FlutterAppDelegate.
+    // Set up the channel after calling `super` to avoid missing the controller
+    // on newer iOS scene lifecycles.
     if let controller = window?.rootViewController as? FlutterViewController {
       let channel = FlutterMethodChannel(
         name: biometricChannelName,
@@ -21,7 +26,7 @@ import Security
       )
 
       channel.setMethodCallHandler { [weak self] call, result in
-        guard let self else {
+        guard let self = self else {
           result(FlutterError(code: "internal", message: "App delegate deallocated", details: nil))
           return
         }
@@ -74,7 +79,7 @@ import Security
       }
     }
 
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    return didFinish
   }
 
   private func keychainAccount(for userId: String) -> String {
@@ -95,7 +100,7 @@ import Security
       .deviceOwnerAuthenticationWithBiometrics,
       localizedReason: "Подтвердите личность для включения быстрого входа"
     ) { [weak self] success, error in
-      guard let self else {
+      guard let self = self else {
         DispatchQueue.main.async {
           result(FlutterError(code: "enable_error", message: "Internal state error", details: nil))
         }

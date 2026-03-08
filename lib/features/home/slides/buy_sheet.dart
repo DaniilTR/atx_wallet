@@ -17,10 +17,10 @@ class _BuySheet extends StatelessWidget {
         ? const Color(0xFF9CA9D4)
         : const Color(0xFF475569);
 
-    final items = [
-      ('ATX', 'Пополнение через карту'),
-      ('BNB', 'Перевод из Binance Pay'),
-      ('USDT', 'P2P покупка'),
+    final items = const <MapEntry<String, String>>[
+      MapEntry('ATX', 'Пополнение через карту'),
+      MapEntry('BNB', 'Перевод из Binance Pay'),
+      MapEntry('USDT', 'P2P покупка'),
     ];
     return _SheetContainer(
       title: 'Купить актив',
@@ -45,7 +45,7 @@ class _BuySheet extends StatelessWidget {
                       radius: 18,
                       backgroundColor: cardBg,
                       child: Text(
-                        item.$1,
+                        item.key,
                         style: TextStyle(color: primaryTextColor),
                       ),
                     ),
@@ -55,14 +55,14 @@ class _BuySheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.$1,
+                            item.key,
                             style: GoogleFonts.inter(
                               color: primaryTextColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
-                            item.$2,
+                            item.value,
                             style: GoogleFonts.inter(
                               color: mutedTextColor,
                               fontSize: 12,
