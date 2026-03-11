@@ -1417,6 +1417,50 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _loadHistoryFromStorage();
   }
 
+  Future<void> addSwapHistoryPending({
+    required String fromSymbol,
+    required String toSymbol,
+    required double amountIn,
+    required String txHash,
+  }) async {
+    final record = TransactionRecord(
+      id: _nextRecordId(),
+      tokenSymbol: fromSymbol,
+      amount: amountIn,
+      incoming: false,
+      timestamp: DateTime.now(),
+      txHash: txHash,
+      note: 'Swap $fromSymbol → $toSymbol (в обработке)',
+    );
+    await _appendHistory([record]);
+  }
+
+  Future<void> updateHistoryNoteByTxHash({
+    required String txHash,
+    required String note,
+  }) async {
+    if (txHash.trim().isEmpty) return;
+    final target = txHash.trim().toLowerCase();
+    if (_history.isEmpty) return;
+
+    final updated = <TransactionRecord>[];
+    var changed = false;
+    for (final r in _history) {
+      final h = r.txHash;
+      if (h != null && h.toLowerCase() == target) {
+        updated.add(r.copyWith(note: note));
+        changed = true;
+      } else {
+        updated.add(r);
+      }
+    }
+    if (!changed) return;
+
+    _history = List.unmodifiable(updated);
+    notifyListeners();
+    await _persistHistory();
+  }
+
   AssetBalance? balanceForSymbol(String symbol) {
     for (final asset in _balances.assets) {
       if (asset.token.symbol == symbol) return asset;

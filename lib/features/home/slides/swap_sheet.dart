@@ -11,12 +11,23 @@ class _SwapSheetState extends State<_SwapSheet> {
   final _amountCtrl = TextEditingController();
   TokenMetadata? _fromToken;
   TokenMetadata? _toToken;
+
+  bool _quoteLoading = false;
+  String? _quoteError;
+  BigInt? _quotedOutRaw;
   double _preview = 0;
+
+  bool _approveLoading = false;
+  bool _swapLoading = false;
+  Timer? _quoteDebounce;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final tokens = WalletScope.read(context).supportedTokens;
+    final tokens = WalletScope.read(context)
+        .supportedTokens
+        .where((t) => !t.isBitcoin)
+        .toList(growable: false);
     _fromToken ??= tokens.first;
     _toToken ??= tokens.length > 1 ? tokens[1] : tokens.first;
     _recalculate();
@@ -24,6 +35,7 @@ class _SwapSheetState extends State<_SwapSheet> {
 
   @override
   void dispose() {
+    _quoteDebounce?.cancel();
     _amountCtrl.dispose();
     super.dispose();
   }
@@ -35,17 +47,392 @@ class _SwapSheetState extends State<_SwapSheet> {
   }
 
   void _recalculate() {
+    _quoteDebounce?.cancel();
+    _quoteDebounce = Timer(const Duration(milliseconds: 350), () {
+      if (!mounted) return;
+      _refreshQuote();
+    });
+  }
+
+  Future<void> _refreshQuote() async {
     final amount = _parseInput();
-    if (!mounted) return;
     final from = _fromToken;
     final to = _toToken;
-    if (amount == null || amount <= 0 || from == null || to == null) {
-      setState(() => _preview = 0);
+    if (!mounted) return;
+
+    if (kEvmChainId != 1) {
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = 'Swap доступен только в Ethereum Mainnet (chainId=1)';
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
       return;
     }
+
+    if (amount == null || amount <= 0 || from == null || to == null) {
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = null;
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
+      return;
+    }
+
+    if (from.isBitcoin || to.isBitcoin) {
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = 'Swap доступен только для EVM-активов';
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
+      return;
+    }
+
     final wallet = WalletScope.read(context);
-    final next = wallet.convertAmount(from: from, to: to, amount: amount);
-    setState(() => _preview = next);
+    final profile = wallet.activeProfile;
+    final addressHex = profile?.addressHex;
+    final pk = wallet.privateKey;
+    if (addressHex == null || pk == null) {
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = 'Кошелёк не готов (нет адреса/ключа)';
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
+      return;
+    }
+
+    setState(() {
+      _quoteLoading = true;
+      _quoteError = null;
+    });
+
+    try {
+      final router = UniswapV2RouterService(client: wallet.blockchain.client);
+      await router.assertRouterReady();
+
+      final amountInRaw = _toBaseUnits(amount, from.decimalsHint);
+      final path = _buildPath(router: router, from: from, to: to);
+      final amounts = await router.getAmountsOut(
+        amountIn: amountInRaw,
+        path: path,
+      );
+      final outRaw = amounts.isNotEmpty ? amounts.last : BigInt.zero;
+      final outDecimals = to.isNative ? 18 : to.decimalsHint;
+      final outAmount = _fromBaseUnits(outRaw, outDecimals);
+      if (!mounted) return;
+      setState(() {
+        _quotedOutRaw = outRaw;
+        _preview = outAmount;
+        _quoteLoading = false;
+        _quoteError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = e.toString();
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
+    }
+  }
+
+  List<EthereumAddress> _buildPath({
+    required UniswapV2RouterService router,
+    required TokenMetadata from,
+    required TokenMetadata to,
+  }) {
+    EthereumAddress addr(TokenMetadata t) {
+      if (t.isNative) return router.wethAddress;
+      return EthereumAddress.fromHex(t.contractAddress!.toLowerCase());
+    }
+
+    return <EthereumAddress>[addr(from), addr(to)];
+  }
+
+  Future<bool> _ensureAllowance({
+    required TokenMetadata from,
+    required BigInt amountInRaw,
+    required EthereumAddress owner,
+  }) async {
+    if (from.isNative) return true;
+    final wallet = WalletScope.read(context);
+    final pk = wallet.privateKey;
+    if (pk == null) return false;
+
+    final router = UniswapV2RouterService(client: wallet.blockchain.client);
+    final erc20 = Erc20Service(client: wallet.blockchain.client);
+    final tokenAddr = EthereumAddress.fromHex(from.contractAddress!.toLowerCase());
+
+    final current = await erc20.allowance(
+      token: tokenAddr,
+      owner: owner,
+      spender: router.routerAddress,
+    );
+    if (current >= amountInRaw) return true;
+
+    setState(() => _approveLoading = true);
+    try {
+      await router.assertRouterReady();
+      await erc20.safeApprove(
+        token: tokenAddr,
+        privateKeyHex: pk,
+        spender: router.routerAddress,
+        amount: amountInRaw,
+        owner: owner,
+      );
+
+      final pollDeadline = DateTime.now().add(const Duration(seconds: 45));
+      while (DateTime.now().isBefore(pollDeadline)) {
+        final next = await erc20.allowance(
+          token: tokenAddr,
+          owner: owner,
+          spender: router.routerAddress,
+        );
+        if (next >= amountInRaw) return true;
+        await Future<void>.delayed(const Duration(seconds: 3));
+      }
+
+      return false;
+    } finally {
+      if (mounted) setState(() => _approveLoading = false);
+    }
+  }
+
+  Future<void> _executeSwap() async {
+    final amount = _parseInput();
+    final from = _fromToken;
+    final to = _toToken;
+    if (amount == null || amount <= 0 || from == null || to == null) return;
+
+    if (kEvmChainId != 1) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Swap доступен только в Ethereum Mainnet (chainId=1)'),
+        ),
+      );
+      return;
+    }
+
+    final wallet = WalletScope.read(context);
+    final fromBalance = wallet.balanceForSymbol(from.symbol)?.amount ?? 0;
+    if (amount > fromBalance) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Недостаточно средств для обмена')),
+      );
+      return;
+    }
+    final profile = wallet.activeProfile;
+    final addressHex = profile?.addressHex;
+    final pk = wallet.privateKey;
+    if (addressHex == null || pk == null) return;
+
+    final owner = EthereumAddress.fromHex(addressHex.toLowerCase());
+    final router = UniswapV2RouterService(client: wallet.blockchain.client);
+
+    final amountInRaw = _toBaseUnits(amount, from.decimalsHint);
+    final path = _buildPath(router: router, from: from, to: to);
+    final outRaw = _quotedOutRaw;
+    if (outRaw == null || outRaw <= BigInt.zero) return;
+
+    const slippageBps = 100; // 1.00%
+    final amountOutMin = outRaw * BigInt.from(10_000 - slippageBps) ~/
+        BigInt.from(10_000);
+    final deadline = BigInt.from(
+      DateTime.now().add(const Duration(minutes: 15)).millisecondsSinceEpoch ~/
+          1000,
+    );
+
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Подтвердить обмен'),
+        content: Text(
+          'Сеть: chainId=$kEvmChainId\n'
+          'Router: ${router.routerAddress.hexEip55}\n\n'
+          'Отдаю: ${_formatNumber(amount, precision: 6)} ${from.symbol}\n'
+          'Получаю (ожид.): ${_formatNumber(_preview, precision: 6)} ${to.symbol}\n'
+          'Мин. получу: ${_formatNumber(_fromBaseUnits(amountOutMin, to.isNative ? 18 : to.decimalsHint), precision: 6)} ${to.symbol}\n'
+          'Slippage: 1%\n'
+          'Deadline: 15 мин',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Подтвердить'),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    setState(() => _swapLoading = true);
+    try {
+      await router.assertRouterReady();
+
+      final allowanceOk = await _ensureAllowance(
+        from: from,
+        amountInRaw: amountInRaw,
+        owner: owner,
+      );
+      if (!allowanceOk) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Не удалось подтвердить allowance для swap')),
+        );
+        return;
+      }
+
+      String tx;
+      if (from.isNative && !to.isNative) {
+        tx = await router.swapExactETHForTokens(
+          privateKeyHex: pk,
+          amountInWei: amountInRaw,
+          amountOutMin: amountOutMin,
+          path: path,
+          recipient: owner,
+          deadline: deadline,
+        );
+      } else if (!from.isNative && to.isNative) {
+        tx = await router.swapExactTokensForETH(
+          privateKeyHex: pk,
+          amountIn: amountInRaw,
+          amountOutMin: amountOutMin,
+          path: path,
+          recipient: owner,
+          deadline: deadline,
+        );
+      } else {
+        tx = await router.swapExactTokensForTokens(
+          privateKeyHex: pk,
+          amountIn: amountInRaw,
+          amountOutMin: amountOutMin,
+          path: path,
+          recipient: owner,
+          deadline: deadline,
+        );
+      }
+
+      if (!mounted) return;
+
+      if (kColdWalletMode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Подписано (cold): $tx')),
+        );
+        return;
+      }
+
+      final txHash = tx;
+      final noteBase = 'Swap ${from.symbol} → ${to.symbol}';
+      unawaited(
+        wallet.addSwapHistoryPending(
+          fromSymbol: from.symbol,
+          toSymbol: to.symbol,
+          amountIn: amount,
+          txHash: txHash,
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Обмен в обработке. Смотрите историю операций. Tx: ${txHash.substring(0, 10)}...',
+          ),
+        ),
+      );
+
+      unawaited(
+        _pollSwapReceiptAndUpdateHistory(
+          txHash: txHash,
+          client: wallet.blockchain.client,
+          wallet: wallet,
+          noteBase: noteBase,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Swap error: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _swapLoading = false);
+    }
+  }
+
+  Future<void> _pollSwapReceiptAndUpdateHistory({
+    required String txHash,
+    required Web3Client client,
+    required WalletProvider wallet,
+    required String noteBase,
+  }) async {
+    final started = DateTime.now();
+    const timeout = Duration(minutes: 3);
+    var delay = const Duration(seconds: 3);
+
+    while (DateTime.now().difference(started) < timeout) {
+      try {
+        final receipt = await client.getTransactionReceipt(txHash);
+        if (receipt != null) {
+          final status = receipt.status;
+          final ok = status == null
+              ? true
+              : status == true ||
+                  status == 1 ||
+                  status == BigInt.one ||
+                  status.toString() == '1';
+          if (ok) {
+            await wallet.updateHistoryNoteByTxHash(
+              txHash: txHash,
+              note: '$noteBase (успешно)',
+            );
+          } else {
+            await wallet.updateHistoryNoteByTxHash(
+              txHash: txHash,
+              note: '$noteBase (ошибка)',
+            );
+          }
+          return;
+        }
+      } catch (_) {
+        // ignore and retry
+      }
+
+      await Future<void>.delayed(delay);
+      if (delay < const Duration(seconds: 12)) {
+        delay *= 2;
+      }
+    }
+
+    await wallet.updateHistoryNoteByTxHash(
+      txHash: txHash,
+      note: '$noteBase (в обработке)',
+    );
+  }
+
+  double _fromBaseUnits(BigInt amount, int decimals) {
+    if (amount == BigInt.zero) return 0;
+    final divisor = math.pow(10, decimals).toDouble();
+    return amount.toDouble() / divisor;
+  }
+
+  BigInt _toBaseUnits(double amount, int decimals) {
+    final fixed = amount.toStringAsFixed(decimals);
+    final parts = fixed.split('.');
+    final whole = BigInt.parse(parts.first);
+    final fraction = parts.length > 1 ? parts[1] : '';
+    final padded = fraction.padRight(decimals, '0');
+    final fractionValue = padded.isEmpty ? BigInt.zero : BigInt.parse(padded);
+    final base = BigInt.from(10).pow(decimals);
+    return whole * base + fractionValue;
   }
 
   void _swapDirection() {
@@ -57,26 +444,10 @@ class _SwapSheetState extends State<_SwapSheet> {
     _recalculate();
   }
 
-  void _showPreviewSnack() {
-    final from = _fromToken;
-    final to = _toToken;
-    if (from == null || to == null) return;
-    final amount = _parseInput();
-    if (amount == null || amount <= 0) return;
-    final receive = _preview;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Обмен: ${_formatNumber(amount, precision: 4)} ${from.symbol} → ${_formatNumber(receive, precision: 4)} ${to.symbol}',
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final wallet = WalletScope.read(context);
-    final tokens = wallet.supportedTokens;
+    final tokens = wallet.supportedTokens.where((t) => !t.isBitcoin).toList();
     final fromBalance = _fromToken == null
         ? null
         : wallet.balanceForSymbol(_fromToken!.symbol)?.amount;
@@ -126,6 +497,24 @@ class _SwapSheetState extends State<_SwapSheet> {
             controller: _amountCtrl,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChanged: (_) => _recalculate(),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _quoteLoading
+                ? Text(
+                    'Получаем котировку...',
+                    style: GoogleFonts.inter(color: const Color(0xFF8B96B8)),
+                  )
+                : _quoteError != null
+                    ? Text(
+                        'Котировка недоступна: ${_quoteError!}',
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFFFF8F8F),
+                          fontSize: 12,
+                        ),
+                      )
+                    : const SizedBox.shrink(),
           ),
           const SizedBox(height: 12),
           Align(
@@ -189,8 +578,15 @@ class _SwapSheetState extends State<_SwapSheet> {
           ),
           const SizedBox(height: 20),
           _PrimaryButton(
-            label: 'Предпросмотр обмена',
-            onPressed: _preview <= 0 ? null : () => _showPreviewSnack(),
+            label: _swapLoading
+                ? 'Обмен выполняется...'
+                : _approveLoading
+                    ? 'Подтверждаем allowance...'
+                    : 'Обменять (Uniswap V2)',
+            onPressed:
+                (_preview <= 0 || _quoteLoading || _approveLoading || _swapLoading)
+                    ? null
+                    : () => _executeSwap(),
           ),
         ],
       ),
