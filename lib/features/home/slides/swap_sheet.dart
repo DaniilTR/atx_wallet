@@ -332,30 +332,17 @@ class _SwapSheetState extends State<_SwapSheet> {
       }
 
       final txHash = tx;
-      final noteBase = 'Swap ${from.symbol} → ${to.symbol}';
-      unawaited(
-        wallet.addSwapHistoryPending(
-          fromSymbol: from.symbol,
-          toSymbol: to.symbol,
-          amountIn: amount,
-          txHash: txHash,
-        ),
-      );
-
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'Обмен в обработке. Смотрите историю операций. Tx: ${txHash.substring(0, 10)}...',
+            'Обмен отправлен. Tx: ${txHash.substring(0, 10)}...',
           ),
         ),
       );
-
       unawaited(
-        _pollSwapReceiptAndUpdateHistory(
+        _pollSwapReceiptAndReport(
           txHash: txHash,
           client: wallet.blockchain.client,
-          wallet: wallet,
-          noteBase: noteBase,
         ),
       );
     } catch (e) {
@@ -368,11 +355,9 @@ class _SwapSheetState extends State<_SwapSheet> {
     }
   }
 
-  Future<void> _pollSwapReceiptAndUpdateHistory({
+  Future<void> _pollSwapReceiptAndReport({
     required String txHash,
     required Web3Client client,
-    required WalletProvider wallet,
-    required String noteBase,
   }) async {
     final started = DateTime.now();
     const timeout = Duration(minutes: 3);
@@ -389,17 +374,16 @@ class _SwapSheetState extends State<_SwapSheet> {
                   status == 1 ||
                   status == BigInt.one ||
                   status.toString() == '1';
-          if (ok) {
-            await wallet.updateHistoryNoteByTxHash(
-              txHash: txHash,
-              note: '$noteBase (успешно)',
-            );
-          } else {
-            await wallet.updateHistoryNoteByTxHash(
-              txHash: txHash,
-              note: '$noteBase (ошибка)',
-            );
-          }
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                ok
+                    ? 'Swap успешно подтвержден. Tx: ${txHash.substring(0, 10)}...'
+                    : 'Swap отклонён сетью/контрактом. Tx: ${txHash.substring(0, 10)}...',
+              ),
+            ),
+          );
           return;
         }
       } catch (_) {
@@ -412,9 +396,13 @@ class _SwapSheetState extends State<_SwapSheet> {
       }
     }
 
-    await wallet.updateHistoryNoteByTxHash(
-      txHash: txHash,
-      note: '$noteBase (в обработке)',
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Нет подтверждения за 3 минуты (проверьте tx в обозревателе). Tx: ${txHash.substring(0, 10)}...',
+        ),
+      ),
     );
   }
 
