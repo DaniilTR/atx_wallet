@@ -86,7 +86,6 @@ class SecureWalletVault {
     final cipher = AesGcm.with256bits();
     final nonce = await secureRandomBytes(12);
 
-    // AAD: минимальная привязка (без "секретов").
     final aad = utf8.encode('atx_wallet|vault_v1|$userId|$walletId|seed');
 
     final box = await cipher.encrypt(
