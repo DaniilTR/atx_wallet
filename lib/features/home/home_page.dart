@@ -1,7 +1,11 @@
 // lib/features/home/home_page.dart
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:web3dart/web3dart.dart';
 
 import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
@@ -11,6 +15,8 @@ import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../services/config.dart';
+import '../../services/erc20_service.dart';
+import '../../services/uniswap_v2_router_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'widgets/bottom_nav.dart';
