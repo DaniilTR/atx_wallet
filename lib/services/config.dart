@@ -2,7 +2,6 @@
 // Глобальная конфигурация клиента.
 // При необходимости переопределяйте через --dart-define.
 
-
 /// DEV storage для локального кошелька (по умолчанию включён, отключайте в релизе через --dart-define).
 const bool kEnableDevWalletStorage = bool.fromEnvironment(
   'DEV_WALLET_STORAGE',
@@ -51,4 +50,17 @@ const int kEvmChainId = int.fromEnvironment(
 const String kInitialRoute = String.fromEnvironment(
   'INITIAL_ROUTE',
   defaultValue: '/start',
+);
+
+/// Базовый URL для CoinGecko.
+///
+/// По умолчанию приложение ходит напрямую в CoinGecko.
+/// Чтобы использовать свой сервер-посредник с кэшем (VPS), задайте:
+/// `--dart-define COINGECKO_BASE_URL=https://your-vps.example.com`
+///
+/// Важно: ожидается именно origin (схема + хост + порт), без path.
+/// Пример: `https://prices.example.com` или ` http://127.0.0.1:8080`.
+const String kCoinGeckoBaseUrl = String.fromEnvironment(
+  'COINGECKO_BASE_URL',
+  defaultValue: 'http://127.0.0.1:8080',
 );

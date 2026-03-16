@@ -2,6 +2,8 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'config.dart';
+
 /// Сервис получения цен активов через публичный API CoinGecko.
 ///
 /// Зачем он нужен:
@@ -25,10 +27,11 @@ class AssetPriceService {
 
     // Endpoint CoinGecko для простых цен:
     // GET /api/v3/simple/price?ids=...&vs_currencies=usd
-    final uri = Uri.https('api.coingecko.com', '/api/v3/simple/price', {
-      'ids': coinGeckoIds.join(','),
-      'vs_currencies': 'usd',
-    });
+    final base = Uri.parse(kCoinGeckoBaseUrl);
+    final uri = base.replace(
+      path: '/api/v3/simple/price',
+      queryParameters: {'ids': coinGeckoIds.join(','), 'vs_currencies': 'usd'},
+    );
 
     final res = await _httpClient.get(
       uri,

@@ -5,6 +5,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:web3dart/web3dart.dart';
 
 import 'activity/market/coin_detail_page.dart';
@@ -16,6 +17,7 @@ import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../services/config.dart';
 import '../../services/erc20_service.dart';
+import '../../services/news_service.dart';
 import '../../services/uniswap_v2_router_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
@@ -464,9 +466,14 @@ class _BalanceCard extends StatelessWidget {
                           letterSpacing: .3,
                         ),
                       ),
-                      const Spacer(),
-                      _GrowthPill(
-                        value: loading ? 'Обновляем' : updatedLabel,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerRight,
+                          child: _GrowthPill(
+                            value: loading ? 'Обновляем' : updatedLabel,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -731,7 +738,12 @@ class _AssetTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: isDark
                 ? const Color.fromARGB(19, 255, 255, 255)
-                : const Color.fromARGB(255, 255, 255, 255).withValues(alpha: 0.03),
+                : const Color.fromARGB(
+                    255,
+                    255,
+                    255,
+                    255,
+                  ).withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(18),
             boxShadow: isDark
                 ? const [
@@ -768,7 +780,10 @@ class _AssetTile extends StatelessWidget {
                         : const Color.fromARGB(20, 255, 255, 255),
                   ),
                   boxShadow: [
-                    BoxShadow(color: color.withValues(alpha: .45), blurRadius: 20),
+                    BoxShadow(
+                      color: color.withValues(alpha: .45),
+                      blurRadius: 20,
+                    ),
                   ],
                 ),
                 child: const Icon(
@@ -1014,7 +1029,10 @@ class _GlowCircle extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withValues(alpha: opacity), color.withValues(alpha: 0.0)],
+            colors: [
+              color.withValues(alpha: opacity),
+              color.withValues(alpha: 0.0),
+            ],
           ),
         ),
       ),

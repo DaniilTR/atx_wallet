@@ -8,7 +8,23 @@ class RewardsPage extends StatefulWidget {
 }
 
 class _RewardsPageState extends State<RewardsPage> {
-  int _tab = 3;
+  int _tab = 2;
+
+  late final NewsService _newsService;
+  late Future<NewsFeed> _newsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _newsService = NewsService();
+    _newsFuture = _newsService.fetchCointelegraph(limit: 15);
+  }
+
+  @override
+  void dispose() {
+    _newsService.dispose();
+    super.dispose();
+  }
 
   Future<T?> _showNeonSheet<T>(Widget child) {
     return showModalBottomSheet<T>(
@@ -75,6 +91,95 @@ class _RewardsPageState extends State<RewardsPage> {
     }
   }
 
+  Future<void> _refreshNews() async {
+    setState(() {
+      _newsFuture = _newsService.fetchCointelegraph(limit: 15);
+    });
+    try {
+      await _newsFuture;
+    } catch (_) {
+      // Ошибка отрисуется через FutureBuilder.
+    }
+  }
+
+  String _formatPublishedAt(DateTime? dt) {
+    if (dt == null) return '';
+    final local = dt.toLocal();
+    String two(int v) => v.toString().padLeft(2, '0');
+    return '${two(local.day)}.${two(local.month)}.${local.year} ${two(local.hour)}:${two(local.minute)}';
+  }
+
+  Future<void> _openNewsUrl(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Некорректная ссылка')));
+      return;
+    }
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Не удалось открыть ссылку')),
+      );
+    }
+  }
+
+  Widget _buildNewsItemCard({
+    required NewsItem item,
+    required Color primaryTextColor,
+    required Color secondaryTextColor,
+  }) {
+    final dateText = _formatPublishedAt(item.publishedAt);
+
+    return GestureDetector(
+      onTap: () => _openNewsUrl(item.url),
+      child: GlassCard(
+        borderRadius: 18,
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.title,
+              style: GoogleFonts.inter(
+                color: primaryTextColor,
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (item.summary.trim().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                item.summary.trim(),
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 12,
+                  height: 1.25,
+                ),
+              ),
+            ],
+            if (dateText.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                dateText,
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final auth = AuthScope.of(context);
@@ -82,6 +187,9 @@ class _RewardsPageState extends State<RewardsPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final secondaryTextColor = isDark
+        ? const Color(0xFF9AA8D1)
+        : const Color(0xFF475569);
 
     return Scaffold(
       extendBody: true,
@@ -136,7 +244,7 @@ class _RewardsPageState extends State<RewardsPage> {
                       onLogout: () async {
                         wallet.clearDevProfile();
                         await auth.logout();
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         Navigator.pushReplacementNamed(context, '/login');
                       },
                     ),
@@ -144,85 +252,126 @@ class _RewardsPageState extends State<RewardsPage> {
                 ),
                 Positioned.fill(
                   top: 69,
-                  child: ListView(
-                    physics: const BouncingScrollPhysics(),
-                    padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
-                    children: [
-                      Text(
-                        'Rewards',
-                        textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
-                          color: primaryTextColor,
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      const _RewardsIllustration(),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: const [
-                          Expanded(
-                            child: _StatCard(
-                              title: 'Уровень',
-                              value: '100 XP to\nБронзовый',
-                            ),
+                  child: FutureBuilder<NewsFeed>(
+                    future: _newsFuture,
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(
+                          child: SizedBox(
+                            width: 32,
+                            height: 32,
+                            child: CircularProgressIndicator(strokeWidth: 3),
                           ),
-                          SizedBox(width: 12),
-                          Expanded(
-                            child: _StatCard(title: 'XP Баланс', value: '0 XP'),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 22),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: const [
-                          Expanded(
-                            child: _SectionTitle(
-                              title: 'Redeem XP',
-                              subtitle: 'Partner Benefits',
-                            ),
-                          ),
-                          _RequirementChip(text: 'Бронзовый required'),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      SizedBox(
-                        height: 260,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
+                        );
+                      }
+
+                      if (snapshot.hasError) {
+                        return ListView(
                           physics: const BouncingScrollPhysics(),
-                          itemCount: _RewardItem.samples.length,
-                          separatorBuilder: (context, index) =>
-                              const SizedBox(width: 12),
-                          itemBuilder: (context, index) {
-                            return _RewardCard(
-                              item: _RewardItem.samples[index],
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: const [
-                          Expanded(
-                            child: _SectionTitle(
-                              title: 'Trust Alpha',
-                              subtitle: 'Бронзовый required',
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
+                          children: [
+                            Text(
+                              'Новости',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: primaryTextColor,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
-                          ),
-                          Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            size: 16,
-                            color: Color(0xFF9FB1FF),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      const _TrustCard(),
-                    ],
+                            const SizedBox(height: 14),
+                            GlassCard(
+                              borderRadius: 18,
+                              padding: const EdgeInsets.all(16),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Не удалось загрузить новости',
+                                    style: GoogleFonts.inter(
+                                      color: primaryTextColor,
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    '${snapshot.error}',
+                                    style: GoogleFonts.inter(
+                                      color: secondaryTextColor,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: ElevatedButton(
+                                      onPressed: _refreshNews,
+                                      child: const Text('Повторить'),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+
+                      final feed = snapshot.data;
+                      final items = feed?.items ?? const <NewsItem>[];
+
+                      return RefreshIndicator(
+                        onRefresh: _refreshNews,
+                        child: ListView(
+                          physics: const BouncingScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
+                          children: [
+                            Text(
+                              'Новости',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: primaryTextColor,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Cointelegraph RU',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.inter(
+                                color: secondaryTextColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            if (items.isEmpty)
+                              GlassCard(
+                                borderRadius: 18,
+                                padding: const EdgeInsets.all(16),
+                                child: Text(
+                                  'Пока нет новостей',
+                                  style: GoogleFonts.inter(
+                                    color: primaryTextColor,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              )
+                            else
+                              for (final item in items) ...[
+                                _buildNewsItemCard(
+                                  item: item,
+                                  primaryTextColor: primaryTextColor,
+                                  secondaryTextColor: secondaryTextColor,
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -235,387 +384,6 @@ class _RewardsPageState extends State<RewardsPage> {
         onChanged: _handleTabChange,
         onQrTap: _openQrPage,
         isDark: isDark,
-      ),
-    );
-  }
-}
-
-class _RewardsIllustration extends StatelessWidget {
-  const _RewardsIllustration();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 120,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          Container(
-            width: 110,
-            height: 110,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [Color(0xFF38BDF8), Color(0xFF22C55E)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF34D399).withValues(alpha: 0.4),
-                  blurRadius: 30,
-                ),
-              ],
-            ),
-          ),
-          const Icon(
-            Icons.card_giftcard_rounded,
-            color: Colors.white,
-            size: 48,
-          ),
-          const Positioned(
-            right: 8,
-            top: 10,
-            child: Icon(
-              Icons.stars_rounded,
-              color: Color(0xFF8B5CF6),
-              size: 22,
-            ),
-          ),
-          const Positioned(
-            left: 18,
-            bottom: 12,
-            child: Icon(Icons.bolt_rounded, color: Color(0xFF60A5FA), size: 22),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _StatCard extends StatelessWidget {
-  const _StatCard({required this.title, required this.value});
-
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark
-        ? const Color(0xFF9AA8D1)
-        : const Color(0xFF475569);
-    final valueColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    return GlassCard(
-      borderRadius: 18,
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: GoogleFonts.inter(
-              color: titleColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              color: valueColor,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              height: 1.2,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SectionTitle extends StatelessWidget {
-  const _SectionTitle({required this.title, required this.subtitle});
-
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subtitleColor = isDark
-        ? const Color(0xFF8E99C0)
-        : const Color(0xFF475569);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: GoogleFonts.inter(
-            color: titleColor,
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          subtitle,
-          style: GoogleFonts.inter(color: subtitleColor, fontSize: 12),
-        ),
-      ],
-    );
-  }
-}
-
-class _RequirementChip extends StatelessWidget {
-  const _RequirementChip({required this.text});
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1B233F),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0x112E9AFF)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.lock_rounded, size: 14, color: Color(0xFFF5D98B)),
-          const SizedBox(width: 6),
-          Text(
-            text,
-            style: GoogleFonts.inter(
-              color: const Color(0xFFF2E7C8),
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _RewardItem {
-  const _RewardItem({
-    required this.title,
-    required this.subtitle,
-    required this.xpCost,
-    required this.gradient,
-    this.badge,
-  });
-
-  final String title;
-  final String subtitle;
-  final String xpCost;
-  final List<Color> gradient;
-  final String? badge;
-
-  static const samples = [
-    _RewardItem(
-      title: '\$50',
-      subtitle: '\$50 hotel coupon\nwith Umy',
-      xpCost: '800XP',
-      gradient: [Color(0xFFEC4899), Color(0xFFDB2777)],
-      badge: 'ENDED',
-    ),
-    _RewardItem(
-      title: '40% OFF',
-      subtitle: '40% off eSIM with\nTonMobile',
-      xpCost: '400XP',
-      gradient: [Color(0xFF38BDF8), Color(0xFF3B82F6)],
-      badge: 'ENDED',
-    ),
-    _RewardItem(
-      title: 'Free Trial',
-      subtitle: 'Free partner trial\n7 days access',
-      xpCost: '100XP',
-      gradient: [Color(0xFF10B981), Color(0xFF34D399)],
-    ),
-  ];
-}
-
-class _RewardCard extends StatelessWidget {
-  const _RewardCard({required this.item});
-
-  final _RewardItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final subtitleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final xpCostColor = isDark
-        ? const Color(0xFF9FB1FF)
-        : const Color(0xFF475569);
-    return SizedBox(
-      width: 170,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              Container(
-                height: 120,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  gradient: LinearGradient(
-                    colors: item.gradient,
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: item.gradient.first.withValues(alpha: 0.4),
-                      blurRadius: 24,
-                      offset: const Offset(0, 12),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    item.title,
-                    style: GoogleFonts.inter(
-                      color: Colors.white,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              if (item.badge != null)
-                Positioned(
-                  right: 10,
-                  top: 10,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A).withValues(alpha: 0.75),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.access_time_rounded,
-                          size: 12,
-                          color: Colors.white,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          item.badge!,
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            item.subtitle,
-            style: GoogleFonts.inter(
-              color: subtitleColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            item.xpCost,
-            style: GoogleFonts.inter(
-              color: xpCostColor,
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: item.badge == null ? () {} : null,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF1E3A2E),
-                foregroundColor: const Color(0xFF7CF8A5),
-                disabledBackgroundColor: const Color(0xFF1E293B),
-                disabledForegroundColor: const Color(0xFF94A3B8),
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              child: Text(
-                'View',
-                style: GoogleFonts.inter(fontWeight: FontWeight.w700),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TrustCard extends StatelessWidget {
-  const _TrustCard();
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final subtitleColor = isDark
-        ? const Color(0xFF8E99C0)
-        : const Color(0xFF475569);
-    return GlassCard(
-      borderRadius: 18,
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            width: 46,
-            height: 46,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(14),
-              gradient: const LinearGradient(
-                colors: [Color(0xFF22C55E), Color(0xFF16A34A)],
-              ),
-            ),
-            child: const Icon(Icons.verified_rounded, color: Colors.white),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Alpha rewards',
-                  style: GoogleFonts.inter(
-                    color: titleColor,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Получите доступ к закрытым бонусам и\nперсональным предложениям.',
-                  style: GoogleFonts.inter(color: subtitleColor, fontSize: 12),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }

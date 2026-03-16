@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/coin.dart';
 
+import '../../../../../services/config.dart';
+
 class CoinService {
   // Returns a list of coins fetched from CoinGecko markets endpoint (single call with sparkline)
   static Future<List<Coin>> fetchTopCoins() async {
@@ -17,14 +19,18 @@ class CoinService {
       'toncoin',
     ];
     final ids = order.join(',');
-    final uri = Uri.https('api.coingecko.com', '/api/v3/coins/markets', {
-      'vs_currency': 'usd',
-      'ids': ids,
-      'sparkline': 'true',
-      'price_change_percentage': '24h',
-      'per_page': order.length.toString(),
-      'page': '1',
-    });
+    final base = Uri.parse(kCoinGeckoBaseUrl);
+    final uri = base.replace(
+      path: '/api/v3/coins/markets',
+      queryParameters: {
+        'vs_currency': 'usd',
+        'ids': ids,
+        'sparkline': 'true',
+        'price_change_percentage': '24h',
+        'per_page': order.length.toString(),
+        'page': '1',
+      },
+    );
 
     final res = await http.get(
       uri,

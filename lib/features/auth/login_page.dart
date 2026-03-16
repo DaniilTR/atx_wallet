@@ -125,8 +125,8 @@ class _LoginPageState extends State<LoginPage> {
             : null;
       });
 
-      if (shouldAutoPrompt && resolvedId != null) {
-        await _maybeAutoBiometricLogin(loginName: loginName, userId: resolvedId);
+      if (shouldAutoPrompt) {
+        await _maybeAutoBiometricLogin(loginName: loginName, userId: resolvedId!);
       }
     } catch (_) {
       if (!mounted) return;

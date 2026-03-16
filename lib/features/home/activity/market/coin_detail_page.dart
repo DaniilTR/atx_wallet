@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 import '../../../../providers/wallet_scope.dart';
+import '../../../../services/config.dart';
 
 /// Экран деталей монеты/актива.
 ///
@@ -595,7 +596,9 @@ class _ActionButton extends StatelessWidget {
     final background = filled ? const Color(0xFF4DE8A4) : Colors.transparent;
     final borderColor = filled
         ? Colors.transparent
-        : (isDark ? const Color(0xFF2E3654) : Colors.black.withValues(alpha: 0.12));
+        : (isDark
+              ? const Color(0xFF2E3654)
+              : Colors.black.withValues(alpha: 0.12));
     final textColor = filled ? const Color(0xFF0F172A) : primaryTextColor;
     return SizedBox(
       height: 48,
@@ -693,10 +696,10 @@ class _CoinGeckoPriceService {
     String coinId, {
     required int days,
   }) async {
-    final uri = Uri.https(
-      'api.coingecko.com',
-      '/api/v3/coins/$coinId/market_chart',
-      {'vs_currency': 'usd', 'days': days.toString()},
+    final base = Uri.parse(kCoinGeckoBaseUrl);
+    final uri = base.replace(
+      path: '/api/v3/coins/$coinId/market_chart',
+      queryParameters: {'vs_currency': 'usd', 'days': days.toString()},
     );
 
     final res = await _httpClient.get(
