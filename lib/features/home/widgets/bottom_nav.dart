@@ -66,14 +66,14 @@ class BottomNav extends StatelessWidget {
                 ),
                 const SizedBox(width: 80),
                 _NavIcon(
-                  icon: Icons.card_giftcard_rounded,
+                  icon: Icons.local_activity_rounded,
                   active: index == 2,
                   onTap: () => onChanged(2),
                   activeColor: activeColor,
                   inactiveColor: inactiveColor,
                 ),
                 _NavIcon(
-                  icon: Icons.table_rows_rounded,
+                  icon: Icons.history_rounded,
                   active: index == 3,
                   onTap: () => onChanged(3),
                   activeColor: activeColor,
