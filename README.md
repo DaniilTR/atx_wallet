@@ -1,100 +1,73 @@
-# ATX Wallet Server (WSL)
+## Сервер-посредник для ATX Wallet
 
-Express + MongoDB (Mongoose). Минимальные эндпоинты аутентификации и полный чек‑лист проверок.
-```bash
-flutter run -d chrome --dart-define API_BASE_URL=http://localhost:3000 --dart-define USE_REMOTE_AUTH=true
-```
+Задача этого сервера — **защитить приложение от лимитов публичного CoinGecko**.
+Сейчас кошелёк ходит напрямую в `api.coingecko.com`, из-за чего при активном использовании ловим `429 Too Many Requests` и ломаются цены/графики.
 
-## Запуск бекенда
-```bash
-# 1) Перейти в проект
-cd /mnt/d/atx_wallet/server
+Этот сервис работает как **прокси с кэшем**:
 
-# 3) Установить зависимости и запустить dev-сервер
-npm install
+- принимает запросы от мобильного клиента;
+- ходит в CoinGecko **реже** и по возможности отдаёт кэш;
+- если CoinGecko временно недоступен/дает 429, сервер отдаёт **последний валидный** ответ (stale), чтобы UI не разваливался.
 
-npm run dev
-```
+## Что уже поддержано (эндпоинты)
 
-## Быстрый чек‑лист проверок
+Сервер проксирует только то, что реально использует приложение:
 
-### MongoDB: запущена ли служба?
-```bash
-systemctl is-active mongod 2>/dev/null || service mongod status
-```
-# Открыть mongo shell (mongosh)
-```bash
-mongosh
+- `GET /api/v3/simple/price`
+- `GET /api/v3/coins/markets`
+- `GET /api/v3/coins/:id/market_chart`
 
-# Команды внутри оболочки
-use atx_wallet
-db.createUser({
-  user: "atx",
-  pwd: "StrongPassword123!",
-  roles: [{ role: "readWrite", db: "atx_wallet" }]
-})
-show collections
-```
+Плюс:
 
-### MongoDB: логин под админом и просмотр баз/коллекций
+- `GET /healthz` — healthcheck.
 
+Ответы возвращаются **в том же формате**, что и CoinGecko.
 
-```bash
-# список баз
-mongosh -u root -p '22102004d' --authenticationDatabase admin --quiet --eval "db.getMongo().getDBs()"
+## Кэш (как работает)
 
-# интерактивно (показать коллекции и количество документов)
-mongosh -u root -p '22102004d' --authenticationDatabase admin <<'JS'
-use atx_wallet;
-show collections;
-print('users_count=', db.users.countDocuments());
-JS
-```
+- `CACHE_TTL_SECONDS` — сколько ответ считается свежим (по умолчанию 300 сек).
+- `CACHE_STALE_SECONDS` — сколько можно отдавать «протухший» ответ, если апстрим не отвечает (по умолчанию 24 часа).
+- Заголовок `X-Cache`: `HIT | MISS | STALE | STALE_FALLBACK`.
 
-### MongoDB сколько пользователей существует
-```bash
-mongosh -u root -p '22102004d' --authenticationDatabase admin --quiet <<'JS'
-show dbs;
-use atx_wallet;
-show collections;
-print('users_count=', db.users.countDocuments());
-JS
-```
+Также есть фоновый прогрев `simple/price` для списка монет из `PRELOAD_SIMPLE_PRICE_IDS` — раз в `REFRESH_INTERVAL_SECONDS`.
 
+## Запуск локально
 
-## Mongo посмотреть всех пользователей 
-```bash
-mongosh -u root -p '22102004d' --authenticationDatabase admin --quiet --eval \
-"printjson(db.getSiblingDB('atx_wallet').users.find({}, {password:0,passwordHash:0,__v:0}).toArray())"
-```
+Требования: Node.js 18+.
 
-## Эндпоинты API
+1) Установить зависимости:
 
-- POST `/api/auth/register` — тело: `{ username, password }` (+ опц. `email`, `name`) → ответ: `{ token, user }`
-- POST `/api/auth/login` — тело: `{ login, password }` (login = `username`, допускается email) → ответ: `{ token, user }`
+`npm i`
 
-Быстрые проверки:
-```bash
-curl -X POST http://localhost:3000/api/auth/register \
-	-H 'Content-Type: application/json' \
-	-d '{"username":"tester","email":"tester@example.com","password":"123456"}'
+2) Скопировать пример env:
 
-curl -X POST http://localhost:3000/api/auth/login \
-	-H 'Content-Type: application/json' \
-	-d '{"login":"tester","password":"123456"}'
-```
+`copy .env.example .env`
 
+3) Запуск в dev-режиме:
 
-## Сделать бекап базы данных
+`npm run dev`
 
-```powershell
-# Бекап
-mongodump --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?authSource=atx_wallet' \
-  --db 'atx_wallet' \
-  --out '/mnt/d/atx_wallet/server/db_backup_$(date +%F_%H-%M-%S)'
+Проверка:
 
-# Восстановление (пример для конкретной папки)
-mongorestore --uri 'mongodb://atx:StrongPassword123!@127.0.0.1:27017/atx_wallet?authSource=atx_wallet' \
-  --db 'atx_wallet' \
-  '/mnt/d/atx_wallet/server/db_backup/atx_wallet'
-```
+- `http://localhost:8080/healthz`
+- `http://localhost:8080/api/v3/simple/price?ids=bitcoin,ethereum,tether&vs_currencies=usd`
+
+## Запуск на VPS (без Docker)
+
+Минимально:
+
+- скопировать проект на сервер;
+- поставить Node.js LTS;
+- настроить `.env`;
+- собрать и запустить:
+
+`npm ci`
+`npm run build`
+`npm start`
+
+Для продакшна лучше использовать `systemd` или `pm2` (чтобы процесс перезапускался).
+
+## Важно про Git
+
+Ветка в git **не может хранить файлы вне корня репозитория**.
+Если вы хотите, чтобы этот сервер жил в том же репозитории, что и кошелёк — папка `server_for_atx` должна находиться *внутри* репозитория кошелька.
