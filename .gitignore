@@ -1,6 +1,8 @@
 ﻿# зависимости
 node_modules/
 
+
+
 # сборка
 /dist/
 
@@ -9,6 +11,7 @@ node_modules/
 
 # runtime/cache данные (не коммитим)
 /data/cache.json
+/data/cache/
 
 # логи
 *.log

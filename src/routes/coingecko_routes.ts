@@ -81,9 +81,8 @@ export async function registerCoinGeckoRoutes(
       ids: config.preloadSimplePriceIds.join(','),
       vs_currencies: 'usd'
     };
-    const key = deps.cg.keyFor(allowed.simplePrice, query);
     try {
-      await deps.cg.fetchAndCache(key, allowed.simplePrice, query);
+      await deps.cg.refreshNow(allowed.simplePrice, query);
       app.log.debug({ ids: config.preloadSimplePriceIds }, 'Preloaded CoinGecko simple/price');
     } catch (e) {
       app.log.warn({ err: e }, 'Preload CoinGecko failed');
@@ -96,7 +95,11 @@ export async function registerCoinGeckoRoutes(
     await preload();
     // И дальше по таймеру.
     setInterval(() => {
-      void preload();
+      try {
+        void preload();
+      } catch (err) {
+        app.log.warn({ err }, 'Preload CoinGecko crashed');
+      }
     }, config.refreshIntervalSeconds * 1000).unref();
   });
 }

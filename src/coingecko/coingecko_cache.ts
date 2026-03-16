@@ -12,14 +12,16 @@ export type CachedResponse = {
   cacheStatus: CacheStatus;
 };
 
+export type CacheProvider = (pathname: string, query: Record<string, unknown>) => JsonFileCache;
+
 export class CoinGeckoCachedClient {
   private readonly baseUrl: string;
-  private readonly cache: JsonFileCache;
+  private readonly cacheProvider: CacheProvider;
   private readonly inFlight = new Map<string, Promise<void>>();
 
-  constructor(opts: { baseUrl: string; cache: JsonFileCache }) {
+  constructor(opts: { baseUrl: string; cacheProvider: CacheProvider }) {
     this.baseUrl = opts.baseUrl.replace(/\/$/, '');
-    this.cache = opts.cache;
+    this.cacheProvider = opts.cacheProvider;
   }
 
   keyFor(pathname: string, query: Record<string, unknown>): string {
@@ -29,7 +31,8 @@ export class CoinGeckoCachedClient {
   async getJson(pathname: string, query: Record<string, unknown>): Promise<CachedResponse> {
     const key = this.keyFor(pathname, query);
     const now = nowMs();
-    const cached = this.cache.get(key);
+    const cache = this.cacheProvider(pathname, query);
+    const cached = cache.get(key);
 
     if (cached && now < cached.expiresAtMs) {
       return { statusCode: 200, body: cached.value, cacheStatus: 'HIT' };
@@ -37,12 +40,12 @@ export class CoinGeckoCachedClient {
 
     if (cached && now < cached.staleUntilMs) {
       // Отдаём stale сразу, а обновление запускаем в фоне.
-      this.refreshInBackground(key, pathname, query);
+      this.refreshInBackground(cache, key, pathname, query);
       return { statusCode: 200, body: cached.value, cacheStatus: 'STALE' };
     }
 
     try {
-      const fresh = await this.fetchAndCache(key, pathname, query);
+      const fresh = await this.fetchAndCache(cache, key, pathname, query);
       return { statusCode: 200, body: fresh, cacheStatus: 'MISS' };
     } catch (e) {
       // Если апстрим упал, но у нас есть хоть какой-то старый кэш — отдадим его.
@@ -53,17 +56,34 @@ export class CoinGeckoCachedClient {
     }
   }
 
-  private refreshInBackground(key: string, pathname: string, query: Record<string, unknown>): void {
+  private refreshInBackground(
+    cache: JsonFileCache,
+    key: string,
+    pathname: string,
+    query: Record<string, unknown>
+  ): void {
     if (this.inFlight.has(key)) return;
-    const promise = this.fetchAndCache(key, pathname, query)
+    const promise = this.fetchAndCache(cache, key, pathname, query)
       .then(() => undefined)
+      .catch(() => undefined)
       .finally(() => {
         this.inFlight.delete(key);
       });
     this.inFlight.set(key, promise);
   }
 
-  async fetchAndCache(key: string, pathname: string, query: Record<string, unknown>): Promise<unknown> {
+  async refreshNow(pathname: string, query: Record<string, unknown>): Promise<unknown> {
+    const key = this.keyFor(pathname, query);
+    const cache = this.cacheProvider(pathname, query);
+    return this.fetchAndCache(cache, key, pathname, query);
+  }
+
+  private async fetchAndCache(
+    cache: JsonFileCache,
+    key: string,
+    pathname: string,
+    query: Record<string, unknown>
+  ): Promise<unknown> {
     const url = this.buildUrl(pathname, query);
     const res = await fetchJson(url, config.upstreamTimeoutMs);
 
@@ -80,7 +100,7 @@ export class CoinGeckoCachedClient {
       staleUntilMs: now + config.cacheStaleSeconds * 1000
     };
 
-    this.cache.set(key, entry);
+    cache.set(key, entry);
     return res.body;
   }
 
