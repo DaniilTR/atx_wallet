@@ -178,83 +178,95 @@ class _RewardsPageState extends State<RewardsPage>
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(18),
           color: const Color(0x0DFFFFFF),
-          border: Border(
-            left: BorderSide(color: accent[0], width: 3),
-            top: BorderSide(color: accent[0].withValues(alpha: .15), width: 1),
-            right: BorderSide(
-              color: accent[0].withValues(alpha: .10),
-              width: 1,
-            ),
-            bottom: BorderSide(
-              color: accent[0].withValues(alpha: .10),
-              width: 1,
-            ),
-          ),
+          border: Border.all(color: accent[0].withValues(alpha: .12), width: 1),
         ),
-        padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(
-              children: [
-                Icon(
-                  Icons.schedule_rounded,
-                  size: 12,
-                  color: secondaryTextColor,
+            Container(
+              width: 3,
+              decoration: BoxDecoration(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(18),
+                  bottomLeft: Radius.circular(18),
                 ),
-                const SizedBox(width: 4),
-                Text(
-                  dateText,
-                  style: GoogleFonts.inter(
-                    color: secondaryTextColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                  ),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [accent[0], accent[1]],
                 ),
-                const Spacer(),
-                Row(
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          size: 12,
+                          color: secondaryTextColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          dateText,
+                          style: GoogleFonts.inter(
+                            color: secondaryTextColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const Spacer(),
+                        Row(
+                          children: [
+                            Text(
+                              'Читать',
+                              style: GoogleFonts.inter(
+                                color: accent[0],
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 2),
+                            Icon(
+                              Icons.arrow_forward_rounded,
+                              color: accent[0],
+                              size: 12,
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
                     Text(
-                      'Читать',
+                      item.title,
                       style: GoogleFonts.inter(
-                        color: accent[0],
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
+                        color: primaryTextColor,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        height: 1.3,
                       ),
                     ),
-                    const SizedBox(width: 2),
-                    Icon(
-                      Icons.arrow_forward_rounded,
-                      color: accent[0],
-                      size: 12,
-                    ),
+                    if (item.summary.trim().isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        item.summary.trim(),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.inter(
+                          color: secondaryTextColor,
+                          fontSize: 12,
+                          height: 1.4,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              item.title,
-              style: GoogleFonts.inter(
-                color: primaryTextColor,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                height: 1.3,
               ),
             ),
-            if (item.summary.trim().isNotEmpty) ...[
-              const SizedBox(height: 6),
-              Text(
-                item.summary.trim(),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.inter(
-                  color: secondaryTextColor,
-                  fontSize: 12,
-                  height: 1.4,
-                ),
-              ),
-            ],
           ],
         ),
       ),
@@ -865,12 +877,20 @@ class _RewardsPageState extends State<RewardsPage>
       future: _newsFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: SizedBox(
-              width: 32,
-              height: 32,
-              child: CircularProgressIndicator(strokeWidth: 3),
-            ),
+          return ListView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 190),
+            children: [
+              _newsHeader(primaryTextColor, secondaryTextColor),
+              const SizedBox(height: 18),
+              const Center(
+                child: SizedBox(
+                  width: 32,
+                  height: 32,
+                  child: CircularProgressIndicator(strokeWidth: 3),
+                ),
+              ),
+            ],
           );
         }
 

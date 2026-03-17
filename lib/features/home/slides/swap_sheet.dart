@@ -24,10 +24,9 @@ class _SwapSheetState extends State<_SwapSheet> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final tokens = WalletScope.read(context)
-        .supportedTokens
-        .where((t) => !t.isBitcoin)
-        .toList(growable: false);
+    final tokens = WalletScope.read(
+      context,
+    ).supportedTokens.where((t) => !t.isBitcoin).toList(growable: false);
     _fromToken ??= tokens.first;
     _toToken ??= tokens.length > 1 ? tokens[1] : tokens.first;
     _recalculate();
@@ -165,7 +164,9 @@ class _SwapSheetState extends State<_SwapSheet> {
 
     final router = UniswapV2RouterService(client: wallet.blockchain.client);
     final erc20 = Erc20Service(client: wallet.blockchain.client);
-    final tokenAddr = EthereumAddress.fromHex(from.contractAddress!.toLowerCase());
+    final tokenAddr = EthereumAddress.fromHex(
+      from.contractAddress!.toLowerCase(),
+    );
 
     final current = await erc20.allowance(
       token: tokenAddr,
@@ -241,8 +242,8 @@ class _SwapSheetState extends State<_SwapSheet> {
     if (outRaw == null || outRaw <= BigInt.zero) return;
 
     const slippageBps = 100; // 1.00%
-    final amountOutMin = outRaw * BigInt.from(10_000 - slippageBps) ~/
-        BigInt.from(10_000);
+    final amountOutMin =
+        outRaw * BigInt.from(10_000 - slippageBps) ~/ BigInt.from(10_000);
     final deadline = BigInt.from(
       DateTime.now().add(const Duration(minutes: 15)).millisecondsSinceEpoch ~/
           1000,
@@ -287,7 +288,9 @@ class _SwapSheetState extends State<_SwapSheet> {
       if (!allowanceOk) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Не удалось подтвердить allowance для swap')),
+          const SnackBar(
+            content: Text('Не удалось подтвердить allowance для swap'),
+          ),
         );
         return;
       }
@@ -325,18 +328,16 @@ class _SwapSheetState extends State<_SwapSheet> {
       if (!mounted) return;
 
       if (kColdWalletMode) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Подписано (cold): $tx')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Подписано (cold): $tx')));
         return;
       }
 
       final txHash = tx;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Обмен отправлен. Tx: ${txHash.substring(0, 10)}...',
-          ),
+          content: Text('Обмен отправлен. Tx: ${txHash.substring(0, 10)}...'),
         ),
       );
       unawaited(
@@ -347,9 +348,9 @@ class _SwapSheetState extends State<_SwapSheet> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Swap error: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Swap error: $e')));
     } finally {
       if (mounted) setState(() => _swapLoading = false);
     }
@@ -371,9 +372,9 @@ class _SwapSheetState extends State<_SwapSheet> {
           final ok = status == null
               ? true
               : status == true ||
-                  status == 1 ||
-                  status == BigInt.one ||
-                  status.toString() == '1';
+                    status == 1 ||
+                    status == BigInt.one ||
+                    status.toString() == '1';
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -457,7 +458,7 @@ class _SwapSheetState extends State<_SwapSheet> {
             decoration: InputDecoration(
               labelText: 'Токен списания',
               filled: true,
-              fillColor: const Color(0xFF1A223E),
+              fillColor: const Color(0xFF14191E),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(18),
               ),
@@ -495,14 +496,14 @@ class _SwapSheetState extends State<_SwapSheet> {
                     style: GoogleFonts.inter(color: const Color(0xFF8B96B8)),
                   )
                 : _quoteError != null
-                    ? Text(
-                        'Котировка недоступна: ${_quoteError!}',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFFFF8F8F),
-                          fontSize: 12,
-                        ),
-                      )
-                    : const SizedBox.shrink(),
+                ? Text(
+                    'Котировка недоступна: ${_quoteError!}',
+                    style: GoogleFonts.inter(
+                      color: const Color(0xFFFF8F8F),
+                      fontSize: 12,
+                    ),
+                  )
+                : const SizedBox.shrink(),
           ),
           const SizedBox(height: 12),
           Align(
@@ -518,7 +519,7 @@ class _SwapSheetState extends State<_SwapSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: const Color(0xFF1F2540),
+                color: const Color(0xFF14191E),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0x336FE1F5)),
               ),
@@ -569,12 +570,15 @@ class _SwapSheetState extends State<_SwapSheet> {
             label: _swapLoading
                 ? 'Обмен выполняется...'
                 : _approveLoading
-                    ? 'Подтверждаем allowance...'
-                    : 'Обменять (Uniswap V2)',
+                ? 'Подтверждаем allowance...'
+                : 'Обменять (Uniswap V2)',
             onPressed:
-                (_preview <= 0 || _quoteLoading || _approveLoading || _swapLoading)
-                    ? null
-                    : () => _executeSwap(),
+                (_preview <= 0 ||
+                    _quoteLoading ||
+                    _approveLoading ||
+                    _swapLoading)
+                ? null
+                : () => _executeSwap(),
           ),
         ],
       ),

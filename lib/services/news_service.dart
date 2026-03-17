@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:http/http.dart' as http;
 
@@ -27,6 +28,15 @@ class NewsFeed {
       for (final raw in rawItems) {
         if (raw is Map<String, dynamic>) {
           items.add(NewsItem.fromJson(raw));
+          continue;
+        }
+        if (raw is Map) {
+          final normalized = <String, dynamic>{};
+          raw.forEach((key, value) {
+            if (key == null) return;
+            normalized['$key'] = value;
+          });
+          items.add(NewsItem.fromJson(normalized));
         }
       }
     }
@@ -51,14 +61,23 @@ class NewsItem {
   final String summary;
 
   factory NewsItem.fromJson(Map<String, dynamic> json) {
-    final id = (json['id'] as String?) ?? '';
-    final title = (json['title'] as String?) ?? '';
-    final url = (json['url'] as String?) ?? '';
+    final title = ((json['title'] as String?) ?? '').trim();
+
+    // Backward/forward compatible keys:
+    // - backend currently sends `link`
+    // - some feeds use `guid` as a stable id
+    final url = ((json['url'] as String?) ?? (json['link'] as String?) ?? '')
+        .trim();
+    final id = ((json['id'] as String?) ?? (json['guid'] as String?) ?? url)
+        .trim();
+
     final publishedAtIso = json['publishedAtIso'];
     final publishedAt = publishedAtIso == null
         ? null
         : DateTime.tryParse('$publishedAtIso');
-    final summary = (json['summary'] as String?) ?? '';
+    final summary =
+        ((json['summary'] as String?) ?? (json['description'] as String?) ?? '')
+            .trim();
 
     return NewsItem(
       id: id,
@@ -83,24 +102,30 @@ class NewsService {
       queryParameters: <String, String>{'limit': '$limit'},
     );
 
-    final res = await _httpClient.get(
-      uri,
-      headers: const {
-        'Accept': 'application/json',
-        'User-Agent': 'atx_wallet/1.0',
-      },
-    );
+    try {
+      final res = await _httpClient
+          .get(
+            uri,
+            headers: const {
+              'Accept': 'application/json',
+              'User-Agent': 'atx_wallet/1.0',
+            },
+          )
+          .timeout(const Duration(seconds: 12));
 
-    if (res.statusCode != 200) {
-      throw StateError('Ошибка API новостей (${res.statusCode})');
+      if (res.statusCode != 200) {
+        throw StateError('Ошибка API новостей (${res.statusCode}) — $uri');
+      }
+
+      final decoded = jsonDecode(res.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw StateError('Неожиданный формат ответа API новостей — $uri');
+      }
+
+      return NewsFeed.fromJson(decoded);
+    } on TimeoutException {
+      throw StateError('Таймаут загрузки новостей — $uri');
     }
-
-    final decoded = jsonDecode(res.body);
-    if (decoded is! Map<String, dynamic>) {
-      throw StateError('Неожиданный формат ответа API новостей');
-    }
-
-    return NewsFeed.fromJson(decoded);
   }
 
   void dispose() {
