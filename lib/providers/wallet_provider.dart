@@ -8,6 +8,7 @@ import 'package:bip39/bip39.dart' as bip39;
 import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart';
 import 'package:hex/hex.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:web3dart/web3dart.dart';
 
 import '../WalletSecureStorage/random_bytes.dart';
@@ -253,6 +254,9 @@ const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
   ),
 ];
 
+// Эти активы всегда присутствуют на главном экране и считаются избранными.
+const Set<String> kPinnedAssetSymbols = <String>{'USDT', 'ETH', 'BTC'};
+
 class WalletProvider extends ChangeNotifier implements WalletAddressService {
   WalletProvider({
     BlockchainService? blockchainService,
@@ -297,6 +301,19 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   WalletBalances get balances => _balances;
   List<TokenMetadata> get supportedTokens => kTrackedTokens;
 
+  // Избранные (watchlist) активы для главного экрана.
+  // Важно: это НЕ означает поддержку отправки/подписания транзакций для этих токенов.
+  // Баланс для них остаётся 0, но цена подхватывается с CoinGecko.
+  // nullable специально: на Flutter Web hot-reload может оставить старый
+  // экземпляр WalletProvider (без нового поля), и тогда чтение даёт `null`.
+  List<TokenMetadata>? _favoriteTokens;
+
+  List<TokenMetadata> get _favoriteTokensValue =>
+      _favoriteTokens ?? const <TokenMetadata>[];
+
+  UnmodifiableListView<TokenMetadata> get favoriteTokens =>
+      UnmodifiableListView(_favoriteTokensValue);
+
   String? _bitcoinAddress;
   String? get bitcoinAddress => _bitcoinAddress;
 
@@ -323,6 +340,205 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       _activeProfile?.addressHex != null && privateKey != null;
 
   String? get activeUserId => _activeUserId;
+
+  bool isPinnedSymbol(String symbol) {
+    final key = symbol.trim().toUpperCase();
+    return kPinnedAssetSymbols.contains(key);
+  }
+
+  bool isFavoriteAsset({required String symbol, String? coinGeckoId}) {
+    final sym = symbol.trim().toUpperCase();
+    if (sym.isEmpty) return false;
+    if (kPinnedAssetSymbols.contains(sym)) return true;
+    final id = coinGeckoId?.trim();
+    for (final t in _favoriteTokensValue) {
+      if (id != null && id.isNotEmpty && t.coinGeckoId == id) return true;
+      if (t.symbol.trim().toUpperCase() == sym) return true;
+    }
+    return false;
+  }
+
+  Future<void> toggleFavoriteAsset({
+    required String symbol,
+    required String name,
+    required String? coinGeckoId,
+  }) async {
+    final sym = symbol.trim().toUpperCase();
+    if (sym.isEmpty) return;
+    if (kPinnedAssetSymbols.contains(sym)) return;
+
+    final id = coinGeckoId?.trim();
+    // Без CoinGecko id мы не сможем корректно подтягивать цену/график.
+    if (id == null || id.isEmpty) return;
+
+    final currentFavorites = _favoriteTokensValue;
+
+    final existingIndex = currentFavorites.indexWhere(
+      (t) =>
+          (t.coinGeckoId != null && t.coinGeckoId == id) ||
+          t.symbol.trim().toUpperCase() == sym,
+    );
+
+    if (existingIndex >= 0) {
+      final next = <TokenMetadata>[...currentFavorites]
+        ..removeAt(existingIndex);
+      _favoriteTokens = List.unmodifiable(next);
+    } else {
+      final displayName = name.trim().isEmpty ? sym : name.trim();
+      final token = TokenMetadata(
+        symbol: sym,
+        name: displayName,
+        // Для watchlist-активов достаточно evmNative, чтобы не требовался contract.
+        // Баланс всё равно остаётся 0.
+        kind: AssetKind.evmNative,
+        decimalsHint: 6,
+        fetchDecimalsFromChain: false,
+        coinGeckoId: id,
+      );
+      _favoriteTokens = List.unmodifiable(<TokenMetadata>[
+        ...currentFavorites,
+        token,
+      ]);
+    }
+
+    await _persistFavoriteAssetsToPrefs(userId: _activeUserId);
+    _balances = _balances.copyWith(
+      assets: _mergeAssetsWithTokens(_balances.assets, _tokensForUi()),
+    );
+    notifyListeners();
+    unawaited(refreshBalances(silent: true));
+  }
+
+  String _favoritesPrefsKeyFor(String? userId) {
+    final key = (userId == null || userId.trim().isEmpty)
+        ? 'global'
+        : userId.trim();
+    return 'favorite_assets_v1__$key';
+  }
+
+  Future<void> _loadFavoriteAssetsFromPrefs({String? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_favoritesPrefsKeyFor(userId));
+      if (raw == null || raw.trim().isEmpty) {
+        _favoriteTokens = const <TokenMetadata>[];
+        _balances = _balances.copyWith(
+          assets: _mergeAssetsWithTokens(_balances.assets, _tokensForUi()),
+        );
+        return;
+      }
+
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) {
+        _favoriteTokens = const <TokenMetadata>[];
+        return;
+      }
+
+      final out = <TokenMetadata>[];
+      final seenSymbols = <String>{};
+      final seenIds = <String>{};
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final symbol = (item['symbol'] as String?)?.trim().toUpperCase() ?? '';
+        if (symbol.isEmpty) continue;
+        if (kPinnedAssetSymbols.contains(symbol)) continue;
+        final name = (item['name'] as String?)?.trim() ?? symbol;
+        final id = (item['coinGeckoId'] as String?)?.trim();
+        if (id == null || id.isEmpty) continue;
+        if (seenSymbols.contains(symbol) || seenIds.contains(id)) continue;
+        seenSymbols.add(symbol);
+        seenIds.add(id);
+        out.add(
+          TokenMetadata(
+            symbol: symbol,
+            name: name.isEmpty ? symbol : name,
+            kind: AssetKind.evmNative,
+            decimalsHint: 6,
+            fetchDecimalsFromChain: false,
+            coinGeckoId: id,
+          ),
+        );
+      }
+      _favoriteTokens = List.unmodifiable(out);
+      _balances = _balances.copyWith(
+        assets: _mergeAssetsWithTokens(_balances.assets, _tokensForUi()),
+      );
+    } catch (e, st) {
+      debugPrint('Failed to load favorite assets: $e\n$st');
+      _favoriteTokens = const <TokenMetadata>[];
+    }
+  }
+
+  Future<void> _persistFavoriteAssetsToPrefs({String? userId}) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final payload = _favoriteTokensValue
+          .map(
+            (t) => <String, dynamic>{
+              'symbol': t.symbol,
+              'name': t.name,
+              'coinGeckoId': t.coinGeckoId,
+            },
+          )
+          .toList(growable: false);
+      await prefs.setString(_favoritesPrefsKeyFor(userId), jsonEncode(payload));
+    } catch (e, st) {
+      debugPrint('Failed to persist favorite assets: $e\n$st');
+    }
+  }
+
+  List<TokenMetadata> _tokensForUi() {
+    final currentFavorites = _favoriteTokensValue;
+    if (currentFavorites.isEmpty) return kTrackedTokens;
+    final out = <TokenMetadata>[...kTrackedTokens];
+    final seenSymbols = <String>{for (final t in kTrackedTokens) t.symbol};
+    final seenIds = <String>{
+      for (final t in kTrackedTokens)
+        if (t.coinGeckoId != null && t.coinGeckoId!.isNotEmpty) t.coinGeckoId!,
+    };
+
+    for (final t in currentFavorites) {
+      final sym = t.symbol.trim().toUpperCase();
+      if (sym.isEmpty) continue;
+      if (kPinnedAssetSymbols.contains(sym)) continue;
+      final id = t.coinGeckoId;
+      if (seenSymbols.contains(sym)) continue;
+      if (id != null && id.isNotEmpty && seenIds.contains(id)) continue;
+      seenSymbols.add(sym);
+      if (id != null && id.isNotEmpty) seenIds.add(id);
+      out.add(t);
+    }
+    return out;
+  }
+
+  List<AssetBalance> _mergeAssetsWithTokens(
+    List<AssetBalance> current,
+    List<TokenMetadata> tokens,
+  ) {
+    final map = <String, AssetBalance>{
+      for (final a in current) a.token.symbol.trim().toUpperCase(): a,
+    };
+    return tokens
+        .map((t) {
+          final key = t.symbol.trim().toUpperCase();
+          final existing = map[key];
+          if (existing == null) {
+            return AssetBalance(
+              token: t,
+              raw: BigInt.zero,
+              decimals: t.decimalsHint,
+              priceUsd: null,
+            );
+          }
+          return AssetBalance(
+            token: t,
+            raw: existing.raw,
+            decimals: existing.decimals,
+            priceUsd: existing.priceUsd,
+          );
+        })
+        .toList(growable: false);
+  }
 
   void _setPrivateKeyInMemory(String? value) {
     privateKey = value;
@@ -391,6 +607,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _secureKey = key;
     _secureBundle = bundle;
     _activeUserId = userId;
+    await _loadFavoriteAssetsFromPrefs(userId: userId);
 
     final profiles = bundle.wallets
         .where((e) => e.userId.isNotEmpty && e.walletId.isNotEmpty)
@@ -448,7 +665,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       throw StateError('Кошелёк не найден. Создайте новый.');
     }
 
-    final key = await _secureVault.deriveBundleKey(bundle: bundle, password: password);
+    final key = await _secureVault.deriveBundleKey(
+      bundle: bundle,
+      password: password,
+    );
     final bytes = await key.extractBytes();
     return base64Encode(bytes);
   }
@@ -471,6 +691,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _secureKey = key;
     _secureBundle = bundle;
     _activeUserId = userId;
+    await _loadFavoriteAssetsFromPrefs(userId: userId);
 
     final profiles = bundle.wallets
         .where((e) => e.userId.isNotEmpty && e.walletId.isNotEmpty)
@@ -492,7 +713,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       (w) => w.walletId == activeId,
       orElse: () => bundle.wallets.first,
     );
-    final mnemonic = await _secureVault.decryptMnemonic(key: key, entry: activeEntry);
+    final mnemonic = await _secureVault.decryptMnemonic(
+      key: key,
+      entry: activeEntry,
+    );
     if (!bip39.validateMnemonic(mnemonic.trim())) {
       throw StateError('Повреждённое хранилище: seed невалиден');
     }
@@ -562,6 +786,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
 
     // Обновляем состояние как после разблокировки.
     _activeUserId = userId;
+    await _loadFavoriteAssetsFromPrefs(userId: userId);
     _setPrivateKeyInMemory(pk);
     // BTC-адрес уже был деривирован выше.
     _wallets = List.unmodifiable([
@@ -792,6 +1017,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     _setBitcoinPrivateKeyWifInMemory(null);
     _secureKey = null;
     _secureBundle = null;
+    _favoriteTokens = const <TokenMetadata>[];
     _balances = WalletBalances.initial(kTrackedTokens);
     _stopAutoRefresh();
     _clearHistoryState();
@@ -830,10 +1056,11 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   }
 
   Future<void> refreshBalances({bool silent = false}) async {
+    final tokensForUi = _tokensForUi();
     final addressHex = _activeProfile?.addressHex;
     final btcAddress = _bitcoinAddress;
     if (addressHex == null && (btcAddress == null || btcAddress.isEmpty)) {
-      _balances = WalletBalances.initial(kTrackedTokens);
+      _balances = WalletBalances.initial(tokensForUi);
       _hasBalanceSnapshot = false;
       notifyListeners();
       return;
@@ -856,7 +1083,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       final balances = await Future.wait(futures);
 
       final ids = <String>{
-        for (final t in kTrackedTokens)
+        for (final t in tokensForUi)
           if (t.coinGeckoId != null && t.coinGeckoId!.isNotEmpty)
             t.coinGeckoId!,
       };
@@ -864,28 +1091,43 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       final usdtUsd = prices.usdtUsdOrOne(priceMap['tether']);
       final usdtNormalizer = usdtUsd <= 0 ? 1.0 : usdtUsd;
 
-      final assetBalances = balances
-          .map((asset) {
-            final id = asset.token.coinGeckoId;
-            if (id == null || id.isEmpty) return asset;
-            if (id == 'tether') {
-              return AssetBalance(
-                token: asset.token,
-                raw: asset.raw,
-                decimals: asset.decimals,
-                // считаем 1 USDT == $1.00 (как базовую единицу UI).
-                priceUsd: 1.0,
-              );
-            }
-            final p = priceMap[id];
-            return AssetBalance(
-              token: asset.token,
-              raw: asset.raw,
-              decimals: asset.decimals,
-              priceUsd: p == null ? null : (p / usdtNormalizer),
+      final fetchedBySymbol = <String, AssetBalance>{
+        for (final a in balances) a.token.symbol.trim().toUpperCase(): a,
+      };
+
+      final assetBalances = <AssetBalance>[];
+      for (final token in tokensForUi) {
+        final sym = token.symbol.trim().toUpperCase();
+        final fetched = fetchedBySymbol[sym];
+        final base =
+            fetched ??
+            AssetBalance(
+              token: token,
+              raw: BigInt.zero,
+              decimals: token.decimalsHint,
+              priceUsd: null,
             );
-          })
-          .toList(growable: false);
+
+        final id = token.coinGeckoId;
+        double? normalizedPriceUsd;
+        if (id != null && id.isNotEmpty) {
+          if (id == 'tether') {
+            normalizedPriceUsd = 1.0;
+          } else {
+            final p = priceMap[id];
+            normalizedPriceUsd = p == null ? null : (p / usdtNormalizer);
+          }
+        }
+
+        assetBalances.add(
+          AssetBalance(
+            token: token,
+            raw: base.raw,
+            decimals: base.decimals,
+            priceUsd: normalizedPriceUsd,
+          ),
+        );
+      }
 
       await _detectIncomingTransfers(previousAssets, assetBalances);
       _balances = _balances.copyWith(

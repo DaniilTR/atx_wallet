@@ -1,3 +1,5 @@
+// features/home/activity/qr_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
@@ -367,7 +369,9 @@ class _ScannerPane extends StatelessWidget {
               border: Border.all(
                 color: scanError
                     ? const Color(0xFFFF8F8F)
-                    : (isDark ? Colors.white : Colors.black.withValues(alpha: 0.18)),
+                    : (isDark
+                          ? Colors.white
+                          : Colors.black.withValues(alpha: 0.18)),
                 width: 2,
               ),
             ),

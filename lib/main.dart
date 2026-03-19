@@ -19,7 +19,12 @@ Future<void> main() async {
     FlutterError.dumpErrorToConsole(details);
   };
 
-  // Run initialization and app inside the same zone to avoid "Zone mismatch" warnings
+  // "Несоответствие зоны" возникает, когда код выполняется в другой зоне, чем та,
+  // в которой был запущен Flutter. Это может привести к проблемам с обработкой ошибок и состоянием приложения.
+  // Запуская код внутри одной зоны, мы гарантируем,
+  // что все части приложения работают в одном контексте,
+  // что улучшает стабильность и предсказуемость поведения.
+
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();

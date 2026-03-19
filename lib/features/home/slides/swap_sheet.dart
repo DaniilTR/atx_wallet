@@ -27,9 +27,39 @@ class _SwapSheetState extends State<_SwapSheet> {
     final tokens = WalletScope.read(
       context,
     ).supportedTokens.where((t) => !t.isBitcoin).toList(growable: false);
+
+    if (tokens.isEmpty) return;
+
     _fromToken ??= tokens.first;
     _toToken ??= tokens.length > 1 ? tokens[1] : tokens.first;
+
+    // Если вдруг получилось выбрать одинаковые токены (например, после изменения
+    // списка поддерживаемых токенов) — подбираем альтернативу автоматически.
+    final from = _fromToken;
+    final to = _toToken;
+    if (from != null && to != null && _isSameToken(from, to)) {
+      final alt = _pickAlternativeToken(tokens, avoid: from);
+      if (alt != null) _toToken = alt;
+    }
     _recalculate();
+  }
+
+  bool _isSameToken(TokenMetadata a, TokenMetadata b) {
+    if (a.isNative && b.isNative) return true;
+    if (a.isNative != b.isNative) return false;
+    final ca = a.contractAddress?.toLowerCase();
+    final cb = b.contractAddress?.toLowerCase();
+    return ca != null && cb != null && ca == cb;
+  }
+
+  TokenMetadata? _pickAlternativeToken(
+    List<TokenMetadata> tokens, {
+    required TokenMetadata avoid,
+  }) {
+    for (final t in tokens) {
+      if (!_isSameToken(t, avoid)) return t;
+    }
+    return null;
   }
 
   @override
@@ -73,6 +103,17 @@ class _SwapSheetState extends State<_SwapSheet> {
       setState(() {
         _quoteLoading = false;
         _quoteError = null;
+        _quotedOutRaw = null;
+        _preview = 0;
+      });
+      return;
+    }
+
+    // Uniswap V2 не принимает путь из одинаковых адресов.
+    if (_isSameToken(from, to)) {
+      setState(() {
+        _quoteLoading = false;
+        _quoteError = 'Выберите разные токены для обмена';
         _quotedOutRaw = null;
         _preview = 0;
       });
@@ -208,6 +249,14 @@ class _SwapSheetState extends State<_SwapSheet> {
     final from = _fromToken;
     final to = _toToken;
     if (amount == null || amount <= 0 || from == null || to == null) return;
+
+    if (_isSameToken(from, to)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Выберите разные токены для обмена')),
+      );
+      return;
+    }
 
     if (kEvmChainId != 1) {
       if (!mounted) return;
@@ -425,10 +474,19 @@ class _SwapSheetState extends State<_SwapSheet> {
   }
 
   void _swapDirection() {
+    final wallet = WalletScope.read(context);
+    final tokens = wallet.supportedTokens.where((t) => !t.isBitcoin).toList();
     setState(() {
       final temp = _fromToken;
       _fromToken = _toToken;
       _toToken = temp;
+
+      final from = _fromToken;
+      final to = _toToken;
+      if (from != null && to != null && _isSameToken(from, to)) {
+        final alt = _pickAlternativeToken(tokens, avoid: from);
+        if (alt != null) _toToken = alt;
+      }
     });
     _recalculate();
   }
@@ -447,12 +505,15 @@ class _SwapSheetState extends State<_SwapSheet> {
       subtitle: 'Выберите пары для свопа',
       child: Column(
         children: [
-          _SwapCard(
-            label: 'Отдаю',
-            token: _fromToken?.symbol ?? '—',
-            amount: _formatNumber(_parseInput() ?? 0, precision: 4),
+          _LabeledField(
+            label: 'Сумма',
+            hint: '0.00',
+            prefixIcon: Icons.swap_horiz,
+            controller: _amountCtrl,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            onChanged: (_) => _recalculate(),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           DropdownButtonFormField<TokenMetadata>(
             initialValue: _fromToken,
             decoration: InputDecoration(
@@ -474,18 +535,16 @@ class _SwapSheetState extends State<_SwapSheet> {
                 .toList(),
             onChanged: (value) {
               if (value == null) return;
-              setState(() => _fromToken = value);
+              setState(() {
+                _fromToken = value;
+                final to = _toToken;
+                if (to != null && _isSameToken(value, to)) {
+                  final alt = _pickAlternativeToken(tokens, avoid: value);
+                  if (alt != null) _toToken = alt;
+                }
+              });
               _recalculate();
             },
-          ),
-          const SizedBox(height: 12),
-          _LabeledField(
-            label: 'Сумма',
-            hint: '0.00',
-            prefixIcon: Icons.swap_horiz,
-            controller: _amountCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: (_) => _recalculate(),
           ),
           const SizedBox(height: 10),
           Align(
@@ -555,7 +614,14 @@ class _SwapSheetState extends State<_SwapSheet> {
                 .toList(),
             onChanged: (value) {
               if (value == null) return;
-              setState(() => _toToken = value);
+              setState(() {
+                _toToken = value;
+                final from = _fromToken;
+                if (from != null && _isSameToken(from, value)) {
+                  final alt = _pickAlternativeToken(tokens, avoid: value);
+                  if (alt != null) _fromToken = alt;
+                }
+              });
               _recalculate();
             },
           ),
