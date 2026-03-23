@@ -16,15 +16,11 @@ class _StartPageState extends State<StartPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      try {
-        final auth = AuthScope.of(context);
-        final hasUsers = await auth.hasAnyUsers();
-        if (!mounted) return;
-        if (hasUsers) {
-          Navigator.pushReplacementNamed(context, '/login');
-        }
-      } catch (_) {
-        // Keep the start screen visible if local auth state can't be read.
+      final auth = AuthScope.of(context);
+      final hasUsers = await auth.hasAnyUsers();
+      if (!mounted) return;
+      if (hasUsers) {
+        Navigator.pushReplacementNamed(context, '/login');
       }
     });
   }

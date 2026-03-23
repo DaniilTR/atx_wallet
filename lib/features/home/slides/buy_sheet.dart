@@ -1,5 +1,12 @@
 part of '../home_page.dart';
 
+class _BuyItemData {
+  const _BuyItemData(this.symbol, this.title);
+
+  final String symbol;
+  final String title;
+}
+
 class _BuySheet extends StatelessWidget {
   const _BuySheet();
 
@@ -17,10 +24,10 @@ class _BuySheet extends StatelessWidget {
         ? const Color(0xFF9CA9D4)
         : const Color(0xFF475569);
 
-    final items = const <MapEntry<String, String>>[
-      MapEntry('ATX', 'Пополнение через карту'),
-      MapEntry('BNB', 'Перевод из Binance Pay'),
-      MapEntry('USDT', 'P2P покупка'),
+    const items = <_BuyItemData>[
+      _BuyItemData('ATX', 'Пополнение через карту'),
+      _BuyItemData('BNB', 'Перевод из Binance Pay'),
+      _BuyItemData('USDT', 'P2P покупка'),
     ];
     return _SheetContainer(
       title: 'Купить актив',
@@ -45,7 +52,7 @@ class _BuySheet extends StatelessWidget {
                       radius: 18,
                       backgroundColor: cardBg,
                       child: Text(
-                        item.key,
+                        item.symbol,
                         style: TextStyle(color: primaryTextColor),
                       ),
                     ),
@@ -55,14 +62,14 @@ class _BuySheet extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.key,
+                            item.symbol,
                             style: GoogleFonts.inter(
                               color: primaryTextColor,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           Text(
-                            item.value,
+                            item.title,
                             style: GoogleFonts.inter(
                               color: mutedTextColor,
                               fontSize: 12,

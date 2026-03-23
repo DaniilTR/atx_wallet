@@ -102,12 +102,14 @@ class _LoginPageState extends State<LoginPage> {
       // We still try to resolve the best userId to pass to native code.
       String? resolvedId;
       if (loginName.isNotEmpty) {
-        resolvedId = await BiometricPrefs.getUserIdForUsername(loginName) ??
+        resolvedId =
+            await BiometricPrefs.getUserIdForUsername(loginName) ??
             await auth.findUserIdByUsername(loginName);
       }
       final last = await BiometricPrefs.getLastUser();
 
-        final shouldAutoPrompt = allowAutoPrompt &&
+      final shouldAutoPrompt =
+          allowAutoPrompt &&
           avail &&
           loginName.isNotEmpty &&
           resolvedId != null;
@@ -127,8 +129,11 @@ class _LoginPageState extends State<LoginPage> {
             : null;
       });
 
-      if (shouldAutoPrompt && resolvedId != null) {
-        await _maybeAutoBiometricLogin(loginName: loginName, userId: resolvedId);
+      if (shouldAutoPrompt) {
+        await _maybeAutoBiometricLogin(
+          loginName: loginName,
+          userId: resolvedId,
+        );
       }
     } catch (_) {
       if (!mounted) return;
@@ -164,17 +169,18 @@ class _LoginPageState extends State<LoginPage> {
     final loginName = _loginCtrl.text.trim();
 
     final mappedUserId = loginName.isEmpty
-      ? null
-      : await BiometricPrefs.getUserIdForUsername(loginName);
+        ? null
+        : await BiometricPrefs.getUserIdForUsername(loginName);
     final resolvedFromAuth = loginName.isEmpty
-      ? null
-      : await auth.findUserIdByUsername(loginName);
+        ? null
+        : await auth.findUserIdByUsername(loginName);
 
     final lastUserId = await BiometricPrefs.getLastUser();
-    final primaryUserId = mappedUserId ??
-      resolvedFromAuth ??
-      _biometricUserId ??
-      (loginName.isEmpty ? lastUserId : loginName);
+    final primaryUserId =
+        mappedUserId ??
+        resolvedFromAuth ??
+        _biometricUserId ??
+        (loginName.isEmpty ? lastUserId : loginName);
 
     try {
       setState(() => _loading = true);
@@ -199,11 +205,15 @@ class _LoginPageState extends State<LoginPage> {
         return;
       }
 
-      if (res is Map && (res['vaultKeyB64'] is String || res['secretB64'] is String)) {
-        final vaultKeyB64 = (res['vaultKeyB64'] as String?) ?? (res['secretB64'] as String?);
+      if (res is Map &&
+          (res['vaultKeyB64'] is String || res['secretB64'] is String)) {
+        final vaultKeyB64 =
+            (res['vaultKeyB64'] as String?) ?? (res['secretB64'] as String?);
         if (vaultKeyB64 == null || vaultKeyB64.isEmpty) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Биометрия не вернула ключ разблокировки')),
+            const SnackBar(
+              content: Text('Биометрия не вернула ключ разблокировки'),
+            ),
           );
           return;
         }
@@ -215,7 +225,9 @@ class _LoginPageState extends State<LoginPage> {
           final restored = await auth.tryRestoreSession();
           if (restored == null) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Введите никнейм для входа по биометрии')),
+              const SnackBar(
+                content: Text('Введите никнейм для входа по биометрии'),
+              ),
             );
             return;
           }
@@ -226,7 +238,9 @@ class _LoginPageState extends State<LoginPage> {
         final user = await auth.loginWithBiometrics(username: usernameToUse);
         if (user == null) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Пользователь не найден на устройстве')),
+            const SnackBar(
+              content: Text('Пользователь не найден на устройстве'),
+            ),
           );
           return;
         }
@@ -242,26 +256,38 @@ class _LoginPageState extends State<LoginPage> {
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Биометрия прошла, но ключ не получен. Включите быстрый вход заново.')),
+        const SnackBar(
+          content: Text(
+            'Биометрия прошла, но ключ не получен. Включите быстрый вход заново.',
+          ),
+        ),
       );
     } on PlatformException catch (e) {
       if (e.code == 'biometric_migration_required') {
         // Migration is actionable even for auto-trigger.
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Биометрию нужно включить заново в настройках')),
+          const SnackBar(
+            content: Text('Биометрию нужно включить заново в настройках'),
+          ),
         );
       } else if (e.code == 'no_wrapped_dek') {
         // If auto-triggered and biometrics aren't enabled for this user, stay silent.
         if (!auto) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Биометрия не включена для этого пользователя')),
+            const SnackBar(
+              content: Text('Биометрия не включена для этого пользователя'),
+            ),
           );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: ${e.message ?? e.code}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Ошибка биометрии: ${e.message ?? e.code}')),
+        );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка биометрии: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ошибка биометрии: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -487,7 +513,10 @@ class _LoginPageState extends State<LoginPage> {
 }
 
 class _LoginLifecycleObserver with WidgetsBindingObserver {
-  _LoginLifecycleObserver({required this.onResumed, required this.onBackgrounded});
+  _LoginLifecycleObserver({
+    required this.onResumed,
+    required this.onBackgrounded,
+  });
 
   final void Function() onResumed;
   final void Function() onBackgrounded;

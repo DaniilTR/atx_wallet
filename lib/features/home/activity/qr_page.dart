@@ -1,9 +1,11 @@
+// features/home/activity/qr_page.dart
+
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import 'package:atx_wallet/core/compat/color_with_values.dart';
+import '../../../core/compat/color_with_values.dart';
 
 class QrPage extends StatefulWidget {
   const QrPage({super.key, required this.address});
@@ -369,7 +371,9 @@ class _ScannerPane extends StatelessWidget {
               border: Border.all(
                 color: scanError
                     ? const Color(0xFFFF8F8F)
-                    : (isDark ? Colors.white : Colors.black.withValues(alpha: 0.18)),
+                    : (isDark
+                          ? Colors.white
+                          : Colors.black.withValues(alpha: 0.18)),
                 width: 2,
               ),
             ),

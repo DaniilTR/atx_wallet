@@ -233,7 +233,10 @@ class BitcoinService {
 
     final signingKey = dartsv.SVPrivateKey.fromWIF(fromWif);
     final pubKey = signingKey.publicKey;
-    final sighashType = dartsv.SighashType.SIGHASH_ALL;
+    final signer = dartsv.TransactionSigner(
+      dartsv.SighashType.SIGHASH_ALL.value,
+      signingKey,
+    );
 
     final utxos = await fetchConfirmedUtxos(from.toBase58());
     if (utxos.isEmpty) {
@@ -241,7 +244,9 @@ class BitcoinService {
     }
 
     // P2PKH locking script для наших UTXO (в этой версии кошелька адрес только P2PKH).
-    final lockingScript = dartsv.P2PKHLockBuilder(from).getScriptPubkey();
+    final lockingScript = dartsv.P2PKHLockBuilder.fromAddress(
+      from,
+    ).getScriptPubkey();
 
     final selected = <BtcUtxo>[];
     BigInt selectedTotal = BigInt.zero;
@@ -268,26 +273,27 @@ class BitcoinService {
       final change = selectedTotal - requiredWithChange;
       if (change >= _dustSats) {
         // ОК: делаем tx с change.
-        final tx = dartsv.Transaction();
+        final builder = dartsv.TransactionBuilder();
         for (final u in selected) {
-          tx.spendFromMap(
-            {
-              'satoshis': u.valueSats,
-              'txId': u.txid,
-              'outputIndex': u.vout,
-              'scriptPubKey': lockingScript.toHex(),
-            },
-            scriptBuilder: dartsv.P2PKHUnlockBuilder(pubKey),
+          final outpoint = dartsv.TransactionOutpoint(
+            u.txid,
+            u.vout,
+            u.valueSats,
+            lockingScript,
+          );
+          builder.spendFromOutpointWithSigner(
+            signer,
+            outpoint,
+            dartsv.TransactionInput.MAX_SEQ_NUMBER,
+            dartsv.P2PKHUnlockBuilder(pubKey),
           );
         }
-        tx
-          ..spendTo(to, amountSats)
+        builder
+          ..spendToPKH(to, amountSats)
           ..withFee(feeWithChange)
-          ..sendChangeTo(from);
+          ..sendChangeToPKH(from);
 
-        for (var i = 0; i < tx.inputs.length; i++) {
-          tx.signInput(i, signingKey, sighashType: sighashType);
-        }
+        final tx = builder.build(true);
         return tx.serialize();
       }
 
@@ -307,25 +313,26 @@ class BitcoinService {
         continue;
       }
 
-      final tx = dartsv.Transaction();
+      final builder = dartsv.TransactionBuilder()
+        ..withFee(feeNoChange)
+        ..spendToPKH(to, amountSats);
+
       for (final u in selected) {
-        tx.spendFromMap(
-          {
-            'satoshis': u.valueSats,
-            'txId': u.txid,
-            'outputIndex': u.vout,
-            'scriptPubKey': lockingScript.toHex(),
-          },
-          scriptBuilder: dartsv.P2PKHUnlockBuilder(pubKey),
+        final outpoint = dartsv.TransactionOutpoint(
+          u.txid,
+          u.vout,
+          u.valueSats,
+          lockingScript,
+        );
+        builder.spendFromOutpointWithSigner(
+          signer,
+          outpoint,
+          dartsv.TransactionInput.MAX_SEQ_NUMBER,
+          dartsv.P2PKHUnlockBuilder(pubKey),
         );
       }
-      tx
-        ..spendTo(to, amountSats)
-        ..withFee(feeNoChange);
 
-      for (var i = 0; i < tx.inputs.length; i++) {
-        tx.signInput(i, signingKey, sighashType: sighashType);
-      }
+      final tx = builder.build(true);
       return tx.serialize();
     }
 

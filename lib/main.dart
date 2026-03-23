@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kDebugMode, kProfileMode;
 
 import 'core/compat/color_with_values.dart';
 
@@ -17,51 +16,24 @@ import 'providers/wallet_provider.dart';
 import 'providers/wallet_scope.dart';
 
 Future<void> main() async {
-  // Make framework/build errors visible in release builds (instead of a blank screen).
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    final message = kDebugMode || kProfileMode
-        ? details.toString()
-        : 'Произошла ошибка при запуске приложения.';
-    return Material(
-      color: const Color(0xFFFFFFFF),
-      child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            message,
-            style: const TextStyle(color: Colors.black87),
-          ),
-        ),
-      ),
-    );
-  };
-
-  // Global Flutter error handler: forward to the current zone.
+  // Global Flutter error handler
   FlutterError.onError = (FlutterErrorDetails details) {
-    if (kDebugMode || kProfileMode) {
-      FlutterError.dumpErrorToConsole(details);
-    }
-    Zone.current.handleUncaughtError(
-      details.exception,
-      details.stack ?? StackTrace.current,
-    );
+    FlutterError.dumpErrorToConsole(details);
   };
 
-  // Run initialization and app inside the same zone to avoid "Zone mismatch" warnings
+  // "Несоответствие зоны" возникает, когда код выполняется в другой зоне, чем та,
+  // в которой был запущен Flutter. Это может привести к проблемам с обработкой ошибок и состоянием приложения.
+  // Запуская код внутри одной зоны, мы гарантируем,
+  // что все части приложения работают в одном контексте,
+  // что улучшает стабильность и предсказуемость поведения.
+
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
       final walletProvider = WalletProvider();
       try {
         await walletProvider.init();
-      } catch (e, st) {
-        if (kDebugMode || kProfileMode) {
-          // ignore: avoid_print
-          print('WalletProvider.init failed: $e');
-          // ignore: avoid_print
-          print(st);
-        }
-      }
+      } catch (_) {}
       runApp(AtxWalletApp(walletProvider: walletProvider));
     },
     (Object error, StackTrace stack) {

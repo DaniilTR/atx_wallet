@@ -42,10 +42,11 @@ dependencies:
   bip39: ^1.0.6
   bip32: ^2.0.0
   hex: ^0.2.0
-  dartsv: ^1.0.1
+  dartsv: ^2.1.0
   path_provider: ^2.0.15
   qr_flutter: ^4.1.0
   mobile_scanner: 3.3.0
+  url_launcher: ^6.1.10
 
   cryptography: ^2.5.0
   argon2: ^1.0.1
@@ -57,7 +58,9 @@ dev_dependencies:
   flutter_lints: ^2.0.1
 
 dependency_overrides:
-  resource_portable: 3.0.1
+  resource_portable: 3.1.0
+  path: 1.8.3
+  collection: 1.17.1
   mobile_scanner:
     path: vendor/mobile_scanner
 

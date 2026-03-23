@@ -13,6 +13,8 @@ class _PrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF5E6DFF),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(18),
@@ -21,7 +23,10 @@ class _PrimaryButton extends StatelessWidget {
         onPressed: onPressed,
         child: Text(
           label,
-          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
         ),
       ),
     );

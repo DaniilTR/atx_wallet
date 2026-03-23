@@ -1,3 +1,5 @@
+// home/slides/receive_sheet.dart
+
 part of '../home_page.dart';
 
 class _ReceiveSheet extends StatelessWidget {
@@ -27,7 +29,7 @@ class _ReceiveSheet extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
-            height: 180,
+            height: 280,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(24),
               color: isDark
@@ -40,10 +42,29 @@ class _ReceiveSheet extends StatelessWidget {
               ),
             ),
             alignment: Alignment.center,
-            child: const Icon(
-              Icons.qr_code_2_rounded,
-              size: 120,
-              color: Color(0xFF6FE1F5),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final side = constraints.maxWidth * 0.9;
+                final qrSize = side * 0.8;
+                return SizedBox(
+                  width: qrSize,
+                  height: qrSize,
+                  child: QrImageView(
+                    data: evmFallback,
+                    backgroundColor: Colors.transparent,
+                    size: qrSize,
+                    gapless: false,
+                    eyeStyle: const QrEyeStyle(
+                      eyeShape: QrEyeShape.square,
+                      color: Color(0xFF80B7FF),
+                    ),
+                    dataModuleStyle: const QrDataModuleStyle(
+                      dataModuleShape: QrDataModuleShape.square,
+                      color: Color(0xFF80B7FF),
+                    ),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 16),

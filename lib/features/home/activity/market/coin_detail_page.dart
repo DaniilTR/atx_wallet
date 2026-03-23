@@ -1,11 +1,13 @@
+// home/activity/market/coin_detail_page.dart
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
-import 'package:atx_wallet/core/compat/color_with_values.dart';
-
+import '../../../../core/compat/color_with_values.dart';
 import '../../../../providers/wallet_scope.dart';
+import '../../../../services/config.dart';
+import '../../../../WalletSecureStorage/history_model/transaction_record.dart';
 
 /// Экран деталей монеты/актива.
 ///
@@ -131,6 +133,11 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
         ? const Color(0x221B2546)
         : Colors.black.withValues(alpha: 0.08);
     final wallet = WalletScope.of(context);
+
+    final symbolKey = widget.symbol.trim().toUpperCase();
+    final filteredHistory = wallet.history
+        .where((e) => e.tokenSymbol.trim().toUpperCase() == symbolKey)
+        .toList(growable: false);
     final balance = wallet.balanceForSymbol(widget.symbol);
     final priceText = _price == null
         ? '—'
@@ -149,6 +156,12 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
     final usdLabel = usdValue == null
         ? '—'
         : '\$${_formatNumber(usdValue, precision: 2)}';
+    final isFavorite = wallet.isFavoriteAsset(
+      symbol: widget.symbol,
+      coinGeckoId: widget.coinId,
+    );
+    final isPinned = wallet.isPinnedSymbol(widget.symbol);
+    final favoriteStarColor = const Color(0xFFF7C344);
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -161,8 +174,17 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.star_border_rounded),
+            onPressed: isPinned
+                ? null
+                : () => wallet.toggleFavoriteAsset(
+                    symbol: widget.symbol,
+                    name: widget.name,
+                    coinGeckoId: widget.coinId,
+                  ),
+            icon: Icon(
+              isFavorite ? Icons.star_rounded : Icons.star_border_rounded,
+              color: (isFavorite || isPinned) ? favoriteStarColor : null,
+            ),
           ),
         ],
         title: Column(
@@ -184,8 +206,8 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
       ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: ListView(
+          physics: const BouncingScrollPhysics(),
           children: [
             const SizedBox(height: 8),
             Text(
@@ -314,9 +336,176 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
                 ),
               ],
             ),
+
+            const SizedBox(height: 22),
+            Text(
+              'История операций',
+              style: GoogleFonts.inter(
+                color: primaryTextColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Последние транзакции по ${widget.symbol}',
+              style: GoogleFonts.inter(color: mutedTextColor, fontSize: 13),
+            ),
+            if (wallet.historyError != null) ...[
+              const SizedBox(height: 10),
+              Text(
+                'Не удалось загрузить историю: ${wallet.historyError}',
+                style: GoogleFonts.inter(
+                  color: const Color(0xFFFF8F8F),
+                  fontSize: 12,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(color: surfaceBorderColor),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: _TokenHistoryList(
+                  symbol: widget.symbol,
+                  entries: filteredHistory,
+                  loading: wallet.historyLoading,
+                  primaryTextColor: primaryTextColor,
+                  mutedTextColor: mutedTextColor,
+                  isDark: isDark,
+                ),
+              ),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class _TokenHistoryList extends StatelessWidget {
+  const _TokenHistoryList({
+    required this.symbol,
+    required this.entries,
+    required this.loading,
+    required this.primaryTextColor,
+    required this.mutedTextColor,
+    required this.isDark,
+  });
+
+  final String symbol;
+  final List<TransactionRecord> entries;
+  final bool loading;
+  final Color primaryTextColor;
+  final Color mutedTextColor;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    if (loading && entries.isEmpty) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 18),
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+      );
+    }
+
+    if (entries.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.history_toggle_off_rounded,
+              color: isDark ? const Color(0xFF3F4B74) : const Color(0xFF64748B),
+              size: 38,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Нет операций по $symbol',
+              style: GoogleFonts.inter(
+                color: primaryTextColor,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Отправки и поступления сохраняются локально.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: entries.length,
+      separatorBuilder: (_, index) => const Divider(color: Color(0x221C2743)),
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        final isIncoming = entry.incoming;
+        final amountSign = isIncoming ? '+' : '-';
+        final amountColor = isIncoming
+            ? const Color(0xFF5EF2C1)
+            : const Color(0xFFFF8484);
+        final icon = isIncoming
+            ? Icons.arrow_downward_rounded
+            : Icons.arrow_outward_rounded;
+        final note = entry.note;
+        return ListTile(
+          dense: true,
+          contentPadding: EdgeInsets.zero,
+          leading: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color(0x222E9AFF),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: primaryTextColor, size: 20),
+          ),
+          title: Text(
+            isIncoming
+                ? 'Получение ${entry.tokenSymbol}'
+                : 'Отправка ${entry.tokenSymbol}',
+            style: GoogleFonts.inter(
+              color: primaryTextColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 14,
+            ),
+          ),
+          subtitle: Text(
+            _formatHistorySubtitle(entry.timestamp, note),
+            style: GoogleFonts.inter(
+              color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
+              fontSize: 12,
+            ),
+          ),
+          trailing: Text(
+            '$amountSign${_formatNumber(entry.amount, precision: 6)} ${entry.tokenSymbol}',
+            style: GoogleFonts.inter(
+              color: amountColor,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -488,10 +677,23 @@ class _QuickActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final labelColor = isDark
         ? const Color(0xFFCAD0E4)
         : const Color(0xFF475569);
+    final backgroundA = isDark
+        ? const Color.fromARGB(255, 30, 30, 45)
+        : theme.colorScheme.surface;
+    final backgroundB = isDark
+        ? const Color.fromARGB(255, 30, 30, 45)
+        : theme.colorScheme.surface;
+    final iconColor = isDark
+        ? const Color(0xFFEFF2FF)
+        : theme.colorScheme.onSurface;
+    final shadowColor = isDark
+        ? const Color(0x44090F25)
+        : Colors.black.withValues(alpha: 0.08);
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -501,23 +703,20 @@ class _QuickActionButton extends StatelessWidget {
             width: 62,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(31),
-              gradient: const LinearGradient(
+              gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color.fromARGB(255, 30, 30, 45),
-                  Color.fromARGB(255, 30, 30, 45),
-                ],
+                colors: [backgroundA, backgroundB],
               ),
-              boxShadow: const [
+              boxShadow: [
                 BoxShadow(
-                  color: Color(0x44090F25),
+                  color: shadowColor,
                   blurRadius: 22,
-                  offset: Offset(0, 14),
+                  offset: const Offset(0, 14),
                 ),
               ],
             ),
-            child: Icon(icon, color: const Color(0xFFEFF2FF)),
+            child: Icon(icon, color: iconColor),
           ),
           const SizedBox(height: 10),
           Text(
@@ -597,7 +796,9 @@ class _ActionButton extends StatelessWidget {
     final background = filled ? const Color(0xFF4DE8A4) : Colors.transparent;
     final borderColor = filled
         ? Colors.transparent
-        : (isDark ? const Color(0xFF2E3654) : Colors.black.withValues(alpha: 0.12));
+        : (isDark
+              ? const Color(0xFF2E3654)
+              : Colors.black.withValues(alpha: 0.12));
     final textColor = filled ? const Color(0xFF0F172A) : primaryTextColor;
     return SizedBox(
       height: 48,
@@ -667,6 +868,21 @@ String _formatNumber(double value, {int precision = 2}) {
   return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
 }
 
+String _formatHistorySubtitle(DateTime timestamp, String? note) {
+  final now = DateTime.now();
+  final difference = now.difference(timestamp);
+  final datePart = difference.inDays == 0
+      ? 'Сегодня'
+      : difference.inDays == 1
+      ? 'Вчера'
+      : '${timestamp.day.toString().padLeft(2, '0')}.${timestamp.month.toString().padLeft(2, '0')}';
+  final timePart =
+      '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+  final base = '$datePart, $timePart';
+  if (note == null || note.isEmpty) return base;
+  return '$base · $note';
+}
+
 void _showStub(BuildContext context, String text) {
   final isDark = Theme.of(context).brightness == Brightness.dark;
   ScaffoldMessenger.of(context).showSnackBar(
@@ -695,18 +911,21 @@ class _CoinGeckoPriceService {
     String coinId, {
     required int days,
   }) async {
-    final uri = Uri.https(
-      'api.coingecko.com',
-      '/api/v3/coins/$coinId/market_chart',
-      {'vs_currency': 'usd', 'days': days.toString()},
+    final base = Uri.parse(kCoinGeckoBaseUrl);
+    final uri = base.replace(
+      path: '/api/v3/coins/$coinId/market_chart',
+      queryParameters: {'vs_currency': 'usd', 'days': days.toString()},
     );
+
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'User-Agent': 'atx_wallet/1.0',
+      if (uri.host.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
+    };
 
     final res = await _httpClient.get(
       uri,
-      headers: const {
-        'Accept': 'application/json',
-        'User-Agent': 'atx_wallet/1.0',
-      },
+      headers: headers,
     );
     if (res.statusCode != 200) return null;
 

@@ -15,12 +15,12 @@ class WalletBundleStorage {
           );
 
   static const int schemaVersion = 1;
-  static const String _keyPrefix = 'wallet_vault_bundle_v1__';
 
-  final FlutterSecureStorage _storage;
+  static const String _keyPrefix = 'wallet_vault_bundle_v1__';
 
   String _keyForUser(String userId) => '$_keyPrefix$userId';
 
+  final FlutterSecureStorage _storage;
   Future<WalletVaultBundle?> readBundle(String userId) async {
     final raw = await _storage.read(key: _keyForUser(userId));
     if (raw == null || raw.isEmpty) return null;
