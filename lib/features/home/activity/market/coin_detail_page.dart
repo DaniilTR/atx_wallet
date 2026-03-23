@@ -916,12 +916,15 @@ class _CoinGeckoPriceService {
       queryParameters: {'vs_currency': 'usd', 'days': days.toString()},
     );
 
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'User-Agent': 'atx_wallet/1.0',
+      if (uri.host.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
+    };
+
     final res = await _httpClient.get(
       uri,
-      headers: const {
-        'Accept': 'application/json',
-        'User-Agent': 'atx_wallet/1.0',
-      },
+      headers: headers,
     );
     if (res.statusCode != 200) return null;
 

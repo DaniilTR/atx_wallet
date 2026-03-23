@@ -62,5 +62,5 @@ const String kInitialRoute = String.fromEnvironment(
 /// Пример: `https://prices.example.com` или ` http://127.0.0.1:8080`.
 const String kCoinGeckoBaseUrl = String.fromEnvironment(
   'COINGECKO_BASE_URL',
-  defaultValue: 'http://127.0.0.1:8080',
+  defaultValue: 'http://46.247.41.175:8080',
 );

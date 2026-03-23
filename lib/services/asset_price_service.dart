@@ -14,6 +14,7 @@ import 'config.dart';
 /// Важно:
 /// - CoinGecko может отдавать ограничение по частоте запросов/ошибки; этот сервис бросает исключение,
 ///   а выше (в `WalletProvider.refreshBalances`) это превращается в текст ошибки.
+
 class AssetPriceService {
   AssetPriceService({http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
@@ -33,13 +34,13 @@ class AssetPriceService {
       queryParameters: {'ids': coinGeckoIds.join(','), 'vs_currencies': 'usd'},
     );
 
-    final res = await _httpClient.get(
-      uri,
-      headers: const {
-        'Accept': 'application/json',
-        'User-Agent': 'atx_wallet/1.0',
-      },
-    );
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'User-Agent': 'atx_wallet/1.0',
+      if (uri.host.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
+    };
+
+    final res = await _httpClient.get(uri, headers: headers);
 
     if (res.statusCode != 200) {
       throw StateError('Ошибка API цен (${res.statusCode})');

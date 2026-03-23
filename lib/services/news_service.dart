@@ -102,15 +102,15 @@ class NewsService {
       queryParameters: <String, String>{'limit': '$limit'},
     );
 
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      'User-Agent': 'atx_wallet/1.0',
+      if (uri.host.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
+    };
+
     try {
       final res = await _httpClient
-          .get(
-            uri,
-            headers: const {
-              'Accept': 'application/json',
-              'User-Agent': 'atx_wallet/1.0',
-            },
-          )
+          .get(uri, headers: headers)
           .timeout(const Duration(seconds: 12));
 
       if (res.statusCode != 200) {
