@@ -7,7 +7,7 @@ node_modules/
 /dist/
 
 # локальные env
-.env
+
 
 # runtime/cache данные (не коммитим)
 /data/cache.json
