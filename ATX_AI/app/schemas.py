@@ -10,5 +10,5 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     answer: str
-    source: str  # "kb" | "gemini"
+    source: str  # "kb" | "groq" | "gemini" | "none"
     matched_question: str | None = None

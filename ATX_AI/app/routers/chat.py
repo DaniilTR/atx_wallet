@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from app.core.config import settings
 from app.core.rate_limit import limiter
 from app.core.security import require_jwt
-from app.gemini.client import gemini_client
+from app.llm.client import llm_client
 from app.rag.knowledge_base import kb
 from app.schemas import ChatRequest, ChatResponse
 from app.utils.text import truncate
@@ -45,10 +45,11 @@ def chat(
 
     prompt = _build_rag_prompt(body.message)
     try:
-        answer = gemini_client.answer(prompt)
+        answer, provider = llm_client.answer(prompt)
     except RuntimeError:
         answer = (
-            "Ответ не найден в базе знаний, а Gemini сейчас не настроен. "
-            "Проверьте переменную окружения GEMINI_API_KEY или добавьте этот вопрос в data/knowledge_base.json."
+            "Ответ не найден в базе знаний, а LLM сейчас не настроен. "
+            "Проверьте GROQ_API_KEY (или LLM_PROVIDER) или добавьте этот вопрос в data/knowledge_base.json."
         )
-    return ChatResponse(answer=answer, source="gemini")
+        provider = "none"
+    return ChatResponse(answer=answer, source=provider)

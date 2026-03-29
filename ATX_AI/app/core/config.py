@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     rag_top_k: int = 5
     fuzzy_exact_threshold: int = 95
 
+    # ---- LLM provider ----
+    # Supported: auto | groq | gemini | none
+    llm_provider: str = "auto"
+
+    # ---- Groq (OpenAI-compatible API) ----
+    groq_api_key: str | None = None
+    groq_model: str | None = None
+
     gemini_api_key: str | None = None
     # Если пусто/None — сервис сам попробует выбрать доступную модель.
     gemini_model: str | None = None
