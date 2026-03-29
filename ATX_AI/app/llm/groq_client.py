@@ -90,8 +90,12 @@ class GroqClient:
             except urllib.error.HTTPError as http_err:
                 last_error = http_err
                 api_message = ""
+                raw_snippet = ""
                 try:
                     err_body = http_err.read().decode("utf-8", errors="replace")
+                    raw_snippet = err_body.strip().replace("\n", " ")
+                    if len(raw_snippet) > 300:
+                        raw_snippet = raw_snippet[:300] + "…"
                     err_json: Any = json.loads(err_body)
                     api_message = (err_json.get("error") or {}).get("message") or ""
                     last_error_summary = (
@@ -102,13 +106,18 @@ class GroqClient:
 
                 # 401/403 — ключ/права; дальше пробовать модели нет смысла
                 if http_err.code in (401, 403):
-                    details = (
-                        f"HTTP {http_err.code}: {api_message}" if api_message else f"HTTP {http_err.code}"
-                    )
-                    return (
-                        "Groq не авторизован. Проверьте GROQ_API_KEY и права доступа. "
-                        f"({details})"
-                    )
+                    details = f"HTTP {http_err.code}: {api_message}" if api_message else f"HTTP {http_err.code}"
+                    if http_err.code == 403:
+                        # Часто 403 — это запрет на использование конкретной модели в проекте.
+                        hint = (
+                            "Проверьте, что GROQ_MODEL соответствует разрешённой модели в проекте "
+                            "(например, openai/gpt-oss-120b)."
+                        )
+                        extra = f" body={raw_snippet}" if raw_snippet and not api_message else ""
+                        return f"Groq запретил запрос. {hint} ({details}{extra})"
+
+                    extra = f" body={raw_snippet}" if raw_snippet and not api_message else ""
+                    return f"Groq не авторизован. Проверьте GROQ_API_KEY и права доступа. ({details}{extra})"
                 # 404/400 — модель может быть недоступна/не поддерживается → пробуем следующую
                 if http_err.code in (400, 404):
                     continue
