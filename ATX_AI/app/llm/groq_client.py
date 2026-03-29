@@ -89,17 +89,26 @@ class GroqClient:
 
             except urllib.error.HTTPError as http_err:
                 last_error = http_err
+                api_message = ""
                 try:
                     err_body = http_err.read().decode("utf-8", errors="replace")
                     err_json: Any = json.loads(err_body)
-                    message = (err_json.get("error") or {}).get("message") or ""
-                    last_error_summary = f"HTTP {http_err.code}: {message}" if message else f"HTTP {http_err.code}"
+                    api_message = (err_json.get("error") or {}).get("message") or ""
+                    last_error_summary = (
+                        f"HTTP {http_err.code}: {api_message}" if api_message else f"HTTP {http_err.code}"
+                    )
                 except Exception:
                     last_error_summary = self._safe_error_summary(http_err)
 
                 # 401/403 — ключ/права; дальше пробовать модели нет смысла
                 if http_err.code in (401, 403):
-                    return "Groq не авторизован. Проверьте GROQ_API_KEY и права доступа."
+                    details = (
+                        f"HTTP {http_err.code}: {api_message}" if api_message else f"HTTP {http_err.code}"
+                    )
+                    return (
+                        "Groq не авторизован. Проверьте GROQ_API_KEY и права доступа. "
+                        f"({details})"
+                    )
                 # 404/400 — модель может быть недоступна/не поддерживается → пробуем следующую
                 if http_err.code in (400, 404):
                     continue
