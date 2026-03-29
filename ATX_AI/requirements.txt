@@ -5,4 +5,4 @@ pydantic-settings>=2.1.0
 python-jose[cryptography]>=3.3.0
 slowapi>=0.1.9
 rapidfuzz>=3.6.0
-google-generativeai>=0.8.3
+google-genai>=0.8.0

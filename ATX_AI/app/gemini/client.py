@@ -18,99 +18,72 @@ def _system_instruction() -> str:
 
 class GeminiClient:
     def __init__(self) -> None:
-        self._configured = False
+        self._client: Any | None = None
 
     def _ensure_configured(self) -> None:
-        if self._configured:
-            return
         if not settings.gemini_api_key:
             raise RuntimeError("GEMINI_API_KEY is not set")
-        import google.generativeai as genai
+        if self._client is not None:
+            return
 
-        genai.configure(api_key=settings.gemini_api_key)
-        self._genai = genai
-        self._configured = True
+        # Новый SDK
+        from google import genai
 
-    def _normalize_model_name(self, model_name: str) -> str:
-        name = (model_name or "").strip()
-        if name.startswith("models/"):
-            name = name[len("models/") :]
-        return name
-
-    def _pick_fallback_model(self) -> str | None:
-        """Подбирает первую подходящую модель, которая поддерживает generateContent."""
-        try:
-            models = list(self._genai.list_models())
-        except Exception:
-            return None
-
-        def supports_generate(m: Any) -> bool:
-            methods = getattr(m, "supported_generation_methods", None) or []
-            return "generateContent" in methods
-
-        # Prefer flash-like models
-        for m in models:
-            if not supports_generate(m):
-                continue
-            name = getattr(m, "name", "") or ""
-            if "flash" in name:
-                return self._normalize_model_name(name)
-
-        for m in models:
-            if not supports_generate(m):
-                continue
-            name = getattr(m, "name", "") or ""
-            if name:
-                return self._normalize_model_name(name)
-        return None
+        self._client = genai.Client(api_key=settings.gemini_api_key)
 
     def answer(self, prompt: str) -> str:
         self._ensure_configured()
 
-        configured = settings.gemini_model
-        model_name = self._normalize_model_name(configured) if configured else ""
+        # Если GEMINI_MODEL пустой — пробуем несколько популярных имён.
+        # У разных аккаунтов/регионов/квот доступность моделей может отличаться.
+        candidates: list[str] = []
+        if settings.gemini_model and settings.gemini_model.strip():
+            candidates = [settings.gemini_model.strip()]
+        else:
+            candidates = [
+                "gemini-2.0-flash",
+                "gemini-1.5-flash",
+                "gemini-1.5-pro",
+                "gemini-1.0-pro",
+            ]
 
-        def run(name: str) -> str:
-            model = self._genai.GenerativeModel(
-                model_name=name,
-                system_instruction=_system_instruction(),
-            )
-            resp: Any = model.generate_content(prompt)
-            text = getattr(resp, "text", None)
-            if not text:
-                return "Извините, не удалось получить ответ. Попробуйте переформулировать вопрос."
-            return str(text).strip()
+        last_error: Exception | None = None
 
-        try:
-            if not model_name:
-                fallback = self._pick_fallback_model()
-                if not fallback:
-                    return (
-                        "Gemini не вернул список доступных моделей. "
-                        "Проверьте GEMINI_API_KEY и доступ к интернету, затем попробуйте указать GEMINI_MODEL вручную."
-                    )
-                return run(fallback)
+        # types.GenerateContentConfig есть в новом SDK
+        from google.genai import types
 
-            return run(model_name)
-        except Exception as exc:
-            # Частая проблема: модель недоступна/не поддерживается в текущей версии API.
-            exc_text = str(exc)
-            if "is not found" in exc_text or "not supported" in exc_text or "404" in exc_text:
-                fallback = self._pick_fallback_model()
-                if fallback and fallback != model_name:
-                    try:
-                        return run(fallback)
-                    except Exception:
-                        pass
-                return (
-                    "Gemini сейчас не может обработать запрос из-за несовместимой модели. "
-                    "Проверьте GEMINI_MODEL в .env или оставьте его пустым (тогда я подберу доступную модель)."
+        for model_name in candidates:
+            try:
+                resp: Any = self._client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=_system_instruction(),
+                        temperature=0.2,
+                    ),
                 )
+                text = getattr(resp, "text", None)
+                if text:
+                    return str(text).strip()
+            except Exception as exc:
+                last_error = exc
+                msg = str(exc).lower()
+                # Если модель не найдена/не поддерживается — пробуем следующую
+                if "not found" in msg or "is not found" in msg or "404" in msg or "not supported" in msg:
+                    continue
+                # Неправильный ключ/нет доступа
+                if "permission" in msg or "unauthorized" in msg or "api key" in msg:
+                    return "Gemini не авторизован. Проверьте GEMINI_API_KEY и права доступа."
+                continue
 
-            # Любая другая ошибка Gemini: не валим сервис
+        # Если ни одна модель не подошла
+        if last_error is not None:
             return (
-                "Gemini сейчас временно недоступен. Попробуйте позже или переформулируйте вопрос."
+                "Gemini сейчас не может обработать запрос (модель недоступна/не поддерживается). "
+                "Укажите корректный GEMINI_MODEL в .env или оставьте его пустым и попробуйте снова."
             )
+
+        return "Gemini сейчас недоступен. Попробуйте позже."
 
 
 gemini_client = GeminiClient()
