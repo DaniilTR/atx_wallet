@@ -36,7 +36,8 @@ class Settings(BaseSettings):
     fuzzy_exact_threshold: int = 95
 
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-1.5-flash"
+    # Если пусто/None — сервис сам попробует выбрать доступную модель.
+    gemini_model: str | None = None
 
 
 settings = Settings()

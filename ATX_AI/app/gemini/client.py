@@ -67,7 +67,8 @@ class GeminiClient:
     def answer(self, prompt: str) -> str:
         self._ensure_configured()
 
-        model_name = self._normalize_model_name(settings.gemini_model)
+        configured = settings.gemini_model
+        model_name = self._normalize_model_name(configured) if configured else ""
 
         def run(name: str) -> str:
             model = self._genai.GenerativeModel(
@@ -81,6 +82,15 @@ class GeminiClient:
             return str(text).strip()
 
         try:
+            if not model_name:
+                fallback = self._pick_fallback_model()
+                if not fallback:
+                    return (
+                        "Gemini не вернул список доступных моделей. "
+                        "Проверьте GEMINI_API_KEY и доступ к интернету, затем попробуйте указать GEMINI_MODEL вручную."
+                    )
+                return run(fallback)
+
             return run(model_name)
         except Exception as exc:
             # Частая проблема: модель недоступна/не поддерживается в текущей версии API.
@@ -94,7 +104,7 @@ class GeminiClient:
                         pass
                 return (
                     "Gemini сейчас не может обработать запрос из-за несовместимой модели. "
-                    "Проверьте GEMINI_MODEL в .env или оставьте его пустым и я подберу доступную модель."
+                    "Проверьте GEMINI_MODEL в .env или оставьте его пустым (тогда я подберу доступную модель)."
                 )
 
             # Любая другая ошибка Gemini: не валим сервис
