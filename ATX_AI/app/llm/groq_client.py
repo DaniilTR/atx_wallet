@@ -52,10 +52,18 @@ class GroqClient:
             raise RuntimeError("GROQ_API_KEY is not set")
 
         url = "https://api.groq.com/openai/v1/chat/completions"
+        # Cloudflare/WAF иногда режет python-urllib по "подписи" клиента.
+        # Делаем заголовки ближе к обычному HTTP-клиенту/браузеру.
         headers = {
             "Authorization": f"Bearer {settings.groq_api_key}",
             "Content-Type": "application/json; charset=utf-8",
             "Accept": "application/json",
+            "User-Agent": (
+                "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            ),
+            "Accept-Language": "ru,en;q=0.9",
+            "Cache-Control": "no-cache",
         }
 
         last_error: Exception | None = None
