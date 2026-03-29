@@ -241,6 +241,14 @@ class GeminiClient:
                 last_error_summary = self._safe_error_summary(exc)
                 continue
 
+        # Частый кейс: гео-ограничение Developer API
+        if last_error_summary and "location is not supported" in last_error_summary.lower():
+            return (
+                "Gemini API недоступен из локации вашего сервера (гео-ограничение). "
+                "Решение: развернуть бэкенд в поддерживаемом регионе/стране или выбрать другого провайдера LLM. "
+                f"(details={last_error_summary})"
+            )
+
         # Если ни одна модель не подошла
         if last_error is not None:
             return (
