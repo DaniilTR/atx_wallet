@@ -31,21 +31,45 @@ class GeminiClient:
 
         self._client = genai.Client(api_key=settings.gemini_api_key)
 
+    def _list_candidate_models(self) -> list[str]:
+        """Пробует получить список моделей из API и вернуть имена.
+
+        Важно: схема ответа может отличаться между версиями SDK, поэтому делаем максимально терпимо.
+        """
+        assert self._client is not None
+        names: list[str] = []
+        try:
+            pager = self._client.models.list()
+            for m in pager:
+                name = getattr(m, "name", None) or ""
+                if name:
+                    names.append(str(name))
+        except Exception:
+            return []
+
+        # Предпочитаем flash, затем любые
+        flash = [n for n in names if "flash" in n]
+        return flash + [n for n in names if n not in flash]
+
     def answer(self, prompt: str) -> str:
         self._ensure_configured()
 
-        # Если GEMINI_MODEL пустой — пробуем несколько популярных имён.
-        # У разных аккаунтов/регионов/квот доступность моделей может отличаться.
-        candidates: list[str] = []
+        # Кандидаты модели:
+        # 1) если задано явно — используем только его
+        # 2) если не задано — сначала пробуем list() из API (самый надёжный способ)
+        # 3) если list() не получилось — пробуем небольшой набор популярных имён
+        candidates: list[str]
         if settings.gemini_model and settings.gemini_model.strip():
             candidates = [settings.gemini_model.strip()]
         else:
-            candidates = [
-                "gemini-2.0-flash",
-                "gemini-1.5-flash",
-                "gemini-1.5-pro",
-                "gemini-1.0-pro",
-            ]
+            candidates = self._list_candidate_models()
+            if not candidates:
+                candidates = [
+                    "gemini-2.0-flash",
+                    "gemini-1.5-flash",
+                    "gemini-1.5-pro",
+                    "gemini-1.0-pro",
+                ]
 
         last_error: Exception | None = None
 
@@ -80,7 +104,8 @@ class GeminiClient:
         if last_error is not None:
             return (
                 "Gemini сейчас не может обработать запрос (модель недоступна/не поддерживается). "
-                "Укажите корректный GEMINI_MODEL в .env или оставьте его пустым и попробуйте снова."
+                "Укажите корректный GEMINI_MODEL в .env или оставьте его пустым и попробуйте снова. "
+                f"(last_error={type(last_error).__name__})"
             )
 
         return "Gemini сейчас недоступен. Попробуйте позже."

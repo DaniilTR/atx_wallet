@@ -2,8 +2,18 @@ from __future__ import annotations
 
 import os
 
+from pathlib import Path
+
 
 def main() -> None:
+    # Подхватываем .env, если переменные не экспортированы в окружение
+    try:
+        from dotenv import load_dotenv
+
+        load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
+    except Exception:
+        pass
+
     api_key = os.getenv("GEMINI_API_KEY", "").strip()
     if not api_key:
         raise SystemExit("GEMINI_API_KEY is not set")
