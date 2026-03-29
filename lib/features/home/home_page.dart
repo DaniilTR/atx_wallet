@@ -12,6 +12,7 @@ import 'package:web3dart/web3dart.dart';
 import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';
+import 'activity/ai_agent_chat_page.dart';
 import 'activity/qr_page.dart';
 import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
@@ -131,6 +132,12 @@ class _HomePageState extends State<HomePage> {
     if (scanned != null) {
       await _openSendFlow(recipient: scanned);
     }
+  }
+
+  Future<void> _openAiAgentChatPage() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AiAgentChatPage()));
   }
 
   String? get _currentAddress {
@@ -362,7 +369,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrPage,
+        onQrTap: _openAiAgentChatPage,
         isDark: isDark,
       ),
     );

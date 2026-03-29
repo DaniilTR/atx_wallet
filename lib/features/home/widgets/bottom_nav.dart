@@ -103,7 +103,7 @@ class BottomNav extends StatelessWidget {
                   ],
                 ),
                 child: const Icon(
-                  Icons.center_focus_strong,
+                  Icons.psychology,
                   color: Colors.white,
                   size: 30,
                 ),

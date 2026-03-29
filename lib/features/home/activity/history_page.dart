@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:atx_wallet/features/auth/widgets/animated_neon_background.dart';
-import 'package:atx_wallet/features/home/activity/qr_page.dart';
+import 'package:atx_wallet/features/home/activity/ai_agent_chat_page.dart';
 import 'package:atx_wallet/features/home/home_page.dart';
 import 'package:atx_wallet/features/home/widgets/bottom_nav.dart';
 import 'package:atx_wallet/providers/wallet_scope.dart';
@@ -35,40 +35,10 @@ class _HistoryPageState extends State<HistoryPage> {
     setState(() => _tab = value);
   }
 
-  Future<T?> _showNeonSheet<T>(Widget child) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 16,
-            right: 16,
-            top: 12,
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-
-  String? get _currentAddress {
-    final wallet = WalletScope.of(context);
-    return wallet.activeProfile?.addressHex;
-  }
-
-  Future<void> _openQrPage() async {
-    final scanned = await Navigator.of(context).push<String?>(
-      MaterialPageRoute(builder: (_) => QrPage(address: _currentAddress)),
-    );
-    if (!mounted) return;
-    if (scanned != null) {
-      await _showNeonSheet<void>(
-        SendSheet(address: _currentAddress, initialRecipient: scanned),
-      );
-    }
+  Future<void> _openAiAgentChatPage() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AiAgentChatPage()));
   }
 
   @override
@@ -319,7 +289,7 @@ class _HistoryPageState extends State<HistoryPage> {
       bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrPage,
+        onQrTap: _openAiAgentChatPage,
         isDark: isDark,
       ),
     );
@@ -346,7 +316,10 @@ class _GlowCircle extends StatelessWidget {
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           gradient: RadialGradient(
-            colors: [color.withValues(alpha: opacity), color.withValues(alpha: 0.0)],
+            colors: [
+              color.withValues(alpha: opacity),
+              color.withValues(alpha: 0.0),
+            ],
           ),
         ),
       ),

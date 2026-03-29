@@ -10,45 +10,14 @@ class MarketScreen extends StatefulWidget {
 class _MarketScreenState extends State<MarketScreen> {
   int _tab = 1;
 
-  Future<T?> _showNeonSheet<T>(Widget child) {
-    return showModalBottomSheet<T>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => SafeArea(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-            left: 16,
-            right: 16,
-            top: 12,
-          ),
-          child: child,
-        ),
-      ),
-    );
-  }
-
   Future<void> _openHistoryPage() async {
     await Navigator.of(context).pushNamed('/history');
   }
 
-  Future<void> _openQrPage() async {
-    final scanned = await Navigator.of(context).push<String?>(
-      MaterialPageRoute(builder: (_) => QrPage(address: _currentAddress)),
-    );
-    if (!mounted) return;
-    if (scanned != null) {
-      await _showNeonSheet<void>(
-        _SendSheet(address: _currentAddress, initialRecipient: scanned),
-      );
-    }
-  }
-
-  String? get _currentAddress {
-    final wallet = WalletScope.of(context);
-    final profile = wallet.activeProfile;
-    return profile?.addressHex;
+  Future<void> _openAiAgentChatPage() async {
+    await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (_) => const AiAgentChatPage()));
   }
 
   void _handleTabChange(int value) {
@@ -206,7 +175,7 @@ class _MarketScreenState extends State<MarketScreen> {
       bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrPage,
+        onQrTap: _openAiAgentChatPage,
         isDark: isDark,
       ),
     );
