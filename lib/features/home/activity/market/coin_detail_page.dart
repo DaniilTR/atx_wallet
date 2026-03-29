@@ -7,6 +7,7 @@ import 'dart:convert';
 import '../../../../providers/wallet_scope.dart';
 import '../../../../services/config.dart';
 import '../../../../WalletSecureStorage/history_model/transaction_record.dart';
+import '../qr_page.dart';
 
 /// Экран деталей монеты/актива.
 ///
@@ -115,6 +116,16 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
     if (_days == days) return;
     setState(() => _days = days);
     _loadChart();
+  }
+
+  Future<void> _openQrPage() async {
+    await Navigator.of(context).push<String?>(
+      MaterialPageRoute(
+        builder: (_) => QrPage(
+          address: WalletScope.read(context).activeProfile?.addressHex,
+        ),
+      ),
+    );
   }
 
   @override
@@ -240,7 +251,7 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
             _QuickActionsRow(
               onSend: () => _showStub(context, 'Отправка в разработке'),
               onReceive: () => _showStub(context, 'Получение в разработке'),
-              onBuy: () => _showStub(context, 'Покупка в разработке'),
+              onQr: _openQrPage,
               onSwap: () => _showStub(context, 'Обмен в разработке'),
             ),
             const SizedBox(height: 18),
@@ -320,9 +331,9 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
               children: [
                 Expanded(
                   child: _ActionButton(
-                    label: 'Покупка',
+                    label: 'Сканирование',
                     filled: true,
-                    onTap: () => _showStub(context, 'Покупка в разработке'),
+                    onTap: _openQrPage,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -624,13 +635,13 @@ class _QuickActionsRow extends StatelessWidget {
   const _QuickActionsRow({
     required this.onSend,
     required this.onReceive,
-    required this.onBuy,
+    required this.onQr,
     required this.onSwap,
   });
 
   final VoidCallback onSend;
   final VoidCallback onReceive;
-  final VoidCallback onBuy;
+  final VoidCallback onQr;
   final VoidCallback onSwap;
 
   @override
@@ -649,9 +660,9 @@ class _QuickActionsRow extends StatelessWidget {
           onTap: onReceive,
         ),
         _QuickActionButton(
-          icon: Icons.attach_money_rounded,
-          label: 'Купить',
-          onTap: onBuy,
+          icon: Icons.center_focus_strong,
+          label: 'Сканирование',
+          onTap: onQr,
         ),
         _QuickActionButton(
           icon: Icons.swap_horiz_rounded,
@@ -922,10 +933,7 @@ class _CoinGeckoPriceService {
       if (uri.host.contains('ngrok')) 'ngrok-skip-browser-warning': 'true',
     };
 
-    final res = await _httpClient.get(
-      uri,
-      headers: headers,
-    );
+    final res = await _httpClient.get(uri, headers: headers);
     if (res.statusCode != 200) return null;
 
     final decoded = jsonDecode(res.body);

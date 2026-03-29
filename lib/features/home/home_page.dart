@@ -27,7 +27,6 @@ import 'widgets/bottom_nav.dart';
 part 'slides/sheet_container.dart';
 part 'slides/send_sheet.dart';
 part 'slides/receive_sheet.dart';
-part 'slides/buy_sheet.dart';
 part 'slides/swap_sheet.dart';
 part 'slides/wallets/wallets_sheet.dart';
 part 'slides/wallets/add_wallet_sheet.dart';
@@ -116,7 +115,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openReceiveSheet() =>
       _showNeonSheet(_ReceiveSheet(address: _currentAddress));
 
-  Future<void> _openBuySheet() => _showNeonSheet(const _BuySheet());
+  Future<void> _openQrAction() => _openQrPage();
 
   Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
 
@@ -292,7 +291,7 @@ class _HomePageState extends State<HomePage> {
                         isDark: isDark,
                         onSend: _openSendFlow,
                         onReceive: _openReceiveSheet,
-                        onBuy: _openBuySheet,
+                        onQr: _openQrAction,
                         onSwap: _openSwapSheet,
                       ),
                       const SizedBox(height: 20),
@@ -578,14 +577,14 @@ class _ActionsRow extends StatelessWidget {
     required this.isDark,
     required this.onSend,
     required this.onReceive,
-    required this.onBuy,
+    required this.onQr,
     required this.onSwap,
   });
 
   final bool isDark;
   final VoidCallback onSend;
   final VoidCallback onReceive;
-  final VoidCallback onBuy;
+  final VoidCallback onQr;
   final VoidCallback onSwap;
 
   @override
@@ -606,9 +605,9 @@ class _ActionsRow extends StatelessWidget {
           isDark: isDark,
         ),
         _ActionButton(
-          icon: Icons.attach_money_rounded,
-          label: 'Купить',
-          onTap: onBuy,
+          icon: Icons.center_focus_strong,
+          label: 'Сканирование',
+          onTap: onQr,
           isDark: isDark,
         ),
         _ActionButton(

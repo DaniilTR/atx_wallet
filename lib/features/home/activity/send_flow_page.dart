@@ -244,14 +244,15 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                     ),
                     const SizedBox(height: 10),
                     _PrimaryButton(
-                      label: 'Купить ETH',
-                      onPressed: () {
+                      label: 'Сканирование',
+                      onPressed: () async {
                         Navigator.of(ctx).pop();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'Покупка ETH пока не подключена',
-                              style: GoogleFonts.inter(),
+                        await Navigator.of(context).push<String?>(
+                          MaterialPageRoute(
+                            builder: (_) => QrPage(
+                              address: WalletScope.read(
+                                context,
+                              ).activeProfile?.addressHex,
                             ),
                           ),
                         );
@@ -380,8 +381,8 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 width: 64,
                 height: 64,
                 decoration: BoxDecoration(
-                  color: (_tokenColors[token.symbol] ?? cs.primary).withValues(alpha: 
-                    0.22,
+                  color: (_tokenColors[token.symbol] ?? cs.primary).withValues(
+                    alpha: 0.22,
                   ),
                   shape: BoxShape.circle,
                 ),
