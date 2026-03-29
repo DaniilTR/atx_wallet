@@ -35,6 +35,14 @@ def create_app() -> FastAPI:
     def health():
         return {"ok": True, "env": settings.app_env}
 
+    @app.get("/healthz", tags=["health"], include_in_schema=False)
+    def healthz():
+        return {"ok": True, "env": settings.app_env}
+
+    @app.get("/favicon.ico", include_in_schema=False)
+    def favicon():
+        return JSONResponse(status_code=204, content=None)
+
     app.include_router(chat_router)
     return app
 

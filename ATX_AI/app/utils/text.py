@@ -7,6 +7,12 @@ _SPACE_RE = re.compile(r"\s+")
 _PUNCT_RE = re.compile(r"[^0-9a-zA-Zа-яА-ЯёЁ\s]+", re.UNICODE)
 
 
+_SYNONYM_REPLACEMENTS: list[tuple[re.Pattern[str], str]] = [
+    # Частые сокращения/сленг
+    (re.compile(r"\bкрипта\b", re.UNICODE), "криптовалюта"),
+]
+
+
 def normalize_question(text: str) -> str:
     """Нормализация для детерминированного сопоставления вопросов."""
 
@@ -15,6 +21,12 @@ def normalize_question(text: str) -> str:
     lowered = text.strip().lower().replace("ё", "е")
     no_punct = _PUNCT_RE.sub(" ", lowered)
     collapsed = _SPACE_RE.sub(" ", no_punct).strip()
+
+    # Лёгкая семантическая нормализация (чтобы совпадали типовые формулировки)
+    for pattern, replacement in _SYNONYM_REPLACEMENTS:
+        collapsed = pattern.sub(replacement, collapsed)
+
+    collapsed = _SPACE_RE.sub(" ", collapsed).strip()
     return collapsed
 
 
