@@ -2,6 +2,7 @@
 node_modules/
 
 
+.env
 
 # сборка
 /dist/
@@ -19,3 +20,4 @@ node_modules/
 # OS
 .DS_Store
 Thumbs.db
+ATX_AI/.env

@@ -17,10 +17,12 @@ def create_app() -> FastAPI:
 
     cors = [o.strip() for o in (settings.cors_origins or "").split(",") if o.strip()]
     if cors:
+        allow_all = "*" in cors
         app.add_middleware(
             CORSMiddleware,
-            allow_origins=cors,
-            allow_credentials=True,
+            allow_origins=["*"] if allow_all else cors,
+            # При '*' нельзя включать credentials, иначе браузер отклонит ответ
+            allow_credentials=False if allow_all else True,
             allow_methods=["*"],
             allow_headers=["*"],
         )
