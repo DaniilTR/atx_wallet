@@ -31,6 +31,9 @@ static int g_active_window_count = 0;
 
 using EnableNonClientDpiScaling = BOOL __stdcall(HWND hwnd);
 
+using AdjustWindowRectExForDpiProc = BOOL(WINAPI*)(LPRECT, DWORD, BOOL, DWORD,
+                                                  UINT);
+
 // Scale helper to convert logical scaler values to physical using passed in
 // scale factor
 int Scale(int source, double scale_factor) {
@@ -51,6 +54,35 @@ void EnableFullDpiSupportIfAvailable(HWND hwnd) {
     enable_non_client_dpi_scaling(hwnd);
   }
   FreeLibrary(user32_module);
+}
+
+AdjustWindowRectExForDpiProc GetAdjustWindowRectExForDpiIfAvailable() {
+  // User32.dll is expected to be loaded for a Win32 GUI process.
+  HMODULE user32_module = GetModuleHandleA("User32.dll");
+  if (!user32_module) {
+    return nullptr;
+  }
+  auto proc = reinterpret_cast<AdjustWindowRectExForDpiProc>(
+      GetProcAddress(user32_module, "AdjustWindowRectExForDpi"));
+  return proc;
+}
+
+RECT GetOuterRectForClientSizePx(UINT client_width_px,
+                                UINT client_height_px,
+                                DWORD style,
+                                DWORD ex_style,
+                                UINT dpi) {
+  RECT rect{0, 0, static_cast<LONG>(client_width_px),
+            static_cast<LONG>(client_height_px)};
+
+  static AdjustWindowRectExForDpiProc adjust_for_dpi =
+      GetAdjustWindowRectExForDpiIfAvailable();
+  if (adjust_for_dpi) {
+    adjust_for_dpi(&rect, style, FALSE, ex_style, dpi);
+  } else {
+    AdjustWindowRectEx(&rect, style, FALSE, ex_style);
+  }
+  return rect;
 }
 
 }  // namespace
@@ -125,6 +157,9 @@ bool Win32Window::Create(const std::wstring& title,
                          const Size& size) {
   Destroy();
 
+  // Запоминаем желаемый размер клиентской области (до масштабирования DPI).
+  desired_client_area_size_ = size;
+
   const wchar_t* window_class =
       WindowClassRegistrar::GetInstance()->GetWindowClass();
 
@@ -134,11 +169,22 @@ bool Win32Window::Create(const std::wstring& title,
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
   double scale_factor = dpi / 96.0;
 
+  // Окно должно быть ресайзабельным (как обычное desktop-приложение).
+  const DWORD style = WS_OVERLAPPEDWINDOW;
+  const DWORD ex_style = 0;
+
+  const UINT client_width_px = static_cast<UINT>(Scale(size.width, scale_factor));
+  const UINT client_height_px = static_cast<UINT>(Scale(size.height, scale_factor));
+  RECT outer_rect =
+      GetOuterRectForClientSizePx(client_width_px, client_height_px, style,
+                                  ex_style, dpi);
+  const int outer_width_px = outer_rect.right - outer_rect.left;
+  const int outer_height_px = outer_rect.bottom - outer_rect.top;
+
   HWND window = CreateWindow(
-      window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
-      nullptr, nullptr, GetModuleHandle(nullptr), this);
+      window_class, title.c_str(), style, Scale(origin.x, scale_factor),
+      Scale(origin.y, scale_factor), outer_width_px, outer_height_px, nullptr,
+      nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
     return false;
@@ -189,11 +235,33 @@ Win32Window::MessageHandler(HWND hwnd,
 
     case WM_DPICHANGED: {
       auto newRectSize = reinterpret_cast<RECT*>(lparam);
-      LONG newWidth = newRectSize->right - newRectSize->left;
-      LONG newHeight = newRectSize->bottom - newRectSize->top;
+      const UINT new_dpi = HIWORD(wparam);
 
-      SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top, newWidth,
-                   newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+      // Сохраняем фиксированный размер клиентской области (410x910),
+      // пересчитывая внешние размеры под новый DPI.
+      if (desired_client_area_size_) {
+        const double scale_factor = new_dpi / 96.0;
+        const DWORD style = WS_OVERLAPPEDWINDOW;
+        const DWORD ex_style = 0;
+
+        const UINT client_width_px =
+            static_cast<UINT>(Scale(desired_client_area_size_->width, scale_factor));
+        const UINT client_height_px =
+            static_cast<UINT>(Scale(desired_client_area_size_->height, scale_factor));
+        RECT outer_rect = GetOuterRectForClientSizePx(
+            client_width_px, client_height_px, style, ex_style, new_dpi);
+        const int outer_width_px = outer_rect.right - outer_rect.left;
+        const int outer_height_px = outer_rect.bottom - outer_rect.top;
+
+        SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top,
+                     outer_width_px, outer_height_px,
+                     SWP_NOZORDER | SWP_NOACTIVATE);
+      } else {
+        LONG newWidth = newRectSize->right - newRectSize->left;
+        LONG newHeight = newRectSize->bottom - newRectSize->top;
+        SetWindowPos(hwnd, nullptr, newRectSize->left, newRectSize->top,
+                     newWidth, newHeight, SWP_NOZORDER | SWP_NOACTIVATE);
+      }
 
       return 0;
     }

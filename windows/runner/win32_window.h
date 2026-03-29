@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 
 // A class abstraction for a high DPI-aware Win32 Window. Intended to be
@@ -91,6 +92,9 @@ class Win32Window {
   static void UpdateTheme(HWND const window);
 
   bool quit_on_close_ = false;
+
+  // Запрошенный размер клиентской области (до DPI-масштабирования).
+  std::optional<Size> desired_client_area_size_;
 
   // window handle for top level window.
   HWND window_handle_ = nullptr;
