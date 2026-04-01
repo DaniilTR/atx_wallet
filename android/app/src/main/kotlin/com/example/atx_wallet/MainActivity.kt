@@ -15,9 +15,11 @@ import androidx.fragment.app.FragmentActivity
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 import java.security.KeyStore
 import java.security.SecureRandom
 import java.util.concurrent.Executor
+import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
@@ -251,6 +253,22 @@ class MainActivity : FlutterFragmentActivity() {
 	}
 
 	private fun getEncryptedPrefs(): SharedPreferences {
+		try {
+			return createEncryptedPrefs()
+		} catch (e: Exception) {
+			// On some devices (especially after OS migration/backup-restore),
+			// EncryptedSharedPreferences data can be restored without the corresponding
+			// AndroidKeyStore master key, causing AEADBadTagException on access.
+			// In this case we must wipe the biometric prefs and recreate them.
+			if (hasAeadBadTagCause(e)) {
+				resetEncryptedPrefsStorage()
+				return createEncryptedPrefs()
+			}
+			throw e
+		}
+	}
+
+	private fun createEncryptedPrefs(): SharedPreferences {
 		val masterKey = MasterKey.Builder(this)
 			.setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
 			.build()
@@ -261,6 +279,31 @@ class MainActivity : FlutterFragmentActivity() {
 			EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
 			EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
 		)
+	}
+
+	private fun resetEncryptedPrefsStorage() {
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+				deleteSharedPreferences(PREFS_NAME)
+			} else {
+				val prefsFile = File(applicationInfo.dataDir, "shared_prefs/$PREFS_NAME.xml")
+				if (prefsFile.exists()) {
+					prefsFile.delete()
+				}
+			}
+		} catch (_: Exception) {
+			// ignore
+		}
+	}
+
+	private fun hasAeadBadTagCause(e: Throwable): Boolean {
+		var t: Throwable? = e
+		while (t != null) {
+			if (t is AEADBadTagException) return true
+			if (t.javaClass.name.contains("AEADBadTagException", ignoreCase = true)) return true
+			t = t.cause
+		}
+		return false
 	}
 
 	private fun handleDisable(userId: String, result: MethodChannel.Result) {
