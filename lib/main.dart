@@ -1,6 +1,7 @@
 // lib/main.dart
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'services/auth_scope.dart';
 import 'services/auth_controller.dart';
@@ -17,7 +18,7 @@ import 'providers/wallet_scope.dart';
 Future<void> main() async {
   // Global Flutter error handler
   FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.dumpErrorToConsole(details);
+    FlutterError.presentError(details);
   };
 
   // "Несоответствие зоны" возникает, когда код выполняется в другой зоне, чем та,
@@ -36,10 +37,10 @@ Future<void> main() async {
       runApp(AtxWalletApp(walletProvider: walletProvider));
     },
     (Object error, StackTrace stack) {
-      // ignore: avoid_print
-      print('Uncaught error: $error');
-      // ignore: avoid_print
-      print(stack);
+      if (kDebugMode) {
+        debugPrint('Uncaught zone error: $error');
+        debugPrint('$stack');
+      }
     },
   );
 }

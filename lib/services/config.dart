@@ -52,6 +52,45 @@ const String kInitialRoute = String.fromEnvironment(
   defaultValue: '/start',
 );
 
+/// Включить встроенного AI ассистента (чат).
+///
+/// В релизе рекомендуется включать только если endpoint использует HTTPS и
+/// на сервере есть rate-limit/abuse protection. Общие секреты в клиент не зашивать.
+const bool kEnableAiAssistant = bool.fromEnvironment(
+  'AI_ASSISTANT_ENABLED',
+  defaultValue: false,
+);
+
+/// Endpoint для AI ассистента.
+///
+/// Пример:
+/// `--dart-define AI_ASSISTANT_ENDPOINT=https://ai.example.com/v1/chat`
+const String kAiAssistantEndpoint = String.fromEnvironment(
+  'AI_ASSISTANT_ENDPOINT',
+  defaultValue: '',
+);
+
+/// URL на публичную Политику конфиденциальности.
+///
+/// Для Google Play обычно требуется указать Privacy Policy URL.
+/// Рекомендуемый вариант: GitHub Pages.
+///
+/// Пример:
+/// `--dart-define PRIVACY_POLICY_URL=https://<user>.github.io/<repo>/privacy-policy.html`
+const String kPrivacyPolicyUrl = String.fromEnvironment(
+  'PRIVACY_POLICY_URL',
+  defaultValue: '',
+);
+
+/// URL на публичные Условия использования.
+///
+/// Пример:
+/// `--dart-define TERMS_OF_USE_URL=https://<user>.github.io/<repo>/terms-of-use.html`
+const String kTermsOfUseUrl = String.fromEnvironment(
+  'TERMS_OF_USE_URL',
+  defaultValue: '',
+);
+
 /// Базовый URL для CoinGecko.
 ///
 /// По умолчанию приложение ходит напрямую в CoinGecko.
@@ -62,5 +101,6 @@ const String kInitialRoute = String.fromEnvironment(
 /// Пример: `https://prices.example.com` или ` http://127.0.0.1:8080`.
 const String kCoinGeckoBaseUrl = String.fromEnvironment(
   'COINGECKO_BASE_URL',
-  defaultValue: 'http://46.247.41.175:8080',
+  // Безопасный дефолт: прямой вызов official CoinGecko API по HTTPS.
+  defaultValue: 'https://api.coingecko.com',
 );

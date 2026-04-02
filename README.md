@@ -126,11 +126,13 @@ flutter run -d chrome
 
 В проекте есть 2 режима “где живут ключи/сид-фраза”. Переключение — через [lib/services/config.dart](lib/services/config.dart).
 
+
 ### DEV-режим (`DEV_WALLET_STORAGE=true`)
 
 - Используется только для разработки/демо.
 - Сид-фраза/ключи и история сохраняются локально через `lib/dev/...` (JSON-файлы в Application Support).
 - После логина `login_page.dart` вызывает `wallet.loadDevProfile(user.id)`.
+
 
 ### Secure-режим (`DEV_WALLET_STORAGE=false`)
 

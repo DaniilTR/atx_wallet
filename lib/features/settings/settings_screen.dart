@@ -2,11 +2,14 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../biometrics/biometric_face.dart';
 import '../../services/biometric_prefs.dart';
+import '../../services/config.dart' as app_config;
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -24,6 +27,32 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _useDarkTheme;
+
+  Future<void> _openLegalUrl(String url, String label) async {
+    if (url.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ссылка "$label" не настроена')));
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Некорректная ссылка "$label"')));
+      return;
+    }
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Не удалось открыть "$label"')));
+    }
+  }
 
   @override
   void initState() {
@@ -316,6 +345,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           const SizedBox(height: 8),
           OutlinedButton.icon(
+            onPressed: () => _openLegalUrl(
+              app_config.kPrivacyPolicyUrl,
+              'Политика конфиденциальности',
+            ),
+            icon: const Icon(Icons.privacy_tip_outlined),
+            label: const Text('Политика конфиденциальности'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
+            onPressed: () => _openLegalUrl(
+              app_config.kTermsOfUseUrl,
+              'Условия использования',
+            ),
+            icon: const Icon(Icons.description_outlined),
+            label: const Text('Условия использования'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton.icon(
             onPressed: () {
               showDialog<void>(
                 context: context,
@@ -384,12 +431,29 @@ class _SeedPhraseDialog extends StatefulWidget {
 class _SeedPhraseDialogState extends State<_SeedPhraseDialog> {
   static const int _timeoutSeconds = 60;
 
+  static const MethodChannel _securityChannel = MethodChannel(
+    'com.atx/security',
+  );
+
   late int _secondsLeft;
   Timer? _timer;
+
+  Future<void> _setSecureFlag(bool enabled) async {
+    // FLAG_SECURE доступен только на Android (через нативный канал).
+    if (!defaultTargetPlatform.name.toLowerCase().contains('android')) return;
+    try {
+      await _securityChannel.invokeMethod('setSecureFlag', {
+        'enabled': enabled,
+      });
+    } catch (_) {
+      // ignore: best-effort
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    unawaited(_setSecureFlag(true));
     _secondsLeft = _timeoutSeconds;
     _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (!mounted) {
@@ -412,6 +476,7 @@ class _SeedPhraseDialogState extends State<_SeedPhraseDialog> {
   @override
   void dispose() {
     _timer?.cancel();
+    unawaited(_setSecureFlag(false));
     super.dispose();
   }
 
@@ -434,10 +499,43 @@ class _SeedPhraseDialogState extends State<_SeedPhraseDialog> {
       actions: [
         TextButton.icon(
           onPressed: () async {
+            final allow = await showDialog<bool>(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Внимание'),
+                content: const Text(
+                  'Копирование seed-фразы в буфер обмена может быть небезопасным: '
+                  'некоторые приложения/клавиатуры могут иметь доступ к буферу.\n\n'
+                  'Продолжить копирование?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(false),
+                    child: const Text('Отмена'),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.of(context).pop(true),
+                    child: const Text('Копировать'),
+                  ),
+                ],
+              ),
+            );
+            if (allow != true) return;
+
             await Clipboard.setData(ClipboardData(text: widget.seed));
             if (!context.mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Seed-фраза скопирована')),
+            );
+
+            // Best-effort очистка буфера обмена через небольшую паузу.
+            // Полной гарантии нет (в частности из-за clipboard history на некоторых девайсах).
+            unawaited(
+              Future<void>.delayed(const Duration(seconds: 60), () async {
+                try {
+                  await Clipboard.setData(const ClipboardData(text: ''));
+                } catch (_) {}
+              }),
             );
           },
           icon: const Icon(Icons.copy),

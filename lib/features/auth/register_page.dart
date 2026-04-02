@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import '../../services/config.dart' as app_config;
 import '../home/home_page.dart' show HomeRouteArgs;
 import 'widgets/animated_neon_background.dart';
 import 'widgets/auth_loading_view.dart';
@@ -21,9 +23,35 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmCtrl = TextEditingController();
   bool _obscure1 = true;
   bool _obscure2 = true;
-  bool _agree = true;
+  bool _agree = false;
   bool _loading = false;
   bool _checkingSession = true;
+
+  Future<void> _openLegalUrl(String url, String label) async {
+    if (url.trim().isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Ссылка "$label" не настроена')));
+      return;
+    }
+
+    final uri = Uri.tryParse(url);
+    if (uri == null || !uri.hasScheme) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Некорректная ссылка "$label"')));
+      return;
+    }
+
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Не удалось открыть "$label"')));
+    }
+  }
 
   @override
   void initState() {
@@ -63,7 +91,9 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!_formKey.currentState!.validate()) return;
     if (!_agree) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Подтвердите согласие с правилами')),
+        const SnackBar(
+          content: Text('Подтвердите согласие с условиями и политикой'),
+        ),
       );
       return;
     }
@@ -217,7 +247,12 @@ class _RegisterPageState extends State<RegisterPage> {
                               validator: (v) {
                                 if (v == null || v.isEmpty)
                                   return 'Введите пароль';
-                                if (v.length < 6) return 'Минимум 6 символов';
+                                if (v.length < 8) return 'Минимум 8 символов';
+                                if (!RegExp(
+                                  r'^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[@$!%*#?&]).{8,}$',
+                                ).hasMatch(v)) {
+                                  return 'Пароль должен содержать Заглавные и строчные буквы, цифры и спецсимволы';
+                                }
                                 return null;
                               },
                             ),
@@ -262,12 +297,55 @@ class _RegisterPageState extends State<RegisterPage> {
                               children: [
                                 Checkbox(
                                   value: _agree,
-                                  onChanged: (v) =>
-                                      setState(() => _agree = v ?? false),
+                                  onChanged: _loading
+                                      ? null
+                                      : (v) =>
+                                            setState(() => _agree = v ?? false),
                                 ),
-                                const Expanded(
-                                  child: Text(
-                                    'Согласен с условиями использования',
+                                Expanded(
+                                  child: Wrap(
+                                    crossAxisAlignment:
+                                        WrapCrossAlignment.center,
+                                    children: [
+                                      const Text('Я согласен с '),
+                                      TextButton(
+                                        onPressed: _loading
+                                            ? null
+                                            : () => _openLegalUrl(
+                                                app_config.kTermsOfUseUrl,
+                                                'Условия использования',
+                                              ),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 0),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        child: const Text(
+                                          'Условиями использования',
+                                        ),
+                                      ),
+                                      const Text(' и '),
+                                      TextButton(
+                                        onPressed: _loading
+                                            ? null
+                                            : () => _openLegalUrl(
+                                                app_config.kPrivacyPolicyUrl,
+                                                'Политика конфиденциальности',
+                                              ),
+                                        style: TextButton.styleFrom(
+                                          padding: EdgeInsets.zero,
+                                          minimumSize: const Size(0, 0),
+                                          tapTargetSize:
+                                              MaterialTapTargetSize.shrinkWrap,
+                                          visualDensity: VisualDensity.compact,
+                                        ),
+                                        child: const Text(
+                                          'Политикой конфиденциальности',
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],

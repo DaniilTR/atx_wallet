@@ -368,7 +368,6 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     if (kPinnedAssetSymbols.contains(sym)) return;
 
     final id = coinGeckoId?.trim();
-    // Без CoinGecko id мы не сможем корректно подтягивать цену/график.
     if (id == null || id.isEmpty) return;
 
     final currentFavorites = _favoriteTokensValue;
@@ -388,8 +387,6 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
       final token = TokenMetadata(
         symbol: sym,
         name: displayName,
-        // Для watchlist-активов достаточно evmNative, чтобы не требовался contract.
-        // Баланс всё равно остаётся 0.
         kind: AssetKind.evmNative,
         decimalsHint: 6,
         fetchDecimalsFromChain: false,
@@ -1148,6 +1145,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     notifyListeners();
   }
 
+  // Логика отправки и подготовки к отправке (preflight).
   Future<SendPreflightResult> preflightSend({
     required TokenMetadata token,
     required String recipient,
@@ -1316,6 +1314,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     );
   }
 
+  // Логика отправки.
   Future<String> sendAsset({
     required TokenMetadata token,
     required String recipient,
@@ -1481,6 +1480,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return txHash;
   }
 
+  // Вспомогательные методы для отправки: предварительная проверка (preflight) и оценка комиссии.
   Future<void> _preflightEvmSendNative({
     required EthereumAddress from,
     required EthereumAddress to,
@@ -1517,6 +1517,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Для ERC-20 помимо проверки баланса токена также проверяем, что хватает ETH на оплату комиссии сети.
   Future<void> _preflightEvmSendErc20({
     required EthereumAddress from,
     required EthereumAddress contract,
@@ -1551,6 +1552,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Оценка комиссии сети (gas) для нативного перевода. В случае ошибки возвращает 0, чтобы не блокировать отправку совсем.
   Future<BigInt> _estimateFeeWeiForNative({
     required EthereumAddress from,
     required EthereumAddress to,
@@ -1570,6 +1572,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Оценка комиссии сети (gas) для ERC-20 перевода. В случае ошибки возвращает 0, чтобы не блокировать отправку совсем.
   Future<BigInt> _estimateFeeWeiForErc20({
     required EthereumAddress from,
     required EthereumAddress contract,
@@ -1590,6 +1593,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Вспомогательные методы для форматирования чисел и лейблов.
   String _formatEth(BigInt wei) {
     final eth = EtherAmount.fromBigInt(
       EtherUnit.wei,
@@ -1599,11 +1603,13 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   }
 
+  // Форматирует число в виде строки с 2 десятичными знаками и запятой в качестве разделителя.
   String _formatFiat(double value) {
     final text = value.toStringAsFixed(2);
     return text.replaceAll('.', ',');
   }
 
+  // Возвращает строку с оценкой стоимости комиссии в USD, если цена ETH известна, или null, если цену получить не удалось.
   String? _feeUsdLabel({required BigInt feeWei}) {
     final ethPrice = _priceUsdFor('ETH');
     if (ethPrice == null || !ethPrice.isFinite || ethPrice <= 0) return null;
@@ -1615,6 +1621,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return '${_formatFiat(usd)} \$';
   }
 
+  // Возвращает строку с оценкой стоимости суммы в USD, если цена токена известна, или null, если цену получить не удалось.
   String? _amountUsdLabel({
     required TokenMetadata token,
     required double amount,
@@ -1624,6 +1631,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return '${_formatFiat(amount * price)} \$';
   }
 
+  // Оценка комиссии для биткоин-транзакции с данным количеством входов и выходов и текущей ценой за vbyte.
   BigInt _estimateP2pkhFeeSats({
     required int inputs,
     required int outputs,
@@ -1634,6 +1642,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return fee <= BigInt.zero ? BigInt.from(1) : fee;
   }
 
+  // Конвертация суммы из одного токена в другой через USD. Если цену получить не удалось, возвращает 0.
   double convertAmount({
     required TokenMetadata from,
     required TokenMetadata to,
@@ -1647,6 +1656,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return amount * fromPrice / toPrice;
   }
 
+  // Получение цены токена в USD из текущих балансов. Если токен не найден или цена недоступна, возвращает null.
   double? _priceUsdFor(String symbol) {
     for (final asset in _balances.assets) {
       if (asset.token.symbol != symbol) continue;
@@ -1655,10 +1665,12 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return null;
   }
 
+  // Логика истории транзакций.
   Future<void> refreshHistory() async {
     await _loadHistoryFromStorage();
   }
 
+  // Добавляет в историю запись о свопе, который был инициирован, но ещё не подтверждён в сети. Позже, когда транзакция будет подтверждена, можно обновить эту запись, найдя её по txHash.
   Future<void> addSwapHistoryPending({
     required String fromSymbol,
     required String toSymbol,
@@ -1677,6 +1689,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _appendHistory([record]);
   }
 
+  // Обновляет заметку в истории для транзакции с данным txHash. Это полезно для свопов: когда транзакция подтверждается, можно обновить заметку, убрав пометку «в обработке» и указав точные детали свопа.
   Future<void> updateHistoryNoteByTxHash({
     required String txHash,
     required String note,
@@ -1703,6 +1716,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _persistHistory();
   }
 
+  // Ищет в истории баланс для токена с данным символом. Если токен не найден, возвращает null.
   AssetBalance? balanceForSymbol(String symbol) {
     for (final asset in _balances.assets) {
       if (asset.token.symbol == symbol) return asset;
@@ -1710,12 +1724,14 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     return null;
   }
 
+  // Устанавливает историю транзакций в начальное состояние: пустой список, без ошибок и загрузки. Вызывается при смене профиля, чтобы очистить историю от данных предыдущего профиля.
   void _clearHistoryState() {
     _history = const <TransactionRecord>[];
     _historyLoading = false;
     _historyError = null;
   }
 
+  // Загружает историю транзакций из локального хранилища для текущего профиля. Если silent=false, устанавливает флаг загрузки и уведомляет слушателей. Если возникает ошибка при загрузке, сохраняет текст ошибки в состоянии и уведомляет слушателей.
   Future<void> _loadHistoryFromStorage({bool silent = false}) async {
     final profile = _activeProfile;
     if (profile == null) return;
@@ -1744,6 +1760,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Добавляет новые записи в историю, сортирует её по дате (новые сверху) и обрезает до лимита. Затем сохраняет обновлённую историю в локальное хранилище. Если возникает ошибка при сохранении, сохраняет текст ошибки в состоянии и уведомляет слушателей.
   Future<void> _appendHistory(List<TransactionRecord> entries) async {
     if (entries.isEmpty) return;
     final updated = <TransactionRecord>[...entries, ..._history]
@@ -1756,6 +1773,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _persistHistory();
   }
 
+  // Сохраняет текущую историю транзакций в локальное хранилище для текущего профиля. Если возникает ошибка при сохранении, сохраняет текст ошибки в состоянии и уведомляет слушателей.
   Future<void> _persistHistory() async {
     final profile = _activeProfile;
     if (profile == null) return;
@@ -1772,6 +1790,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     }
   }
 
+  // Пытается обнаружить входящие транзакции, сравнивая предыдущие и текущие балансы. Если баланс по какому-то токену увеличился, добавляет в историю запись о пополнении. Для корректной работы требует, чтобы перед этим уже был сделан хотя бы один снимок балансов (например, через refreshBalances), чтобы было с чем сравнивать.
   Future<void> _detectIncomingTransfers(
     List<AssetBalance> previous,
     List<AssetBalance> current,
@@ -1804,6 +1823,7 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
     await _appendHistory(additions);
   }
 
+  // Конвертация суммы из базовых единиц (например, wei для ETH или сатоши для BTC) в человекочитаемый формат с учётом десятичных знаков. Если сумма равна нулю, возвращает 0.
   double _fromBaseUnits(BigInt amount, int decimals) {
     if (amount == BigInt.zero) return 0;
     final divisor = math.pow(10, decimals).toDouble();

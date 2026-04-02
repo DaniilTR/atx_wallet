@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:atx_wallet/services/ai_assistant_service.dart';
+import 'package:atx_wallet/services/config.dart';
 
 class AiAgentChatPage extends StatefulWidget {
   const AiAgentChatPage({super.key});
@@ -69,11 +70,12 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
         );
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSending = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 
@@ -96,6 +98,9 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
     final secondaryTextColor = isDark
         ? const Color(0xFF9FB0E1)
         : const Color(0xFF475569);
+
+    final aiEnabled =
+        kEnableAiAssistant && kAiAssistantEndpoint.trim().isNotEmpty;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -141,13 +146,27 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                           ),
                         ),
                         Text(
-                          'online',
+                          aiEnabled ? 'online' : 'disabled',
                           style: GoogleFonts.inter(
-                            color: const Color(0xFF22C55E),
+                            color: aiEnabled
+                                ? const Color(0xFF22C55E)
+                                : secondaryTextColor,
                             fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
+                        if (!aiEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 2),
+                            child: Text(
+                              'Отключён в этой сборке',
+                              style: GoogleFonts.inter(
+                                color: secondaryTextColor,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -191,13 +210,13 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                           children: [
                             _QuickActionChip(
                               text: 'Что такое крипта?',
-                              onTap: _isSending
+                              onTap: (!aiEnabled || _isSending)
                                   ? null
                                   : () => _sendMessage('Что такое крипта?'),
                             ),
                             _QuickActionChip(
                               text: 'Как снизить комиссию?',
-                              onTap: _isSending
+                              onTap: (!aiEnabled || _isSending)
                                   ? null
                                   : () => _sendMessage(
                                       'Как снизить комиссию при переводе?',
@@ -205,7 +224,7 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                             ),
                             _QuickActionChip(
                               text: 'Проверка адреса',
-                              onTap: _isSending
+                              onTap: (!aiEnabled || _isSending)
                                   ? null
                                   : () => _sendMessage(
                                       'Как безопасно проверить адрес перед отправкой?',
@@ -213,7 +232,7 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                             ),
                             _QuickActionChip(
                               text: 'Сводка портфеля',
-                              onTap: _isSending
+                              onTap: (!aiEnabled || _isSending)
                                   ? null
                                   : () => _sendMessage(
                                       'Как сделать базовую сводку крипто-портфеля?',
@@ -256,9 +275,9 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                       controller: _controller,
                       minLines: 1,
                       maxLines: 4,
-                      enabled: !_isSending,
+                      enabled: !_isSending && aiEnabled,
                       textInputAction: TextInputAction.send,
-                      onSubmitted: (_) => _sendMessage(),
+                      onSubmitted: aiEnabled ? (_) => _sendMessage() : null,
                       style: GoogleFonts.inter(
                         color: primaryTextColor,
                         fontSize: 14,
@@ -299,7 +318,7 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
                   const SizedBox(width: 10),
                   InkWell(
                     borderRadius: BorderRadius.circular(14),
-                    onTap: _isSending ? null : _sendMessage,
+                    onTap: (!aiEnabled || _isSending) ? null : _sendMessage,
                     child: Container(
                       width: 48,
                       height: 48,

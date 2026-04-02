@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.util.Base64
 import android.os.Build
 import android.content.SharedPreferences
+import android.view.WindowManager
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import androidx.annotation.NonNull
@@ -28,6 +29,7 @@ import javax.crypto.spec.GCMParameterSpec
 
 class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.atx/biometric"
+	private val SECURITY_CHANNEL = "com.atx/security"
 	private val PREFS_NAME = "atx_biometric_prefs"
 
 	override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
@@ -49,6 +51,23 @@ class MainActivity : FlutterFragmentActivity() {
 				"disableFaceAuth" -> {
 					val userId = call.argument<String>("userId") ?: ""
 					handleDisable(userId, result)
+				}
+				else -> result.notImplemented()
+			}
+		}
+
+		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SECURITY_CHANNEL).setMethodCallHandler { call, result ->
+			when (call.method) {
+				"setSecureFlag" -> {
+					val enabled = call.argument<Boolean>("enabled") ?: false
+					runOnUiThread {
+						if (enabled) {
+							window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+						} else {
+							window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+						}
+					}
+					result.success(true)
 				}
 				else -> result.notImplemented()
 			}

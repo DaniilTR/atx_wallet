@@ -11,7 +11,7 @@ class WalletBundleStorage {
           const FlutterSecureStorage(
             aOptions: AndroidOptions(encryptedSharedPreferences: true),
             iOptions: IOSOptions(
-              accessibility: KeychainAccessibility.first_unlock,
+              accessibility: KeychainAccessibility.unlocked_this_device,
             ),
           );
 
@@ -28,7 +28,9 @@ class WalletBundleStorage {
     try {
       return WalletVaultBundle.fromJsonString(raw);
     } catch (e) {
-      debugPrint('Failed to parse vault bundle: $e');
+      if (kDebugMode) {
+        debugPrint('Failed to parse vault bundle: $e');
+      }
       return null;
     }
   }

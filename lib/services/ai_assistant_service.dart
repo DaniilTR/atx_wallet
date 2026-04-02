@@ -3,25 +3,34 @@ import 'dart:convert';
 
 import 'package:http/http.dart' as http;
 
+import 'config.dart';
+
 class AiAssistantService {
   AiAssistantService({http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
 
-  static const String _endpoint = 'http://46.247.41.175:8010/v1/chat';
-  static const String _token =
-      'qweasdrtyfghd123dass234asdqwe435vxcwerfbvxsgdf687';
-
   final http.Client _httpClient;
 
   Future<String> sendMessage(String message) async {
+    if (!kEnableAiAssistant) {
+      throw StateError(
+        'AI ассистент отключён. Он в данный момент находиться в разработке и может быть включён в будущих версиях. Следите за обновлениями.',
+      );
+    }
     final trimmed = message.trim();
     if (trimmed.isEmpty) {
       throw StateError('Пустое сообщение нельзя отправить.');
     }
 
-    final uri = Uri.parse(_endpoint);
+    final endpoint = kAiAssistantEndpoint.trim();
+    if (endpoint.isEmpty) {
+      throw StateError(
+        'AI ассистент отключён. Он в данный момент находиться в разработке и может быть включён в будущих версиях. Следите за обновлениями.',
+      );
+    }
+
+    final uri = Uri.parse(endpoint);
     final headers = <String, String>{
-      'Authorization': 'Bearer $_token',
       'Content-Type': 'application/json; charset=utf-8',
       'Accept': 'application/json',
     };

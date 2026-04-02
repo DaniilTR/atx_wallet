@@ -2,9 +2,13 @@
     <!-- Biometric permission -->
     <uses-permission android:name="android.permission.USE_BIOMETRIC" />
     <uses-permission android:name="android.permission.USE_FINGERPRINT" />
+    <!-- Required for RPC/API requests in release builds -->
+    <uses-permission android:name="android.permission.INTERNET" />
     <application
         android:label="atx_wallet"
         android:name="${applicationName}"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher">
         <activity
             android:name=".MainActivity"
