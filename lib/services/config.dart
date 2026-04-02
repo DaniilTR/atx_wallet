@@ -58,21 +58,39 @@ const String kInitialRoute = String.fromEnvironment(
 /// на сервере есть rate-limit/abuse protection. Общие секреты в клиент не зашивать.
 const bool kEnableAiAssistant = bool.fromEnvironment(
   'AI_ASSISTANT_ENABLED',
-  defaultValue: false,
+  defaultValue: true,
 );
 
 /// Endpoint для AI ассистента.
 ///
 /// Пример:
 /// `--dart-define AI_ASSISTANT_ENDPOINT=https://ai.example.com/v1/chat`
+///
+/// Также можно указать только origin, и тогда будет использован путь `/api/ai/v1/chat`.
+/// `--dart-define AI_ASSISTANT_ENDPOINT=https://atxwallet.duckdns.org`
+///
+/// Важно: избегайте редиректов на слэшах (например, `/api/ai` → `/api/ai/`),
+/// потому что preflight (OPTIONS) в браузере не следует редиректам.
 const String kAiAssistantEndpoint = String.fromEnvironment(
   'AI_ASSISTANT_ENDPOINT',
-  defaultValue: '',
+  defaultValue: 'https://atxwallet.duckdns.org/api/ai/v1/chat',
+);
+
+/// Bearer-токен для AI ассистента (если сервер требует авторизацию).
+///
+/// Важно: не зашивайте общий секрет прямо в код. Передавайте только через
+/// `--dart-define`/CI для нужной сборки.
+///
+/// Пример:r
+/// `--dart-define AI_ASSISTANT_BEARER_TOKEN=...`
+const String kAiAssistantBearerToken = String.fromEnvironment(
+  'AI_ASSISTANT_BEARER_TOKEN',
+  defaultValue: 'qweasdrtyfghd123dass234asdqwe435vxcwerfbvxsgdf687',
 );
 
 /// URL на публичную Политику конфиденциальности.
 ///
-/// Для Google Play обычно требуется указать Privacy Policy URL.
+/// Для Google Play обычно требуется указать Privacy Policy UкRL.
 /// Рекомендуемый вариант: GitHub Pages.
 ///
 /// Пример:
@@ -97,10 +115,14 @@ const String kTermsOfUseUrl = String.fromEnvironment(
 /// Чтобы использовать свой сервер-посредник с кэшем (VPS), задайте:
 /// `--dart-define COINGECKO_BASE_URL=https://your-vps.example.com`
 ///
-/// Важно: ожидается именно origin (схема + хост + порт), без path.
-/// Пример: `https://prices.example.com` или ` http://127.0.0.1:8080`.
+/// Важно: ожидается именно origin (схема + хост + порт).
+///
+/// Примечание:
+/// - `.../api/node` — это обычно RPC-прокси для EVM (настраивается через `EVM_RPC_URL`).
+/// - CoinGecko-прокси в `server_for_atx` использует маршруты вида `/api/v3/...`.
+///   Поэтому базовый URL должен быть без `/api/node`, например: `https://atxwallet.duckdns.org`.
 const String kCoinGeckoBaseUrl = String.fromEnvironment(
   'COINGECKO_BASE_URL',
   // Безопасный дефолт: прямой вызов official CoinGecko API по HTTPS.
-  defaultValue: 'https://api.coingecko.com',
+  defaultValue: 'https://atxwallet.duckdns.org/api/node',
 );

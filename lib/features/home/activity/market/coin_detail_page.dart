@@ -908,6 +908,17 @@ void _showStub(BuildContext context, String text) {
   );
 }
 
+String _joinBasePath(Uri base, String endpointPath) {
+  final rawBasePath = base.path;
+  final basePath = (rawBasePath.isEmpty || rawBasePath == '/')
+      ? ''
+      : (rawBasePath.endsWith('/')
+            ? rawBasePath.substring(0, rawBasePath.length - 1)
+            : rawBasePath);
+  final ep = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+  return basePath.isEmpty ? ep : '$basePath$ep';
+}
+
 class _CoinGeckoPriceService {
   _CoinGeckoPriceService({http.Client? httpClient})
     : _httpClient = httpClient ?? http.Client();
@@ -923,7 +934,7 @@ class _CoinGeckoPriceService {
   }) async {
     final base = Uri.parse(kCoinGeckoBaseUrl);
     final uri = base.replace(
-      path: '/api/v3/coins/$coinId/market_chart',
+      path: _joinBasePath(base, '/api/v3/coins/$coinId/market_chart'),
       queryParameters: {'vs_currency': 'usd', 'days': days.toString()},
     );
 

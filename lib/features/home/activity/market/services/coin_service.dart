@@ -4,6 +4,17 @@ import '../models/coin.dart';
 
 import '../../../../../services/config.dart';
 
+String _joinBasePath(Uri base, String endpointPath) {
+  final rawBasePath = base.path;
+  final basePath = (rawBasePath.isEmpty || rawBasePath == '/')
+      ? ''
+      : (rawBasePath.endsWith('/')
+            ? rawBasePath.substring(0, rawBasePath.length - 1)
+            : rawBasePath);
+  final ep = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+  return basePath.isEmpty ? ep : '$basePath$ep';
+}
+
 class CoinService {
   // Returns a list of coins fetched from CoinGecko markets endpoint (single call with sparkline)
   static Future<List<Coin>> fetchTopCoins() async {
@@ -21,7 +32,7 @@ class CoinService {
     final ids = order.join(',');
     final base = Uri.parse(kCoinGeckoBaseUrl);
     final uri = base.replace(
-      path: '/api/v3/coins/markets',
+      path: _joinBasePath(base, '/api/v3/coins/markets'),
       queryParameters: {
         'vs_currency': 'usd',
         'ids': ids,

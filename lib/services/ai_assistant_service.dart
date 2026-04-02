@@ -2,8 +2,39 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 
 import 'config.dart';
+
+Uri _normalizeAiEndpoint(Uri base) {
+  // Нормализуем endpoint так, чтобы не было редиректов на слэшах.
+  // Preflight (OPTIONS) в браузере НЕ может следовать редиректам.
+  final p = base.path;
+
+  // Если задан только origin — используем дефолтный путь.
+  if (p.isEmpty || p == '/') {
+    return base.replace(path: '/api/ai/v1/chat');
+  }
+
+  // Если указали прокси-корень, добавляем v1/chat.
+  if (p == '/api/ai' || p == '/api/ai/') {
+    return base.replace(path: '/api/ai/v1/chat');
+  }
+
+  // Если указали только /v1, добавляем /chat.
+  if (p.endsWith('/v1') || p.endsWith('/v1/')) {
+    final normalized = p.endsWith('/') ? p.substring(0, p.length - 1) : p;
+    return base.replace(path: '$normalized/chat');
+  }
+
+  // Если указали /chat/ — убираем хвостовой слэш.
+  if (p.endsWith('/chat/')) {
+    return base.replace(path: p.substring(0, p.length - 1));
+  }
+
+  // Иначе считаем, что путь уже полный.
+  return base;
+}
 
 class AiAssistantService {
   AiAssistantService({http.Client? httpClient})
@@ -29,11 +60,21 @@ class AiAssistantService {
       );
     }
 
-    final uri = Uri.parse(endpoint);
+    final parsed = Uri.tryParse(endpoint);
+    if (parsed == null || !parsed.hasScheme) {
+      throw StateError('Некорректный AI endpoint: $endpoint');
+    }
+
+    final uri = _normalizeAiEndpoint(parsed);
     final headers = <String, String>{
       'Content-Type': 'application/json; charset=utf-8',
       'Accept': 'application/json',
     };
+
+    final token = kAiAssistantBearerToken.trim();
+    if (token.isNotEmpty) {
+      headers['Authorization'] = 'Bearer $token';
+    }
 
     http.Response res;
     try {
@@ -42,6 +83,23 @@ class AiAssistantService {
           .timeout(const Duration(seconds: 25));
     } on TimeoutException {
       throw StateError('Сервер не ответил вовремя. Повторите попытку.');
+    } on http.ClientException catch (e) {
+      // На Flutter Web типовая причина — CORS (браузер блокирует запрос).
+      if (kIsWeb) {
+        throw StateError(
+          'AI недоступен в Web из-за CORS браузера. '
+          'Откройте приложение с того же домена, что и API, '
+          'или настройте CORS на API. Детали: ${e.message}',
+        );
+      }
+      rethrow;
+    }
+
+    if (res.statusCode == 401 || res.statusCode == 403) {
+      throw StateError(
+        'AI сервер требует авторизацию. '
+        'Задайте `AI_ASSISTANT_BEARER_TOKEN` через --dart-define или отключите AI.',
+      );
     }
 
     if (res.statusCode < 200 || res.statusCode >= 300) {

@@ -4,6 +4,17 @@ import 'package:http/http.dart' as http;
 
 import 'config.dart';
 
+String _joinBasePath(Uri base, String endpointPath) {
+  final rawBasePath = base.path;
+  final basePath = (rawBasePath.isEmpty || rawBasePath == '/')
+      ? ''
+      : (rawBasePath.endsWith('/')
+            ? rawBasePath.substring(0, rawBasePath.length - 1)
+            : rawBasePath);
+  final ep = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+  return basePath.isEmpty ? ep : '$basePath$ep';
+}
+
 /// Сервис получения цен активов через публичный API CoinGecko.
 ///
 /// Зачем он нужен:
@@ -30,7 +41,7 @@ class AssetPriceService {
     // GET /api/v3/simple/price?ids=...&vs_currencies=usd
     final base = Uri.parse(kCoinGeckoBaseUrl);
     final uri = base.replace(
-      path: '/api/v3/simple/price',
+      path: _joinBasePath(base, '/api/v3/simple/price'),
       queryParameters: {'ids': coinGeckoIds.join(','), 'vs_currencies': 'usd'},
     );
 

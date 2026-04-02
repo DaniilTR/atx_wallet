@@ -5,6 +5,17 @@ import 'package:http/http.dart' as http;
 
 import 'config.dart';
 
+String _joinBasePath(Uri base, String endpointPath) {
+  final rawBasePath = base.path;
+  final basePath = (rawBasePath.isEmpty || rawBasePath == '/')
+      ? ''
+      : (rawBasePath.endsWith('/')
+            ? rawBasePath.substring(0, rawBasePath.length - 1)
+            : rawBasePath);
+  final ep = endpointPath.startsWith('/') ? endpointPath : '/$endpointPath';
+  return basePath.isEmpty ? ep : '$basePath$ep';
+}
+
 class NewsFeed {
   const NewsFeed({
     required this.source,
@@ -98,7 +109,7 @@ class NewsService {
   Future<NewsFeed> fetchCointelegraph({int limit = 15}) async {
     final base = Uri.parse(kCoinGeckoBaseUrl);
     final uri = base.replace(
-      path: '/api/news/cointelegraph',
+      path: _joinBasePath(base, '/api/news/cointelegraph'),
       queryParameters: <String, String>{'limit': '$limit'},
     );
 
