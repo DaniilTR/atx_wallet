@@ -79,7 +79,7 @@ const String kAiAssistantEndpoint = String.fromEnvironment(
 /// `--dart-define PRIVACY_POLICY_URL=https://<user>.github.io/<repo>/privacy-policy.html`
 const String kPrivacyPolicyUrl = String.fromEnvironment(
   'PRIVACY_POLICY_URL',
-  defaultValue: '',
+  defaultValue: 'https://daniiltr.github.io/atx_wallet/privacy-policy.html',
 );
 
 /// URL на публичные Условия использования.
@@ -88,7 +88,7 @@ const String kPrivacyPolicyUrl = String.fromEnvironment(
 /// `--dart-define TERMS_OF_USE_URL=https://<user>.github.io/<repo>/terms-of-use.html`
 const String kTermsOfUseUrl = String.fromEnvironment(
   'TERMS_OF_USE_URL',
-  defaultValue: '',
+  defaultValue: 'https://daniiltr.github.io/atx_wallet/terms-of-use.html',
 );
 
 /// Базовый URL для CoinGecko.
