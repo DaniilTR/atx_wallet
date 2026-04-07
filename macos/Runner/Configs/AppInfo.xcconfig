@@ -8,7 +8,7 @@
 PRODUCT_NAME = atx_wallet
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = com.example.atxWallet
+PRODUCT_BUNDLE_IDENTIFIER = atxWallet
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2025 com.example. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2025  All rights reserved.

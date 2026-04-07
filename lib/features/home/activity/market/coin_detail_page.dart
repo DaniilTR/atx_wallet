@@ -1,4 +1,5 @@
 // home/activity/market/coin_detail_page.dart
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import 'dart:convert';
 import '../../../../providers/wallet_scope.dart';
 import '../../../../services/config.dart';
 import '../../../../WalletSecureStorage/history_model/transaction_record.dart';
+import '../../../swap/swap_sheet.dart';
 import '../qr_page.dart';
 
 /// Экран деталей монеты/актива.
@@ -64,6 +66,10 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
   void dispose() {
     _priceService.dispose();
     super.dispose();
+  }
+
+  void _swapCard() {
+    unawaited(showSwapSheet(context, initialFromSymbol: widget.symbol));
   }
 
   Future<void> _loadChart() async {
@@ -252,7 +258,7 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
               onSend: () => _showStub(context, 'Отправка в разработке'),
               onReceive: () => _showStub(context, 'Получение в разработке'),
               onQr: _openQrPage,
-              onSwap: () => _showStub(context, 'Обмен в разработке'),
+              onSwap: _swapCard,
             ),
             const SizedBox(height: 18),
             SizedBox(
@@ -339,9 +345,9 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: _ActionButton(
-                    label: 'Продажа',
+                    label: 'обмен',
                     filled: false,
-                    onTap: () => _showStub(context, 'Продажа в разработке'),
+                    onTap: _swapCard,
                   ),
                 ),
               ],

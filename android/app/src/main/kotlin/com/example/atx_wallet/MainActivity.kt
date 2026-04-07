@@ -1,4 +1,4 @@
-package com.example.atx_wallet
+package com.atx.wallet
 
 import android.content.Context
 import android.content.pm.PackageManager

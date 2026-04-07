@@ -1,13 +1,53 @@
-part of '../home_page.dart';
+import 'dart:async';
+import 'dart:math' as math;
 
-class _SwapSheet extends StatefulWidget {
-  const _SwapSheet();
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:web3dart/web3dart.dart';
 
-  @override
-  State<_SwapSheet> createState() => _SwapSheetState();
+import '../../providers/wallet_provider.dart';
+import '../../providers/wallet_scope.dart';
+import '../../services/config.dart';
+import '../../services/erc20_service.dart';
+import '../../services/uniswap_v2_router_service.dart';
+
+Future<T?> showSwapSheet<T>(
+  BuildContext context, {
+  String? initialFromSymbol,
+  String? initialToSymbol,
+}) {
+  return showModalBottomSheet<T>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => SafeArea(
+      child: SingleChildScrollView(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+          left: 16,
+          right: 16,
+          top: 12,
+        ),
+        child: SwapSheet(
+          initialFromSymbol: initialFromSymbol,
+          initialToSymbol: initialToSymbol,
+        ),
+      ),
+    ),
+  );
 }
 
-class _SwapSheetState extends State<_SwapSheet> {
+class SwapSheet extends StatefulWidget {
+  const SwapSheet({super.key, this.initialFromSymbol, this.initialToSymbol});
+
+  final String? initialFromSymbol;
+  final String? initialToSymbol;
+
+  @override
+  State<SwapSheet> createState() => _SwapSheetState();
+}
+
+class _SwapSheetState extends State<SwapSheet> {
   final _amountCtrl = TextEditingController();
   TokenMetadata? _fromToken;
   TokenMetadata? _toToken;
@@ -30,18 +70,33 @@ class _SwapSheetState extends State<_SwapSheet> {
 
     if (tokens.isEmpty) return;
 
+    _fromToken ??= _pickTokenBySymbol(tokens, widget.initialFromSymbol);
+    _toToken ??= _pickTokenBySymbol(tokens, widget.initialToSymbol);
+
     _fromToken ??= tokens.first;
     _toToken ??= tokens.length > 1 ? tokens[1] : tokens.first;
 
-    // Если вдруг получилось выбрать одинаковые токены (например, после изменения
-    // списка поддерживаемых токенов) — подбираем альтернативу автоматически.
+    // Если вдруг получилось выбрать одинаковые токены — подбираем альтернативу.
     final from = _fromToken;
     final to = _toToken;
     if (from != null && to != null && _isSameToken(from, to)) {
       final alt = _pickAlternativeToken(tokens, avoid: from);
       if (alt != null) _toToken = alt;
     }
+
     _recalculate();
+  }
+
+  TokenMetadata? _pickTokenBySymbol(
+    List<TokenMetadata> tokens,
+    String? symbol,
+  ) {
+    if (symbol == null || symbol.trim().isEmpty) return null;
+    final key = symbol.trim().toUpperCase();
+    for (final t in tokens) {
+      if (t.symbol.trim().toUpperCase() == key) return t;
+    }
+    return null;
   }
 
   bool _isSameToken(TokenMetadata a, TokenMetadata b) {
@@ -79,7 +134,7 @@ class _SwapSheetState extends State<_SwapSheet> {
     _quoteDebounce?.cancel();
     _quoteDebounce = Timer(const Duration(milliseconds: 350), () {
       if (!mounted) return;
-      _refreshQuote();
+      unawaited(_refreshQuote());
     });
   }
 
@@ -109,7 +164,6 @@ class _SwapSheetState extends State<_SwapSheet> {
       return;
     }
 
-    // Uniswap V2 не принимает путь из одинаковых адресов.
     if (_isSameToken(from, to)) {
       setState(() {
         _quoteLoading = false;
@@ -162,6 +216,7 @@ class _SwapSheetState extends State<_SwapSheet> {
       final outRaw = amounts.isNotEmpty ? amounts.last : BigInt.zero;
       final outDecimals = to.isNative ? 18 : to.decimalsHint;
       final outAmount = _fromBaseUnits(outRaw, outDecimals);
+
       if (!mounted) return;
       setState(() {
         _quotedOutRaw = outRaw;
@@ -417,13 +472,7 @@ class _SwapSheetState extends State<_SwapSheet> {
       try {
         final receipt = await client.getTransactionReceipt(txHash);
         if (receipt != null) {
-          final status = receipt.status;
-          final ok = status == null
-              ? true
-              : status == true ||
-                    status == 1 ||
-                    status == BigInt.one ||
-                    status.toString() == '1';
+          final ok = receipt.status ?? true;
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -582,9 +631,9 @@ class _SwapSheetState extends State<_SwapSheet> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0x336FE1F5)),
               ),
-              child: Row(
+              child: const Row(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(Icons.swap_vert_rounded, color: Color(0xFF6FE1F5)),
                   SizedBox(width: 8),
                   Text('Поменять местами'),
@@ -644,10 +693,289 @@ class _SwapSheetState extends State<_SwapSheet> {
                     _approveLoading ||
                     _swapLoading)
                 ? null
-                : () => _executeSwap(),
+                : () => unawaited(_executeSwap()),
           ),
         ],
       ),
     );
   }
+}
+
+class _SheetContainer extends StatelessWidget {
+  const _SheetContainer({
+    required this.title,
+    this.subtitle,
+    required this.child,
+  });
+
+  final String title;
+  final String? subtitle;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark
+        ? const Color(0xFF14191E)
+        : Colors.white.withValues(alpha: 0.92);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.08);
+    final shadowColor = isDark
+        ? const Color(0x66040A1A)
+        : Colors.black.withValues(alpha: 0.12);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    final closeColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+
+    return Material(
+      color: Colors.transparent,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(32),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 28),
+          decoration: BoxDecoration(
+            color: bgColor,
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: shadowColor,
+                blurRadius: 40,
+                offset: const Offset(0, 24),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: GoogleFonts.inter(
+                            color: titleColor,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        if (subtitle != null) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            subtitle!,
+                            style: GoogleFonts.inter(
+                              color: subtitleColor,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                    icon: Icon(Icons.close_rounded, color: closeColor),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              child,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LabeledField extends StatelessWidget {
+  const _LabeledField({
+    required this.label,
+    required this.hint,
+    required this.prefixIcon,
+    this.controller,
+    this.keyboardType,
+    this.onChanged,
+  });
+
+  final String label;
+  final String hint;
+  final IconData prefixIcon;
+  final TextEditingController? controller;
+  final TextInputType? keyboardType;
+  final ValueChanged<String>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark
+        ? const Color(0xFFB5BEDF)
+        : const Color(0xFF475569);
+    final textColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final hintColor = isDark
+        ? const Color(0xFF6A7398)
+        : Colors.black.withValues(alpha: 0.45);
+    final fillColor = isDark ? const Color(0xFF14191E) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0x332E9AFF)
+        : Colors.black.withValues(alpha: 0.08);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: GoogleFonts.inter(color: labelColor, fontSize: 13)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: controller,
+          keyboardType: keyboardType,
+          onChanged: onChanged,
+          style: GoogleFonts.inter(color: textColor),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.inter(color: hintColor),
+            filled: true,
+            fillColor: fillColor,
+            prefixIcon: Icon(prefixIcon, color: const Color(0xFF6FE1F5)),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(color: borderColor),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(18),
+              borderSide: BorderSide(color: borderColor),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _PrimaryButton extends StatelessWidget {
+  const _PrimaryButton({required this.label, required this.onPressed});
+
+  final String label;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF5E6DFF),
+          foregroundColor: Colors.white,
+          disabledForegroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(18),
+          ),
+        ),
+        onPressed: onPressed,
+        child: Text(
+          label,
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SwapCard extends StatelessWidget {
+  const _SwapCard({
+    required this.label,
+    required this.token,
+    required this.amount,
+  });
+
+  final String label;
+  final String token;
+  final String amount;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF14191E) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0x1AFFFFFF)
+        : Colors.black.withValues(alpha: 0.08);
+    final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final mutedTextColor = isDark
+        ? const Color(0xFF8E99C0)
+        : const Color(0xFF475569);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        color: bgColor,
+        border: Border.all(color: borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.inter(color: mutedTextColor, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0x332E9AFF),
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      token,
+                      style: GoogleFonts.inter(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(Icons.expand_more, color: primaryTextColor, size: 18),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  amount,
+                  style: GoogleFonts.inter(
+                    color: primaryTextColor,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatNumber(double value, {int precision = 2}) {
+  final text = value.toStringAsFixed(precision);
+  if (!text.contains('.')) return text;
+  return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
 }

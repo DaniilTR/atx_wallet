@@ -1,13 +1,11 @@
 // lib/features/home/home_page.dart
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:web3dart/web3dart.dart';
 
 import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
@@ -18,17 +16,15 @@ import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../services/config.dart';
-import '../../services/erc20_service.dart';
 import '../../services/news_service.dart';
-import '../../services/uniswap_v2_router_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
+import '../swap/swap_sheet.dart';
 import 'widgets/bottom_nav.dart';
 
 part 'slides/sheet_container.dart';
 part 'slides/send_sheet.dart';
 part 'slides/receive_sheet.dart';
-part 'slides/swap_sheet.dart';
 part 'slides/wallets/wallets_sheet.dart';
 part 'slides/wallets/add_wallet_sheet.dart';
 part 'activity/market/market_screen.dart';
@@ -37,7 +33,6 @@ part 'activity/send_flow_page.dart';
 part 'slides/labeled_field.dart';
 part 'slides/primary_button.dart';
 part 'slides/info_chip.dart';
-part 'slides/swap_card.dart';
 
 class HomeRouteArgs {
   const HomeRouteArgs({required this.userId});
@@ -118,7 +113,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _openQrAction() => _openQrPage();
 
-  Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
+  void _openSwapSheet() {
+    unawaited(showSwapSheet(context));
+  }
 
   Future<void> _openHistoryPage() async {
     await Navigator.of(context).pushNamed('/history');

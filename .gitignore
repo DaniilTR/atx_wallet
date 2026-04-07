@@ -44,6 +44,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Android release signing (do not commit)
+upload-keystore.jks
+upload-keystore.jks.old
+/android/key.properties
+/android/keystore.properties
+
 # Node/JavaScript related
 node_modules/
 server/node_modules/

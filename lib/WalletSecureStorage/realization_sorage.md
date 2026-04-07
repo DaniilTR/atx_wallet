@@ -132,7 +132,7 @@ Web (Chrome) используется **только для DEV-тестов** �
   },
 
   "aad": {
-    "appId": "com.example.atx_wallet",
+    "appId": "atx_wallet",
     "schema": "wallet-seed",
     "userScope": "default"
   },
