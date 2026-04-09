@@ -7,6 +7,7 @@
     <application
         android:label="atx_wallet"
         android:name="${applicationName}"
+        android:extractNativeLibs="true"
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:icon="@mipmap/ic_launcher">

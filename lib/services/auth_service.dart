@@ -57,6 +57,8 @@ class AuthService {
     if (_initialized) return;
     final prefs = await _prefsFuture;
     final raw = prefs.getString(_usersStorageKey);
+    final shouldRewriteToDropEmail =
+        raw != null && raw.isNotEmpty && raw.contains('"email"');
     if (raw != null && raw.isNotEmpty) {
       try {
         final decoded = jsonDecode(raw) as Map<String, dynamic>;
@@ -75,6 +77,13 @@ class AuthService {
       _currentUser = _users[currentUsername]?.user;
     }
     _initialized = true;
+
+    // Миграция: ранее email мог сохраняться в SharedPreferences.
+    // Теперь мы его не храним вообще, поэтому перезаписываем хранилище
+    // при первом чтении старого формата.
+    if (shouldRewriteToDropEmail) {
+      await _persistUsers();
+    }
   }
 
   Future<void> _persistUsers() async {
@@ -108,7 +117,8 @@ class AuthService {
     final user = AuthUser(
       id: 'local_${DateTime.now().microsecondsSinceEpoch}',
       username: username,
-      email: email,
+      // Email больше не используем и не храним.
+      email: null,
     );
 
     final salt = await secureRandomBytes(PasswordKdf.defaultSaltBytes);
@@ -285,7 +295,6 @@ class _UserRecord {
   Map<String, dynamic> toJson() => {
     'id': user.id,
     'username': user.username,
-    'email': user.email,
     'prefersDarkTheme': user.prefersDarkTheme,
     'password': legacyPassword,
     'passwordAlg': passwordAlg,
@@ -301,7 +310,8 @@ class _UserRecord {
             json['id'] as String? ??
             'local_${DateTime.now().millisecondsSinceEpoch}',
         username: json['username'] as String? ?? 'unknown',
-        email: json['email'] as String?,
+        // Email больше не используем и не храним.
+        email: null,
         prefersDarkTheme: json['prefersDarkTheme'] as bool? ?? true,
       ),
       legacyPassword: json['password'] as String?,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 
+import 'package:atx_wallet/features/auth/start_page.dart';
 import 'package:cryptography/cryptography.dart' show SecretKey;
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 import 'package:flutter/material.dart';
@@ -25,6 +26,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _loginCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
+  final _passwordFocus = FocusNode();
   bool _obscure = true;
   bool _loading = false;
   bool _checkingSession = true;
@@ -77,6 +79,7 @@ class _LoginPageState extends State<LoginPage> {
     _bioDebounce?.cancel();
     _loginCtrl.dispose();
     _passwordCtrl.dispose();
+    _passwordFocus.dispose();
     super.dispose();
   }
 
@@ -350,158 +353,228 @@ class _LoginPageState extends State<LoginPage> {
       return const AuthLoadingView(message: 'Проверяем вход...');
     }
     final cs = Theme.of(context).colorScheme;
-    OutlineInputBorder _glassBorder(Color c) => OutlineInputBorder(
-      borderRadius: BorderRadius.circular(14),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    OutlineInputBorder _inputBorder(Color c) => OutlineInputBorder(
+      borderRadius: BorderRadius.circular(12),
       borderSide: BorderSide(color: c, width: 1),
     );
+
+    InputDecoration _fieldDecoration({
+      required String label,
+      required Widget prefixIcon,
+      Widget? suffixIcon,
+    }) {
+      final baseFill = isDark
+          ? Colors.white.withValues(alpha: 0.14)
+          : Colors.black.withValues(alpha: 0.06);
+      final baseBorder = isDark
+          ? Colors.white.withValues(alpha: 0.14)
+          : Colors.black.withValues(alpha: 0.10);
+      final focusedBorder = isDark
+          ? Colors.white.withValues(alpha: 0.28)
+          : Colors.black.withValues(alpha: 0.18);
+
+      return InputDecoration(
+        labelText: label,
+        prefixIcon: prefixIcon,
+        suffixIcon: suffixIcon,
+        filled: true,
+        fillColor: baseFill,
+        enabledBorder: _inputBorder(baseBorder),
+        focusedBorder: _inputBorder(focusedBorder),
+        border: _inputBorder(baseBorder),
+      );
+    }
 
     return Scaffold(
       body: Stack(
         children: [
-          const AnimatedNeonBackground(),
+          AnimatedNeonBackground(isDark: isDark),
+          if (isDark) ...const [
+            Positioned(
+              top: -40,
+              right: -10,
+              child: _GlowCircle(
+                diameter: 240,
+                color: Color.fromARGB(255, 125, 71, 250),
+                opacity: 0.85,
+              ),
+            ),
+            Positioned(
+              top: 260,
+              left: -80,
+              child: _GlowCircle(
+                diameter: 220,
+                color: Color.fromARGB(255, 47, 56, 179),
+                opacity: 0.75,
+              ),
+            ),
+            Positioned(
+              top: 580,
+              right: -20,
+              child: _GlowCircle(
+                diameter: 240,
+                color: Color.fromARGB(255, 96, 219, 250),
+                opacity: 0.75,
+              ),
+            ),
+          ],
           SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 16,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 12),
-                    const _Header(
-                      title: 'Вход',
-                      subtitle: 'Добро пожаловать в ATX Wallet',
-                    ),
-                    const SizedBox(height: 16),
-                    GlassCard(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            TextFormField(
-                              controller: _loginCtrl,
-                              decoration: InputDecoration(
-                                labelText: 'Никнейм',
-                                prefixIcon: const Icon(Icons.alternate_email),
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.06),
-                                enabledBorder: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.15),
-                                ),
-                                focusedBorder: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.35),
-                                ),
-                                border: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.15),
-                                ),
-                              ),
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty)
-                                  return 'Введите никнейм';
-                                if (v.trim().length < 3)
-                                  return 'Минимум 3 символа';
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _passwordCtrl,
-                              obscureText: _obscure,
-                              decoration: InputDecoration(
-                                labelText: 'Пароль',
-                                prefixIcon: const Icon(Icons.lock_outline),
-                                suffixIcon: IconButton(
-                                  icon: Icon(
-                                    _obscure
-                                        ? Icons.visibility_off
-                                        : Icons.visibility,
-                                  ),
-                                  onPressed: () =>
-                                      setState(() => _obscure = !_obscure),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.06),
-                                enabledBorder: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.15),
-                                ),
-                                focusedBorder: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.35),
-                                ),
-                                border: _glassBorder(
-                                  Colors.white.withValues(alpha: 0.15),
-                                ),
-                              ),
-                              validator: (v) {
-                                if (v == null || v.isEmpty)
-                                  return 'Введите пароль';
-                                if (v.length < 6) return 'Минимум 6 символов';
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 6),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: TextButton(
-                                onPressed: () {},
-                                child: const Text('Забыли пароль?'),
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            FilledButton(
-                              onPressed: _loading ? null : _submit,
-                              style: FilledButton.styleFrom(
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                backgroundColor: cs.primary,
-                              ),
-                              child: _loading
-                                  ? const SizedBox(
-                                      height: 20,
-                                      width: 20,
-                                      child: CircularProgressIndicator(
-                                        strokeWidth: 2,
-                                      ),
-                                    )
-                                  : const Text('Войти'),
-                            ),
-                            const SizedBox(height: 12),
-                            if (_biometricAvailable)
-                              OutlinedButton.icon(
-                                onPressed: _loading ? null : _biometricLogin,
-                                icon: const Icon(Icons.fingerprint),
-                                label: const Text('Войти по биометрии'),
-                              ),
-                            const SizedBox(height: 8),
-                            Wrap(
-                              alignment: WrapAlignment.center,
-                              spacing: 6,
-                              children: [
-                                const Text('Нет аккаунта?'),
-                                TextButton(
-                                  onPressed: _loading
-                                      ? null
-                                      : () => Navigator.pushReplacementNamed(
-                                          context,
-                                          '/register',
-                                        ),
-                                  child: const Text('Зарегистрироваться'),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
+            child: Stack(
+              children: [
+                Positioned(
+                  top: 12,
+                  left: 10,
+                  child: _BackButton(
+                    onPressed: () => Navigator.of(context).pushReplacement(
+                      MaterialPageRoute(
+                        builder: (context) => const StartPage(),
                       ),
                     ),
-                  ],
+                  ),
                 ),
-              ),
+                Center(
+                  child: SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: const EdgeInsets.fromLTRB(24, 72, 24, 24),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 420),
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          const Positioned(
+                            top: -120,
+                            right: -40,
+                            child: IgnorePointer(child: _ShellDecoration()),
+                          ),
+                          GlassCard(
+                            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+                            borderRadius: 18,
+                            child: Form(
+                              key: _formKey,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  const _Header(
+                                    title: 'Войти в кошелек',
+                                    subtitle: 'Добро пожаловать в ATX Wallet',
+                                    center: true,
+                                  ),
+                                  const SizedBox(height: 16),
+                                  TextFormField(
+                                    controller: _loginCtrl,
+                                    textInputAction: TextInputAction.next,
+                                    onFieldSubmitted: (_) => FocusScope.of(
+                                      context,
+                                    ).requestFocus(_passwordFocus),
+                                    decoration: _fieldDecoration(
+                                      label: 'Никнейм',
+                                      prefixIcon: const Icon(
+                                        Icons.alternate_email,
+                                      ),
+                                    ),
+                                    validator: (v) {
+                                      if (v == null || v.trim().isEmpty)
+                                        return 'Введите никнейм';
+                                      if (v.trim().length < 3)
+                                        return 'Минимум 3 символа';
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 12),
+                                  TextFormField(
+                                    controller: _passwordCtrl,
+                                    focusNode: _passwordFocus,
+                                    obscureText: _obscure,
+                                    textInputAction: TextInputAction.done,
+                                    onFieldSubmitted: (_) =>
+                                        _loading ? null : _submit(),
+                                    decoration: _fieldDecoration(
+                                      label: 'Пароль',
+                                      prefixIcon: const Icon(
+                                        Icons.lock_outline,
+                                      ),
+                                      suffixIcon: IconButton(
+                                        icon: Icon(
+                                          _obscure
+                                              ? Icons.visibility_off
+                                              : Icons.visibility,
+                                        ),
+                                        onPressed: () => setState(
+                                          () => _obscure = !_obscure,
+                                        ),
+                                      ),
+                                    ),
+                                    validator: (v) {
+                                      if (v == null || v.isEmpty)
+                                        return 'Введите пароль';
+                                      if (v.length < 8)
+                                        return 'Минимум 8 символов';
+                                      return null;
+                                    },
+                                  ),
+                                  const SizedBox(height: 24),
+                                  FilledButton(
+                                    onPressed: _loading ? null : _submit,
+                                    style: FilledButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      backgroundColor: cs.primary,
+                                    ),
+                                    child: _loading
+                                        ? const SizedBox(
+                                            height: 20,
+                                            width: 20,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Text('Войти'),
+                                  ),
+                                  if (_biometricAvailable) ...[
+                                    const SizedBox(height: 12),
+                                    OutlinedButton.icon(
+                                      onPressed: _loading
+                                          ? null
+                                          : () => _biometricLogin(),
+                                      icon: const Icon(Icons.fingerprint),
+                                      label: const Text('Войти по биометрии'),
+                                    ),
+                                  ],
+                                  const SizedBox(height: 10),
+                                  Wrap(
+                                    alignment: WrapAlignment.center,
+                                    spacing: 6,
+                                    children: [
+                                      const Text('Нет аккаунта?'),
+                                      TextButton(
+                                        onPressed: _loading
+                                            ? null
+                                            : () =>
+                                                  Navigator.pushReplacementNamed(
+                                                    context,
+                                                    '/register',
+                                                  ),
+                                        child: const Text('Зарегистрироваться'),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -531,20 +604,28 @@ class _LoginLifecycleObserver with WidgetsBindingObserver {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.title, required this.subtitle});
+  const _Header({
+    required this.title,
+    required this.subtitle,
+    this.center = false,
+  });
   final String title;
   final String subtitle;
+  final bool center;
 
   @override
   Widget build(BuildContext context) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: center
+          ? CrossAxisAlignment.center
+          : CrossAxisAlignment.start,
       children: [
         Text(
           title,
           style: Theme.of(
             context,
           ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w700),
+          textAlign: center ? TextAlign.center : TextAlign.start,
         ),
         const SizedBox(height: 6),
         Text(
@@ -552,8 +633,71 @@ class _Header extends StatelessWidget {
           style: Theme.of(
             context,
           ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+          textAlign: center ? TextAlign.center : TextAlign.start,
         ),
       ],
+    );
+  }
+}
+
+class _GlowCircle extends StatelessWidget {
+  const _GlowCircle({
+    required this.diameter,
+    required this.color,
+    this.opacity = 0.55,
+  });
+
+  final double diameter;
+  final Color color;
+  final double opacity;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: diameter,
+        height: diameter,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          gradient: RadialGradient(
+            colors: [
+              color.withValues(alpha: opacity),
+              color.withValues(alpha: 0.0),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShellDecoration extends StatelessWidget {
+  const _ShellDecoration();
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      'assets/images/gradient glass (21).png',
+      width: 170,
+      fit: BoxFit.contain,
+      filterQuality: FilterQuality.high,
+    );
+  }
+}
+
+class _BackButton extends StatelessWidget {
+  const _BackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      child: IconButton(
+        onPressed: onPressed,
+        icon: const Icon(Icons.arrow_back),
+        tooltip: 'Назад',
+      ),
     );
   }
 }

@@ -385,6 +385,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: const Icon(Icons.support_agent_rounded),
             label: const Text('Центр поддержки'),
           ),
+          const SizedBox(height: 70),
         ],
       ),
     );

@@ -9,7 +9,6 @@ class _LabeledField extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.textInputAction,
-    this.onChanged,
   });
 
   final String label;
@@ -19,7 +18,6 @@ class _LabeledField extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final TextInputAction? textInputAction;
-  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -46,7 +44,6 @@ class _LabeledField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           textInputAction: textInputAction,
-          onChanged: onChanged,
           style: GoogleFonts.inter(color: textColor),
           decoration: InputDecoration(
             hintText: hint,
