@@ -888,7 +888,14 @@ class HomeTopBar extends StatelessWidget {
         : const Color(0xFF475569);
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: isDark ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      value: SystemUiOverlayStyle(
+        statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+        systemNavigationBarIconBrightness: isDark
+            ? Brightness.light
+            : Brightness.dark,
+        // Важно: не задаём цвета баров, чтобы не триггерить
+        // Window.setStatusBarColor / setNavigationBarColor (Android 15 edge-to-edge).
+      ),
       child: SizedBox(
         height: 65,
         child: Row(

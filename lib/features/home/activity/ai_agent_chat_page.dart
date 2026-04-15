@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import 'package:atx_wallet/services/ai_assistant_service.dart';
 import 'package:atx_wallet/services/config.dart';
@@ -377,12 +379,25 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
     final bubbleColor = isError
         ? (isDark ? const Color(0x55B91C1C) : const Color(0xFFFEE2E2))
         : isIncoming
         ? (isDark ? const Color(0x1FFFFFFF) : const Color(0xFFE2E8F0))
         : const Color(0xFF3B82F6);
+
+    final baseTextStyle = GoogleFonts.inter(
+      color: isError
+          ? (isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B))
+          : isIncoming
+          ? primaryTextColor
+          : Colors.white,
+      height: 1.35,
+      fontSize: 14,
+    );
+
+    final shouldRenderMarkdown = isIncoming && !isError;
 
     return Align(
       alignment: isIncoming ? Alignment.centerLeft : Alignment.centerRight,
@@ -399,18 +414,64 @@ class _MessageBubble extends StatelessWidget {
               bottomRight: Radius.circular(isIncoming ? 14 : 4),
             ),
           ),
-          child: Text(
-            text,
-            style: GoogleFonts.inter(
-              color: isError
-                  ? (isDark ? const Color(0xFFFECACA) : const Color(0xFF991B1B))
-                  : isIncoming
-                  ? primaryTextColor
-                  : Colors.white,
-              height: 1.35,
-              fontSize: 14,
-            ),
-          ),
+          child: shouldRenderMarkdown
+              ? MarkdownBody(
+                  data: text,
+                  styleSheet: MarkdownStyleSheet.fromTheme(theme).copyWith(
+                    p: baseTextStyle,
+                    a: baseTextStyle.copyWith(
+                      color: theme.colorScheme.primary,
+                      decoration: TextDecoration.underline,
+                    ),
+                    code: GoogleFonts.robotoMono(
+                      textStyle: baseTextStyle.copyWith(
+                        backgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    codeblockPadding: const EdgeInsets.all(10),
+                    codeblockDecoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.black.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    blockquoteDecoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    blockquotePadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                    listBullet: baseTextStyle,
+                    h1: baseTextStyle.copyWith(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                    h2: baseTextStyle.copyWith(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                    h3: baseTextStyle.copyWith(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2,
+                    ),
+                  ),
+                  onTapLink: (linkText, href, title) async {
+                    if (href == null) return;
+                    final uri = Uri.tryParse(href);
+                    if (uri == null) return;
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  },
+                )
+              : Text(text, style: baseTextStyle),
         ),
       ),
     );

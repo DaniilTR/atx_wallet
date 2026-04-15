@@ -5,7 +5,7 @@
     <!-- Required for RPC/API requests in release builds -->
     <uses-permission android:name="android.permission.INTERNET" />
     <application
-        android:label="atx_wallet"
+        android:label="ATX Wallet"
         android:name="${applicationName}"
         android:extractNativeLibs="true"
         android:allowBackup="false"

@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.util.Base64
 import android.os.Build
+import android.os.Bundle
 import android.content.SharedPreferences
 import android.view.WindowManager
 import androidx.security.crypto.EncryptedSharedPreferences
@@ -12,6 +13,7 @@ import androidx.annotation.NonNull
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -31,6 +33,14 @@ class MainActivity : FlutterFragmentActivity() {
 	private val CHANNEL = "com.atx/biometric"
 	private val SECURITY_CHANNEL = "com.atx/security"
 	private val PREFS_NAME = "atx_biometric_prefs"
+
+	override fun onCreate(savedInstanceState: Bundle?) {
+		super.onCreate(savedInstanceState)
+		// Android 15 (SDK 35) включает edge-to-edge по умолчанию.
+		// Включаем его явным образом и на более старых версиях, чтобы поведение
+		// было одинаковым и можно было заранее отловить проблемы с отступами.
+		WindowCompat.setDecorFitsSystemWindows(window, false)
+	}
 
 	override fun configureFlutterEngine(@NonNull flutterEngine: FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
