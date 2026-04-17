@@ -1,9 +1,11 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:local_auth/local_auth.dart';
 
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import '../../services/biometric_service.dart';
 import '../../services/config.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -24,12 +26,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _controller = TextEditingController();
   bool _saving = false;
   late bool _useDarkTheme;
+  bool _biometricEnabled = false;
+  bool _biometricAvailable = false;
+  List<BiometricType> _availableBiometrics = [];
+  final _biometric = BiometricService();
 
   @override
   void initState() {
     super.initState();
     _controller.text = ApiConfig.base;
     _useDarkTheme = widget.themeMode != ThemeMode.light;
+    _loadBiometricState();
+  }
+
+  Future<void> _loadBiometricState() async {
+    final available = await _biometric.isAvailable();
+    final enabled = await _biometric.isBiometricEnabled();
+    final types = await _biometric.getAvailableBiometrics();
+    if (!mounted) return;
+    setState(() {
+      _biometricAvailable = available;
+      _biometricEnabled = enabled;
+      _availableBiometrics = types;
+    });
+  }
+
+  String get _biometricLabel {
+    if (_availableBiometrics.contains(BiometricType.face)) return 'Face ID';
+    if (_availableBiometrics.contains(BiometricType.fingerprint)) {
+      return 'Touch ID / Отпечаток пальца';
+    }
+    return 'Биометрический вход';
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    if (value) {
+      // Перед включением проверяем, что биометрия работает
+      final success = await _biometric.authenticate(
+        reason: 'Подтвердите биометрию для активации',
+      );
+      if (!success) return;
+    }
+    await _biometric.setBiometricEnabled(enabled: value);
+    if (!mounted) return;
+    setState(() => _biometricEnabled = value);
   }
 
   @override
@@ -74,6 +114,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               widget.onThemeChanged(value ? ThemeMode.dark : ThemeMode.light);
             },
           ),
+          if (_biometricAvailable) ...[
+            const SizedBox(height: 4),
+            SwitchListTile(
+              value: _biometricEnabled,
+              title: Text(_biometricLabel),
+              subtitle: const Text('Вход без пароля при следующем открытии'),
+              secondary: const Icon(Icons.fingerprint),
+              onChanged: _toggleBiometric,
+            ),
+          ],
           const Divider(height: 28),
           const Text(
             'Профиль кошелька',

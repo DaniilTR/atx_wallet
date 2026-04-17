@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../dev/dev_wallet_storage.dart';
+import '../../providers/wallet_provider.dart';
 import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
+import '../../services/auth_user.dart';
+import '../../services/biometric_service.dart';
 import '../home/home_route_args.dart';
 import 'widgets/animated_neon_background.dart';
 import 'widgets/auth_loading_view.dart';
@@ -21,6 +24,8 @@ class _LoginPageState extends State<LoginPage> {
   bool _obscure = true;
   bool _loading = false;
   bool _checkingSession = true;
+  bool _showBiometricButton = false;
+  final _biometric = BiometricService();
 
   @override
   void initState() {
@@ -45,6 +50,21 @@ class _LoginPageState extends State<LoginPage> {
         setState(() => _checkingSession = false);
         return;
       }
+
+      // Есть сохранённая сессия — проверяем, включена ли биометрия
+      final biometricEnabled = await _biometric.isBiometricEnabled();
+      final biometricAvailable = await _biometric.isAvailable();
+      if (biometricEnabled && biometricAvailable) {
+        if (!mounted) return;
+        setState(() {
+          _checkingSession = false;
+          _showBiometricButton = true;
+        });
+        // Автоматически предлагаем биометрию
+        await _authenticateWithBiometrics(user: user, wallet: wallet);
+        return;
+      }
+
       DevWalletProfile? profile;
       if (wallet.devEnabled) {
         try {
@@ -60,6 +80,53 @@ class _LoginPageState extends State<LoginPage> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _checkingSession = false);
+    }
+  }
+
+  Future<void> _authenticateWithBiometrics({
+    AuthUser? user,
+    WalletProvider? wallet,
+  }) async {
+    final auth = AuthScope.of(context);
+    final w = wallet ?? WalletScope.read(context);
+    setState(() => _loading = true);
+    try {
+      final AuthUser? resolvedUser = user ?? await auth.tryRestoreSession();
+      if (resolvedUser == null) {
+        if (!mounted) return;
+        setState(() {
+          _loading = false;
+          _showBiometricButton = false;
+        });
+        return;
+      }
+
+      final success = await _biometric.authenticate(
+        reason: 'Войдите в ATX Wallet',
+      );
+      if (!mounted) return;
+      if (success) {
+        DevWalletProfile? profile;
+        if (w.devEnabled) {
+          try {
+            profile = await w.loadDevProfile(resolvedUser.id);
+          } catch (_) {}
+        }
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(
+          context,
+          '/home',
+          arguments: HomeRouteArgs(
+            userId: resolvedUser.id,
+            devProfile: profile,
+          ),
+        );
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
@@ -238,6 +305,27 @@ class _LoginPageState extends State<LoginPage> {
                                 ),
                               ],
                             ),
+                            if (_showBiometricButton) ...[
+                              const SizedBox(height: 8),
+                              OutlinedButton.icon(
+                                onPressed: _loading
+                                    ? null
+                                    : () => _authenticateWithBiometrics(),
+                                icon: const Icon(Icons.fingerprint, size: 22),
+                                label: const Text('Войти по биометрии'),
+                                style: OutlinedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(14),
+                                  ),
+                                  side: BorderSide(
+                                    color: cs.primary.withOpacity(0.6),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
