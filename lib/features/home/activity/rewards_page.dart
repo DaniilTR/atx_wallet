@@ -327,7 +327,6 @@ class _RewardsPageState extends State<RewardsPage>
                     child: TabBar(
                       controller: _innerTab,
                       isScrollable: true,
-                      tabAlignment: TabAlignment.start,
                       dividerColor: Colors.transparent,
                       padding: const EdgeInsets.all(4),
                       indicator: BoxDecoration(

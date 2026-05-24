@@ -13,6 +13,7 @@ import '../home/home_page.dart' show HomeRouteArgs;
 import 'widgets/animated_neon_background.dart';
 import 'widgets/auth_loading_view.dart';
 import 'widgets/glass_card.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});

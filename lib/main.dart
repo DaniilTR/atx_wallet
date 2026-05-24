@@ -13,6 +13,7 @@ import 'features/home/home_page.dart';
 import 'features/home/activity/history_page.dart';
 import 'providers/wallet_provider.dart';
 import 'providers/wallet_scope.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 Future<void> main() async {
   // Global Flutter error handler
@@ -131,7 +132,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
           borderSide: BorderSide(color: colorSchemeDark.primary, width: 1.4),
         ),
       ),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: const Color(0xFF14191E),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -161,7 +162,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         ),
       ),
       dividerColor: const Color(0xFFE6EAF2),
-      cardTheme: CardThemeData(
+      cardTheme: CardTheme(
         color: const Color(0xFFFFFFFF),
         elevation: 1,
         shadowColor: const Color(0x1A1B2C5B),

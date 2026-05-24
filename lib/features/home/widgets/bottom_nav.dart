@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class BottomNav extends StatelessWidget {
   const BottomNav({

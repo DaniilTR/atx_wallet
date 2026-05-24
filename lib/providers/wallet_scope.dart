@@ -21,7 +21,8 @@ class WalletScope extends InheritedNotifier<WalletProvider> {
   }
 
   static WalletProvider read(BuildContext context) {
-    final scope = context.getInheritedWidgetOfExactType<WalletScope>();
+    final element = context.getElementForInheritedWidgetOfExactType<WalletScope>();
+    final scope = element?.widget as WalletScope?;
     assert(scope != null, 'WalletScope not found in context');
     return scope!.notifier!;
   }

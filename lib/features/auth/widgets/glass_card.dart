@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class GlassCard extends StatelessWidget {
   const GlassCard({super.key, required this.child, this.padding, this.borderRadius});

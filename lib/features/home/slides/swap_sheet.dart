@@ -292,7 +292,7 @@ class _SwapSheetState extends State<_SwapSheet> {
 
     const slippageBps = 100; // 1.00%
     final amountOutMin =
-        outRaw * BigInt.from(10_000 - slippageBps) ~/ BigInt.from(10_000);
+      outRaw * BigInt.from(10000 - slippageBps) ~/ BigInt.from(10000);
     final deadline = BigInt.from(
       DateTime.now().add(const Duration(minutes: 15)).millisecondsSinceEpoch ~/
           1000,
@@ -515,7 +515,7 @@ class _SwapSheetState extends State<_SwapSheet> {
           ),
           const SizedBox(height: 24),
           DropdownButtonFormField<TokenMetadata>(
-            initialValue: _fromToken,
+            value: _fromToken,
             decoration: InputDecoration(
               labelText: 'Токен списания',
               filled: true,
@@ -594,7 +594,7 @@ class _SwapSheetState extends State<_SwapSheet> {
           ),
           const SizedBox(height: 16),
           DropdownButtonFormField<TokenMetadata>(
-            initialValue: _toToken,
+            value: _toToken,
             decoration: InputDecoration(
               labelText: 'Токен получения',
               filled: true,

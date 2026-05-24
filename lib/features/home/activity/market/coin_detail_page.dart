@@ -8,6 +8,7 @@ import '../../../../providers/wallet_scope.dart';
 import '../../../../services/config.dart';
 import '../../../../WalletSecureStorage/history_model/transaction_record.dart';
 import '../qr_page.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 /// Экран деталей монеты/актива.
 ///

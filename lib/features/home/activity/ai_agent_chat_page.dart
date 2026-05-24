@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:atx_wallet/services/ai_assistant_service.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class AiAgentChatPage extends StatefulWidget {
   const AiAgentChatPage({super.key});
@@ -69,11 +70,12 @@ class _AiAgentChatPageState extends State<AiAgentChatPage> {
         );
       });
     } finally {
-      if (!mounted) return;
-      setState(() {
-        _isSending = false;
-      });
-      _scrollToBottom();
+      if (mounted) {
+        setState(() {
+          _isSending = false;
+        });
+        _scrollToBottom();
+      }
     }
   }
 

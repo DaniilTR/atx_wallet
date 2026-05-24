@@ -8,6 +8,7 @@ import 'package:atx_wallet/features/home/home_page.dart';
 import 'package:atx_wallet/features/home/widgets/bottom_nav.dart';
 import 'package:atx_wallet/providers/wallet_scope.dart';
 import 'package:atx_wallet/services/auth_scope.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});

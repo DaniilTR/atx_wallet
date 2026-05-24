@@ -63,7 +63,7 @@ class UniswapV2RouterService {
       privateKeyHex: privateKeyHex,
       functionName: 'swapExactETHForTokens',
       parameters: [amountOutMin, path, recipient, deadline],
-      value: EtherAmount.fromBigInt(EtherUnit.wei, amountInWei),
+      value: EtherAmount.fromUnitAndValue(EtherUnit.wei, amountInWei),
     );
   }
 
@@ -154,7 +154,7 @@ class UniswapV2RouterService {
   int _bufferGas(BigInt estimated) {
     final base = estimated.toInt();
     final buffered = (base * 1.2).ceil();
-    return math.min(1_500_000, math.max(200_000, buffered));
+    return math.min(1500000, math.max(200000, buffered));
   }
 }
 

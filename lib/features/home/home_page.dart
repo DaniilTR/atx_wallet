@@ -24,6 +24,7 @@ import '../../services/uniswap_v2_router_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import 'widgets/bottom_nav.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 part 'slides/sheet_container.dart';
 part 'slides/send_sheet.dart';

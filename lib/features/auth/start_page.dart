@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_scope.dart';
+import 'package:atx_wallet/core/compat/color_with_values.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({super.key});

@@ -226,7 +226,7 @@ class WalletBalances {
   }
 }
 
-const List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
+final List<TokenMetadata> kTrackedTokens = <TokenMetadata>[
   TokenMetadata(
     symbol: 'USDT',
     name: 'Tether USD',
@@ -1407,9 +1407,12 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
         txHash = await blockchain.sendNative(
           privateKeyHex: key,
           to: to,
-          amount: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+          amount: EtherAmount.fromUnitAndValue(EtherUnit.wei, wei),
           maxGas: gasLimit.toInt(),
-          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
+          gasPrice: EtherAmount.fromUnitAndValue(
+            EtherUnit.wei,
+            bumpedGasPriceWei,
+          ),
         );
       } else {
         final contract = EthereumAddress.fromHex(token.contractAddress!);
@@ -1452,7 +1455,10 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
           to: to,
           amount: raw,
           maxGas: gasLimit.toInt(),
-          gasPrice: EtherAmount.fromBigInt(EtherUnit.wei, bumpedGasPriceWei),
+          gasPrice: EtherAmount.fromUnitAndValue(
+            EtherUnit.wei,
+            bumpedGasPriceWei,
+          ),
         );
       }
     } catch (e) {
@@ -1591,10 +1597,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   }
 
   String _formatEth(BigInt wei) {
-    final eth = EtherAmount.fromBigInt(
-      EtherUnit.wei,
-      wei,
-    ).getValueInUnit(EtherUnit.ether);
+    final eth = EtherAmount.fromUnitAndValue(EtherUnit.wei, wei)
+        .getValueInUnit(EtherUnit.ether);
     final text = eth.toStringAsFixed(6);
     return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
   }
@@ -1607,10 +1611,8 @@ class WalletProvider extends ChangeNotifier implements WalletAddressService {
   String? _feeUsdLabel({required BigInt feeWei}) {
     final ethPrice = _priceUsdFor('ETH');
     if (ethPrice == null || !ethPrice.isFinite || ethPrice <= 0) return null;
-    final feeEth = EtherAmount.fromBigInt(
-      EtherUnit.wei,
-      feeWei,
-    ).getValueInUnit(EtherUnit.ether);
+    final feeEth = EtherAmount.fromUnitAndValue(EtherUnit.wei, feeWei)
+        .getValueInUnit(EtherUnit.ether);
     final usd = feeEth * ethPrice;
     return '${_formatFiat(usd)} \$';
   }
