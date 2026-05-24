@@ -12,6 +12,7 @@ import 'package:web3dart/web3dart.dart';
 import 'activity/market/coin_detail_page.dart';
 import 'activity/market/models/coin.dart';
 import 'activity/market/services/coin_service.dart';
+import 'activity/ai_agent_chat_page.dart';
 import 'activity/qr_page.dart';
 import '../../core/compat/color_with_values.dart';
 import '../../providers/wallet_provider.dart';
@@ -117,12 +118,16 @@ class _HomePageState extends State<HomePage> {
   Future<void> _openReceiveSheet() =>
       _showNeonSheet(_ReceiveSheet(address: _currentAddress));
 
-  Future<void> _openBuySheet() => _showNeonSheet(const _BuySheet());
-
   Future<void> _openSwapSheet() => _showNeonSheet(const _SwapSheet());
 
   Future<void> _openHistoryPage() async {
     await Navigator.of(context).pushNamed('/history');
+  }
+
+  Future<void> _openAiAgentChatPage() async {
+    await Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const AiAgentChatPage()),
+    );
   }
 
   Future<void> _openQrPage() async {
@@ -293,7 +298,7 @@ class _HomePageState extends State<HomePage> {
                         isDark: isDark,
                         onSend: _openSendFlow,
                         onReceive: _openReceiveSheet,
-                        onBuy: _openBuySheet,
+                        onQr: _openQrPage,
                         onSwap: _openSwapSheet,
                       ),
                       const SizedBox(height: 20),
@@ -364,7 +369,7 @@ class _HomePageState extends State<HomePage> {
       bottomNavigationBar: BottomNav(
         index: _tab,
         onChanged: _handleTabChange,
-        onQrTap: _openQrPage,
+        onQrTap: _openAiAgentChatPage,
         isDark: isDark,
       ),
     );
@@ -579,14 +584,14 @@ class _ActionsRow extends StatelessWidget {
     required this.isDark,
     required this.onSend,
     required this.onReceive,
-    required this.onBuy,
+    required this.onQr,
     required this.onSwap,
   });
 
   final bool isDark;
   final VoidCallback onSend;
   final VoidCallback onReceive;
-  final VoidCallback onBuy;
+  final VoidCallback onQr;
   final VoidCallback onSwap;
 
   @override
@@ -607,9 +612,9 @@ class _ActionsRow extends StatelessWidget {
           isDark: isDark,
         ),
         _ActionButton(
-          icon: Icons.attach_money_rounded,
-          label: 'Купить',
-          onTap: onBuy,
+          icon: Icons.center_focus_strong,
+          label: 'Сканирование',
+          onTap: onQr,
           isDark: isDark,
         ),
         _ActionButton(

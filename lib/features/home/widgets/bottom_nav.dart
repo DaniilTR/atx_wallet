@@ -104,9 +104,8 @@ class BottomNav extends StatelessWidget {
                     ),
                   ],
                 ),
-                child: const Icon(
-                  Icons.center_focus_strong,
-                  color: Colors.white,
+                child: const _CenterActionIcon(
+                  assetPath: 'assets/images/chat-ai.png',
                   size: 30,
                 ),
               ),
@@ -114,6 +113,25 @@ class BottomNav extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CenterActionIcon extends StatelessWidget {
+  const _CenterActionIcon({required this.assetPath, required this.size});
+
+  final String assetPath;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      assetPath,
+      width: size,
+      height: size,
+      color: Colors.white,
+      colorBlendMode: BlendMode.srcIn,
+      filterQuality: FilterQuality.high,
     );
   }
 }
