@@ -9,7 +9,7 @@
 #define MyAppExeName "atx_wallet.exe"
 
 [Setup]
-AppId={B3C2A5A1-2A77-4D18-9B2A-1BC8B6C6BE0E}
+AppId={{B3C2A5A1-2A77-4D18-9B2A-1BC8B6C6BE0E}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}
