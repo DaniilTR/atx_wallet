@@ -4,12 +4,12 @@
 ; Сборка лежит в: ..\..\build\windows\x64\runner\Release\
 
 #define MyAppName "ATX Wallet"
-#define MyAppVersion "1.0.1"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher ""
 #define MyAppExeName "atx_wallet.exe"
 
 [Setup]
-AppId={{B3C2A5A1-2A77-4D18-9B2A-1BC8B6C6BE0E}
+AppId={B3C2A5A1-2A77-4D18-9B2A-1BC8B6C6BE0E}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 AppPublisher={#MyAppPublisher}

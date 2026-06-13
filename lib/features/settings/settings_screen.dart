@@ -10,6 +10,7 @@ import '../../services/auth_scope.dart';
 import '../../biometrics/biometric_face.dart';
 import '../../services/biometric_prefs.dart';
 import '../../services/config.dart' as app_config;
+import '../../services/screenshot_protection_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -27,6 +28,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   late bool _useDarkTheme;
+  late bool _homeScreenshotProtectionEnabled;
+  bool _screenProtectionLoaded = false;
 
   Future<void> _openLegalUrl(String url, String label) async {
     if (url.trim().isEmpty) {
@@ -58,11 +61,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     _useDarkTheme = widget.themeMode != ThemeMode.light;
+    _homeScreenshotProtectionEnabled = true;
+    unawaited(ScreenshotProtectionService.protectSettingsScreen());
+    unawaited(_loadScreenshotProtectionPreference());
   }
 
   @override
   void dispose() {
+    unawaited(ScreenshotProtectionService.restoreHomeProtection());
     super.dispose();
+  }
+
+  Future<void> _loadScreenshotProtectionPreference() async {
+    final enabled = await ScreenshotProtectionService.isHomeProtectionEnabled();
+    if (!mounted) return;
+    setState(() {
+      _homeScreenshotProtectionEnabled = enabled;
+      _screenProtectionLoaded = true;
+    });
   }
 
   @override
@@ -92,6 +108,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() => _useDarkTheme = value);
               widget.onThemeChanged(value ? ThemeMode.dark : ThemeMode.light);
             },
+          ),
+          const Divider(height: 28),
+          const Text(
+            'Безопасность',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 8),
+          SwitchListTile(
+            value: _homeScreenshotProtectionEnabled,
+            onChanged: _screenProtectionLoaded
+                ? (value) async {
+                    setState(() => _homeScreenshotProtectionEnabled = value);
+                    await ScreenshotProtectionService.setHomeProtectionEnabled(
+                      value,
+                    );
+                  }
+                : null,
+            title: const Text('Блокировка скриншотов на главном экране'),
+            subtitle: const Text(
+              'Главный экран можно оставить защищённым или отключить блокировку; настройки всегда остаются под защитой.',
+            ),
           ),
           const Divider(height: 28),
           const Text(

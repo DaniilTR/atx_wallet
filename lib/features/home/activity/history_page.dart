@@ -210,7 +210,9 @@ class _HistoryPageState extends State<HistoryPage> {
                     username: auth.currentUser?.username ?? 'Wallet',
                     isDark: isDark,
                     onWallets: () => showWalletsSheet<void>(context),
-                    onSettings: () => Navigator.pushNamed(context, '/settings'),
+                      onSettings: () async {
+                        await Navigator.pushNamed(context, '/settings');
+                      },
                     onLogout: () async {
                       wallet.clearDevProfile();
                       await auth.logout();

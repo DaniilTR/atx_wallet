@@ -1,5 +1,16 @@
 # Project-level configuration.
 cmake_minimum_required(VERSION 3.14)
+
+set(SCOPE_CPP_SDK_ROOT "C:/Program Files/Microsoft Visual Studio/18/Community/SDK/ScopeCppSDK/vc15/SDK")
+if(NOT EXISTS "C:/Program Files (x86)/Windows Kits/10" AND EXISTS "${SCOPE_CPP_SDK_ROOT}")
+  set(MSVC_CL_EXE "C:/Program Files/Microsoft Visual Studio/18/Community/VC/Tools/MSVC/14.50.35717/bin/Hostx64/x64/cl.exe")
+  set(CMAKE_C_COMPILER "${MSVC_CL_EXE}")
+  set(CMAKE_CXX_COMPILER "${MSVC_CL_EXE}")
+  set(CMAKE_RC_COMPILER "${SCOPE_CPP_SDK_ROOT}/bin/rc.exe")
+  set(CMAKE_C_FLAGS_INIT "${CMAKE_C_FLAGS_INIT} /I\"${SCOPE_CPP_SDK_ROOT}/include/shared\" /I\"${SCOPE_CPP_SDK_ROOT}/include/ucrt\" /I\"${SCOPE_CPP_SDK_ROOT}/include/um\"")
+  set(CMAKE_CXX_FLAGS_INIT "${CMAKE_CXX_FLAGS_INIT} /I\"${SCOPE_CPP_SDK_ROOT}/include/shared\" /I\"${SCOPE_CPP_SDK_ROOT}/include/ucrt\" /I\"${SCOPE_CPP_SDK_ROOT}/include/um\"")
+  set(CMAKE_EXE_LINKER_FLAGS_INIT "${CMAKE_EXE_LINKER_FLAGS_INIT} /LIBPATH:\"${SCOPE_CPP_SDK_ROOT}/lib\"")
+endif()
 project(atx_wallet LANGUAGES CXX)
 
 # The name of the executable created for the application. Change this to change

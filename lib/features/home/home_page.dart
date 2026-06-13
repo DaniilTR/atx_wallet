@@ -17,6 +17,7 @@ import '../../providers/wallet_scope.dart';
 import '../../services/auth_scope.dart';
 import '../../services/config.dart';
 import '../../services/news_service.dart';
+import '../../services/screenshot_protection_service.dart';
 import '../auth/widgets/animated_neon_background.dart';
 import '../auth/widgets/glass_card.dart';
 import '../swap/swap_sheet.dart';
@@ -75,6 +76,7 @@ class _HomePageState extends State<HomePage> {
       if (!mounted) return;
       WalletScope.read(context).refreshBalances(silent: true);
     });
+    unawaited(ScreenshotProtectionService.applyHomeProtection());
   }
 
   Future<void> _refreshBalances() {
@@ -135,6 +137,12 @@ class _HomePageState extends State<HomePage> {
     await Navigator.of(
       context,
     ).push(MaterialPageRoute(builder: (_) => const AiAgentChatPage()));
+  }
+
+  Future<void> _openSettingsPage() async {
+    await ScreenshotProtectionService.protectSettingsScreen();
+    if (!mounted) return;
+    await Navigator.pushNamed(context, '/settings');
   }
 
   String? get _currentAddress {
@@ -232,8 +240,7 @@ class _HomePageState extends State<HomePage> {
                       username: username,
                       isDark: isDark,
                       onWallets: () => showWalletsSheet<void>(context),
-                      onSettings: () =>
-                          Navigator.pushNamed(context, '/settings'),
+                      onSettings: _openSettingsPage,
                       onLogout: () async {
                         wallet.clearDevProfile();
                         await auth.logout();
@@ -877,7 +884,7 @@ class HomeTopBar extends StatelessWidget {
   final String username;
   final bool isDark;
   final VoidCallback? onWallets;
-  final VoidCallback onSettings;
+  final Future<void> Function() onSettings;
   final Future<void> Function() onLogout;
 
   @override
@@ -930,7 +937,9 @@ class HomeTopBar extends StatelessWidget {
             const Spacer(),
             IconButton(
               tooltip: 'Settings',
-              onPressed: onSettings,
+              onPressed: () async {
+                await onSettings();
+              },
               icon: Icon(Icons.settings, color: mutedTextColor),
             ),
             IconButton(
