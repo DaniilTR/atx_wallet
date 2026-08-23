@@ -1,12 +1,11 @@
 import './App.css';
 
-import logo from '../assets/image 4.png';
-import heroDesktop from '../assets/MacBook Pro 14_ - 2.png';
-import heroPhone from '../assets/Android.png';
-import screenHome from '../assets/iMockup - Google Pixel 8 Pro.png';
-import screenRegister from '../assets/iMockup - Google Pixel 8 Pro-2.png';
-import screenLogin from '../assets/iMockup - Google Pixel 8 Pro-3.png';
-import screenWallet from '../assets/iMockup - Google Pixel 8 Pro-4.png';
+import logo from './assets/image 4.png';
+import heroDesktop from './assets/MacBook Pro 14_ - 2.png';
+import screenRegister from './assets/iMockup - Google Pixel 8 Pro-2.png';
+import screenLogin from './assets/iMockup - Google Pixel 8 Pro-3.png';
+import screenWallet from './assets/iMockup - Google Pixel 8 Pro-4.png';
+import screenMain from './assets/iMockup - Google Pixel 8 Pro (2).png';
 
 const features = [
   {
@@ -86,7 +85,6 @@ function App() {
 
           <div className="hero__visual">
             <img className="mockup-desktop" src={heroDesktop} alt="ATX Wallet на ноутбуке" />
-            <img className="mockup-phone" src={heroPhone} alt="ATX Wallet на смартфоне" />
           </div>
         </section>
 
@@ -110,7 +108,7 @@ function App() {
             без лишних шагов.
           </p>
           <div className="showcase__row">
-            <img src={screenHome} alt="Главный экран кошелька" />
+            <img src={screenMain} alt="Главный экран кошелька" />
             <img src={screenWallet} alt="Экран активов" />
             <img src={screenLogin} alt="Экран входа" />
             <img src={screenRegister} alt="Экран регистрации" />
