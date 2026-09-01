@@ -1,5 +1,5 @@
 import React from 'react';
-import heroDesktop from '../assets/MacBook Pro 14_ - 2.png';
+import heroDesktop from '../assets/iMockup - Google Pixel 8 Pro.png';
 
 const stats = [
   { value: '120K+', label: 'пользователей' },

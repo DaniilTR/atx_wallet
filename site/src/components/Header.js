@@ -1,32 +1,33 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import logo from '../assets/image 4.png';
 
 const navigation = [
-  { label: 'Возможности', href: '#features' },
-  { label: 'Безопасность', href: '#security' },
-  { label: 'Как работает', href: '#how-it-works' },
-  { label: 'Портфолио', href: '#wallet' },
+  { label: 'Главная', href: '/' },
+  { label: 'Скачать', href: '/download' },
+  { label: 'Безопасность', href: '/security' },
+  { label: 'Документы', href: '/docs' },
 ];
 
 function Header() {
   return (
     <header className="topbar wrapper" aria-label="Основная навигация">
-      <a className="brand" href="#home" aria-label="ATX Wallet home">
+      <Link className="brand" to="/" aria-label="ATX Wallet home">
         <img src={logo} alt="ATX Wallet логотип" />
         <span>ATX Wallet</span>
-      </a>
+      </Link>
 
-      <nav className="menu" aria-label="Навигация по секциям">
+      <nav className="menu" aria-label="Навигация по страницам">
         {navigation.map((item) => (
-          <a key={item.href} href={item.href}>
+          <Link key={item.href} to={item.href}>
             {item.label}
-          </a>
+          </Link>
         ))}
       </nav>
 
-      <button type="button" className="header-cta">
+      <Link to="/download" className="header-cta">
         Открыть приложение
-      </button>
+      </Link>
     </header>
   );
 }
