@@ -1,7 +1,7 @@
 import React from 'react';
 import HeroSection from '../components/HeroSection';
 import FeatureGrid from '../components/FeatureGrid';
-import InfoPanel from '../components/InfoPanel';
+// import InfoPanel from '../components/InfoPanel';
 // eslint-disable-next-line no-unused-vars
 import GlassDecor from '../assets/Frame 10-2.png';
 import GlassDecor1 from '../assets/gradient glass (11).png';
@@ -16,7 +16,7 @@ function HomePage() {
       <img src={FrameDecor1} alt="" className="decorative-frame decorative-frame--page-top-left-home" />
       <HeroSection />
       <FeatureGrid />
-      <InfoPanel /> 
+      {/* <InfoPanel /> */}
 
       <section className="cta-section wrapper">
         <div className="cta-panel">

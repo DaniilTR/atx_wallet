@@ -746,7 +746,7 @@
   animation: float 6s ease-in-out infinite;
 }
 .decorative-frame--page-top-left-home {
-  top: 35%;
+  top: 50%;
   left: 4.5%;
   width: 160px;
   height: 160px;
@@ -768,7 +768,7 @@
   z-index: 1;
 }
 .gradient-glass-decor--bottom-right {
-  top: 27%;
+  top: 35%;
   right: 5%;
   animation: float 7s ease-in-out infinite 0.5s;
 }

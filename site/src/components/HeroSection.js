@@ -4,7 +4,7 @@ import heroDesktop from '../assets/iMockup - Google Pixel 8 Pro.png';
 const stats = [
   { value: '120K+', label: 'пользователей' },
   { value: '140+', label: 'поддерживаемых активов' },
-  { value: '99.99%', label: 'время доступности' },
+  { value: '100%', label: 'время доступности' },
 ];
 
 function HeroSection() {
