@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:atx_wallet/features/auth/widgets/animated_neon_background.dart';
+import 'package:atx_wallet/features/auth/widgets/glass_card.dart';
 import 'package:atx_wallet/features/home/activity/ai_agent_chat_page.dart';
 import 'package:atx_wallet/features/home/home_page.dart';
 import 'package:atx_wallet/features/home/widgets/bottom_nav.dart';
@@ -103,65 +104,70 @@ class _HistoryPageState extends State<HistoryPage> {
               ? Icons.arrow_downward_rounded
               : Icons.arrow_outward_rounded;
           final note = entry.note;
-          return ListTile(
-            contentPadding: EdgeInsets.zero,
-            onTap: entry.txHash == null
-                ? null
-                : () => _copyTxHash(context, entry.txHash!),
-            leading: Container(
-              width: 42,
-              height: 42,
-              decoration: BoxDecoration(
-                color: const Color(0x222E9AFF),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, color: primaryTextColor),
-            ),
-            title: Text(
-              isIncoming
-                  ? 'Получение ${entry.tokenSymbol}'
-                  : 'Отправка ${entry.tokenSymbol}',
-              style: GoogleFonts.inter(
-                color: primaryTextColor,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            subtitle: Text(
-              _formatHistorySubtitle(entry.timestamp, note),
-              style: GoogleFonts.inter(
-                color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
-                fontSize: 12,
-              ),
-            ),
-            trailing: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  '$amountSign${_formatNumber(entry.amount, precision: 6)} ${entry.tokenSymbol}',
-                  style: GoogleFonts.inter(
-                    color: amountColor,
-                    fontWeight: FontWeight.w600,
-                  ),
+          return GlassCard(
+            borderRadius: 18,
+            padding: EdgeInsets.zero,
+            child: ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+              onTap: entry.txHash == null
+                  ? null
+                  : () => _copyTxHash(context, entry.txHash!),
+              leading: Container(
+                width: 42,
+                height: 42,
+                decoration: BoxDecoration(
+                  color: isIncoming
+                      ? const Color(0x2234D399)
+                      : const Color(0x22FF8484),
+                  borderRadius: BorderRadius.circular(14),
                 ),
-                if (entry.txHash != null)
-                  IconButton(
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    tooltip: 'Скопировать хеш',
-                    icon: const Icon(
-                      Icons.copy_rounded,
-                      size: 16,
-                      color: Color(0xFF9FB1FF),
+                child: Icon(icon, color: amountColor),
+              ),
+              title: Text(
+                isIncoming
+                    ? 'Получение ${entry.tokenSymbol}'
+                    : 'Отправка ${entry.tokenSymbol}',
+                style: GoogleFonts.inter(
+                  color: primaryTextColor,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              subtitle: Text(
+                _formatHistorySubtitle(entry.timestamp, note),
+                style: GoogleFonts.inter(
+                  color: isDark ? const Color(0xFF7C86B2) : mutedTextColor,
+                  fontSize: 12,
+                ),
+              ),
+              trailing: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$amountSign${_formatNumber(entry.amount, precision: 6)} ${entry.tokenSymbol}',
+                    style: GoogleFonts.inter(
+                      color: amountColor,
+                      fontWeight: FontWeight.w600,
                     ),
-                    onPressed: () => _copyTxHash(context, entry.txHash!),
                   ),
-              ],
+                  if (entry.txHash != null)
+                    IconButton(
+                      padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(),
+                      tooltip: 'Скопировать хеш',
+                      icon: const Icon(
+                        Icons.copy_rounded,
+                        size: 16,
+                        color: Color(0xFF9FB1FF),
+                      ),
+                      onPressed: () => _copyTxHash(context, entry.txHash!),
+                    ),
+                ],
+              ),
             ),
           );
         },
-        separatorBuilder: (context, _) =>
-            const Divider(color: Color(0x221C2743)),
+        separatorBuilder: (context, _) => const SizedBox(height: 10),
         itemCount: history.length,
       );
     }

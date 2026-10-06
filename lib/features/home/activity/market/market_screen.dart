@@ -212,14 +212,17 @@ class _MarketRow extends StatelessWidget {
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 6),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
+      child: GlassCard(
+        borderRadius: 20,
+        padding: EdgeInsets.zero,
+        child: Container(
+          margin: const EdgeInsets.symmetric(vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Row(
           children: [
             CircleAvatar(
               radius: 20,
@@ -287,6 +290,7 @@ class _MarketRow extends StatelessWidget {
               ],
             ),
           ],
+          ),
         ),
       ),
     );

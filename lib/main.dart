@@ -106,7 +106,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
       brightness: Brightness.dark,
     );
     final colorSchemeLight = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF7A5AF8),
+      seedColor: const Color(0xFF4C6BFF),
       brightness: Brightness.light,
     );
 

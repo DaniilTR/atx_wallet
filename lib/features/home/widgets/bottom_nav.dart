@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 
 class BottomNav extends StatelessWidget {
@@ -17,94 +19,91 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final activeColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final activeColor = isDark ? Colors.white : const Color(0xFF172033);
     final inactiveColor = isDark
-        ? const Color(0xFFD2D8F6)
-        : const Color(0xFF475569);
+        ? const Color(0xFF9EA8C0)
+        : const Color(0xFF64748B);
     return SizedBox(
-      height: 110 + bottomPadding,
+      height: 96 + bottomPadding,
       child: Stack(
-        alignment: Alignment.topCenter,
-        clipBehavior: Clip.none,
+        alignment: Alignment.bottomCenter,
         children: [
-          Positioned(
-            top: 25,
-            left: 0,
-            right: 0,
-            child: ClipPath(
-              clipper: _NavBarClipper(),
-              child: Container(
-                height: 85 + bottomPadding,
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color.fromARGB(20, 255, 255, 255)
-                      : Colors.white.withValues(alpha: 0.72),
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 45,
-            left: 0,
-            right: 0,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavIcon(
-                  icon: Icons.home_rounded,
-                  active: index == 0,
-                  onTap: () => onChanged(0),
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                ),
-                _NavIcon(
-                  icon: Icons.pie_chart_rounded,
-                  active: index == 1,
-                  onTap: () => onChanged(1),
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                ),
-                const SizedBox(width: 80),
-                _NavIcon(
-                  icon: Icons.local_activity_rounded,
-                  active: index == 2,
-                  onTap: () => onChanged(2),
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                ),
-                _NavIcon(
-                  icon: Icons.history_rounded,
-                  active: index == 3,
-                  onTap: () => onChanged(3),
-                  activeColor: activeColor,
-                  inactiveColor: inactiveColor,
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 0,
-            child: GestureDetector(
-              onTap: onQrTap,
-              child: Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4D6CFF), Color(0xFF2F4BFF)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4D6CFF).withValues(alpha: .6),
-                      blurRadius: 30,
-                      spreadRadius: 4,
+          Padding(
+            padding: EdgeInsets.fromLTRB(14, 8, 14, bottomPadding + 10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(28),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: Container(
+                  height: 68,
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.09)
+                        : Colors.white.withValues(alpha: 0.68),
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.9),
                     ),
-                  ],
-                ),
-                child: const _CenterActionIcon(
-                  assetPath: 'assets/images/chat-ai.png',
-                  size: 30,
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.24 : 0.10,
+                        ),
+                        blurRadius: 26,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _NavItem(
+                          icon: Icons.home_rounded,
+                          label: 'Главная',
+                          active: index == 0,
+                          onTap: () => onChanged(0),
+                          activeColor: activeColor,
+                          inactiveColor: inactiveColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: _NavItem(
+                          icon: Icons.pie_chart_rounded,
+                          label: 'Рынок',
+                          active: index == 1,
+                          onTap: () => onChanged(1),
+                          activeColor: activeColor,
+                          inactiveColor: inactiveColor,
+                        ),
+                      ),
+                      _CenterAction(
+                        onTap: onQrTap,
+                        isDark: isDark,
+                      ),
+                      Expanded(
+                        child: _NavItem(
+                          icon: Icons.local_activity_rounded,
+                          label: 'Награды',
+                          active: index == 2,
+                          onTap: () => onChanged(2),
+                          activeColor: activeColor,
+                          inactiveColor: inactiveColor,
+                        ),
+                      ),
+                      Expanded(
+                        child: _NavItem(
+                          icon: Icons.history_rounded,
+                          label: 'История',
+                          active: index == 3,
+                          onTap: () => onChanged(3),
+                          activeColor: activeColor,
+                          inactiveColor: inactiveColor,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -115,72 +114,48 @@ class BottomNav extends StatelessWidget {
   }
 }
 
-class _CenterActionIcon extends StatelessWidget {
-  const _CenterActionIcon({required this.assetPath, required this.size});
+class _CenterAction extends StatelessWidget {
+  const _CenterAction({required this.onTap, required this.isDark});
 
-  final String assetPath;
-  final double size;
+  final VoidCallback onTap;
+  final bool isDark;
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      assetPath,
-      width: size,
-      height: size,
-      color: Colors.white,
-      colorBlendMode: BlendMode.srcIn,
-      filterQuality: FilterQuality.high,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 58,
+        height: 58,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: isDark ? const Color(0xFFE7F0FF) : const Color(0xFF172033),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF7EA6FF).withValues(alpha: 0.32),
+              blurRadius: 18,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Image.asset(
+          'assets/images/chat-ai.png',
+          width: 26,
+          height: 26,
+          color: isDark ? const Color(0xFF172033) : Colors.white,
+          colorBlendMode: BlendMode.srcIn,
+          filterQuality: FilterQuality.high,
+        ),
+      ),
     );
   }
 }
 
-class _NavBarClipper extends CustomClipper<Path> {
-  @override
-  Path getClip(Size size) {
-    final path = Path();
-    final w = size.width;
-    final center = w / 2;
-
-    const notchRadius = 44.0;
-    const notchDepth = 16.0;
-
-    path.lineTo(center - notchRadius - 30, 0);
-
-    path.quadraticBezierTo(
-      center - notchRadius,
-      0,
-      center - notchRadius,
-      notchDepth,
-    );
-
-    path.arcToPoint(
-      Offset(center + notchRadius, notchDepth),
-      radius: const Radius.circular(notchRadius),
-      clockwise: false,
-    );
-
-    path.quadraticBezierTo(
-      center + notchRadius,
-      0,
-      center + notchRadius + 30,
-      0,
-    );
-
-    path.lineTo(w, 0);
-    path.lineTo(w, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-
-    return path;
-  }
-
-  @override
-  bool shouldReclip(_) => false;
-}
-
-class _NavIcon extends StatelessWidget {
-  const _NavIcon({
+class _NavItem extends StatelessWidget {
+  const _NavItem({
     required this.icon,
+    required this.label,
     required this.active,
     required this.onTap,
     required this.activeColor,
@@ -188,6 +163,7 @@ class _NavIcon extends StatelessWidget {
   });
 
   final IconData icon;
+  final String label;
   final bool active;
   final VoidCallback onTap;
   final Color activeColor;
@@ -195,9 +171,27 @@ class _NavIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      onPressed: onTap,
-      icon: Icon(icon, color: active ? activeColor : inactiveColor, size: 26),
+    final color = active ? activeColor : inactiveColor;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 21),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

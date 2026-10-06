@@ -11,6 +11,7 @@ import '../../biometrics/biometric_face.dart';
 import '../../services/biometric_prefs.dart';
 import '../../services/config.dart' as app_config;
 import '../../services/screenshot_protection_service.dart';
+import '../auth/widgets/animated_neon_background.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
@@ -89,14 +90,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final btcAddress = wallet?.bitcoinAddress;
     final username = auth.currentUser?.username ?? '—';
     final userId = auth.currentUser?.id;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      extendBodyBehindAppBar: true,
+      appBar: AppBar(
+        title: const Text('Настройки'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: Stack(
         children: [
+          AnimatedNeonBackground(isDark: isDark),
+          ListView(
+            padding: const EdgeInsets.fromLTRB(16, 96, 16, 40),
+            children: [
           const Text(
-            'Appearance',
+            'Внешний вид',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 8),
@@ -422,7 +432,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             icon: const Icon(Icons.support_agent_rounded),
             label: const Text('Центр поддержки'),
           ),
-          const SizedBox(height: 70),
+              const SizedBox(height: 70),
+            ],
+          ),
         ],
       ),
     );

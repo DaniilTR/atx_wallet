@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../services/auth_scope.dart';
+import 'widgets/animated_neon_background.dart';
+import 'widgets/glass_card.dart';
 
 class StartPage extends StatefulWidget {
   const StartPage({super.key});
@@ -26,11 +28,16 @@ class _StartPageState extends State<StartPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = isDark ? Colors.white : const Color(0xFF172033);
+    final mutedColor = isDark
+        ? Colors.white.withValues(alpha: 0.58)
+        : const Color(0xFF64748B);
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1D23),
       body: SafeArea(
         child: Stack(
           children: [
+            AnimatedNeonBackground(isDark: isDark),
             // Decorative 3D objects
             Positioned(
               top: 60,
@@ -75,7 +82,7 @@ class _StartPageState extends State<StartPage> {
                   ),
                 ),
                 const Spacer(),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 32),
                   child: Text(
                     'Свобода твоих финансов',
@@ -83,7 +90,7 @@ class _StartPageState extends State<StartPage> {
                     style: TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: primaryColor,
                       height: 1.3,
                       letterSpacing: 0.5,
                     ),
@@ -97,16 +104,19 @@ class _StartPageState extends State<StartPage> {
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: mutedColor,
                       height: 1.5,
                     ),
                   ),
                 ),
                 const SizedBox(height: 40),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 32),
-                  child: Column(
-                    children: [
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: GlassCard(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
+                    borderRadius: 26,
+                    child: Column(
+                      children: [
                       SizedBox(
                         width: double.infinity,
                         height: 56,
@@ -118,7 +128,7 @@ class _StartPageState extends State<StartPage> {
                             );
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF5B6FF9),
+                            backgroundColor: const Color(0xFF4C6BFF),
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -144,8 +154,10 @@ class _StartPageState extends State<StartPage> {
                             Navigator.pushReplacementNamed(context, '/login');
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF2C3140),
-                            foregroundColor: Colors.white,
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : Colors.black.withValues(alpha: 0.06),
+                            foregroundColor: primaryColor,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
                             ),
@@ -161,7 +173,8 @@ class _StartPageState extends State<StartPage> {
                           ),
                         ),
                       ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 50),

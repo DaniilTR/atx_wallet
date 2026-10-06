@@ -1,5 +1,6 @@
 // lib/features/home/home_page.dart
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -650,40 +651,40 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       child: Column(
         children: [
-          Container(
-            height: 62,
-            width: 62,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(31),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? const [
-                        Color.fromARGB(255, 30, 30, 45),
-                        Color.fromARGB(255, 30, 30, 45),
-                      ]
-                    : const [
-                        Color.fromARGB(255, 228, 230, 236),
-                        Color.fromARGB(255, 208, 211, 216),
-                      ],
-              ),
-
-              boxShadow: [
-                BoxShadow(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(22),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+              child: Container(
+                height: 62,
+                width: 62,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(22),
                   color: isDark
-                      ? const Color(0x44090F25)
-                      : Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 22,
-                  offset: const Offset(0, 14),
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : Colors.white.withValues(alpha: 0.58),
+                  border: Border.all(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.14)
+                        : Colors.white.withValues(alpha: 0.9),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: isDark
+                          ? const Color(0x44090F25)
+                          : Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 22,
+                      offset: const Offset(0, 14),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-            child: Icon(
-              icon,
-              color: isDark
-                  ? const Color.fromARGB(255, 186, 188, 197)
-                  : const Color(0xFF0F172A),
+                child: Icon(
+                  icon,
+                  color: isDark
+                      ? const Color(0xFFDDE7FF)
+                      : const Color(0xFF172033),
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 10),
