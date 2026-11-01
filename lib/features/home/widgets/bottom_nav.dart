@@ -124,32 +124,62 @@ class _CenterAction extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 58,
-        height: 58,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDark ? const Color(0xFFE7F0FF) : const Color(0xFF172033),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF7EA6FF).withValues(alpha: 0.32),
-              blurRadius: 18,
-              spreadRadius: 2,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4),
+        child: Container(
+          width: 58,
+          height: 58,
+          child: CustomPaint(
+            painter: _CenterActionGlowPainter(),
+            child: Center(
+              child: Image.asset(
+                'assets/images/chat-ai.png',
+                width: 26,
+                height: 26,
+                color: Colors.white,
+                colorBlendMode: BlendMode.srcIn,
+                filterQuality: FilterQuality.high,
+              ),
             ),
-          ],
-        ),
-        child: Image.asset(
-          'assets/images/chat-ai.png',
-          width: 26,
-          height: 26,
-          color: isDark ? const Color(0xFF172033) : Colors.white,
-          colorBlendMode: BlendMode.srcIn,
-          filterQuality: FilterQuality.high,
+          ),
         ),
       ),
     );
   }
+}
+
+class _CenterActionGlowPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    final borderRadius = size.shortestSide / 2 - 2;
+
+    for (final glow in [
+      (radius: borderRadius + 1.5, alpha: 0.16, width: 2.0),
+      (radius: borderRadius + 3.0, alpha: 0.08, width: 2.0),
+    ]) {
+      canvas.drawCircle(
+        center,
+        glow.radius,
+        Paint()
+          ..color = Colors.white.withValues(alpha: glow.alpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = glow.width,
+      );
+    }
+
+    canvas.drawCircle(
+      center,
+      borderRadius,
+      Paint()
+        ..color = Colors.white
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _CenterActionGlowPainter oldDelegate) => false;
 }
 
 class _NavItem extends StatelessWidget {

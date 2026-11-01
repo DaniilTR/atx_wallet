@@ -142,9 +142,9 @@ class _AddWalletSheetState extends State<_AddWalletSheet> {
                     hintStyle: GoogleFonts.inter(color: hintColor),
                     filled: true,
                     fillColor: fillColor,
-                    prefixIcon: const Icon(
+                    prefixIcon: Icon(
                       Icons.key_rounded,
-                      color: Color(0xFF6FE1F5),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),

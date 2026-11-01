@@ -629,12 +629,19 @@ class _SwapSheetState extends State<SwapSheet> {
               decoration: BoxDecoration(
                 color: const Color(0xFF14191E),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0x336FE1F5)),
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.primary.withValues(
+                    alpha: 0.22,
+                  ),
+                ),
               ),
-              child: const Row(
+              child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.swap_vert_rounded, color: Color(0xFF6FE1F5)),
+                  Icon(
+                    Icons.swap_vert_rounded,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                   SizedBox(width: 8),
                   Text('Поменять местами'),
                 ],
@@ -844,7 +851,10 @@ class _LabeledField extends StatelessWidget {
             hintStyle: GoogleFonts.inter(color: hintColor),
             filled: true,
             fillColor: fillColor,
-            prefixIcon: Icon(prefixIcon, color: const Color(0xFF6FE1F5)),
+            prefixIcon: Icon(
+              prefixIcon,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide(color: borderColor),
@@ -872,8 +882,8 @@ class _PrimaryButton extends StatelessWidget {
       width: double.infinity,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF5E6DFF),
-          foregroundColor: Colors.white,
+          backgroundColor: Theme.of(context).colorScheme.primary,
+          foregroundColor: Theme.of(context).colorScheme.onPrimary,
           disabledForegroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
           shape: RoundedRectangleBorder(
@@ -885,7 +895,7 @@ class _PrimaryButton extends StatelessWidget {
           label,
           style: GoogleFonts.inter(
             fontWeight: FontWeight.w700,
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.onPrimary,
           ),
         ),
       ),

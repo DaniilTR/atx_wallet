@@ -50,9 +50,11 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
   bool _loading = false;
   String? _error;
   List<double> _series = const [];
+  List<_ChartPoint> _chartPoints = const [];
   int _days = 7;
   double? _price;
   double? _change;
+  int? _selectedPoint;
 
   @override
   void initState() {
@@ -78,6 +80,7 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
       setState(() {
         _error = 'Нет данных для графика.';
         _series = const [];
+        _chartPoints = const [];
       });
       return;
     }
@@ -92,14 +95,20 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
         _loading = false;
         _error = 'Не удалось загрузить график.';
         _series = const [];
+        _chartPoints = const [];
       });
       return;
     }
-    final values = prices
-        .map((entry) => (entry.length > 1 ? entry[1] : null))
-        .whereType<num>()
-        .map((e) => e.toDouble())
+    final points = prices
+        .where((entry) => entry.length > 1)
+        .map(
+          (entry) => _ChartPoint(
+            time: DateTime.fromMillisecondsSinceEpoch(entry[0].toInt()),
+            price: entry[1].toDouble(),
+          ),
+        )
         .toList(growable: false);
+    final values = points.map((point) => point.price).toList(growable: false);
 
     // change% считаем по первому и последнему значению.
     double? change;
@@ -113,6 +122,8 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
     setState(() {
       _loading = false;
       _series = values;
+      _chartPoints = points;
+      _selectedPoint = null;
       _price = _price ?? (values.isNotEmpty ? values.last : null);
       _change = _change ?? change;
     });
@@ -289,18 +300,66 @@ class _CoinDetailPageState extends State<CoinDetailPage> {
                             ),
                           ),
                         )
-                      : CustomPaint(
-                          painter: _PriceChartPainter(
-                            data: _series,
-                            color: isNegative
-                                ? const Color(0xFFFF6B6B)
-                                : const Color(0xFF40C977),
-                          ),
-                          child: const SizedBox.expand(),
+                      : Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            SizedBox(
+                              width: 48,
+                              child: _ChartYAxis(data: _series),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: LayoutBuilder(
+                                builder: (context, constraints) => CustomPaint(
+                                  painter: _PriceChartPainter(
+                                    data: _series,
+                                    color: isNegative
+                                        ? const Color(0xFFFF6B6B)
+                                        : const Color(0xFF40C977),
+                                    selectedIndex: _selectedPoint,
+                                  ),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTapDown: (details) {
+                                      final chartWidth = constraints.maxWidth;
+                                      if (chartWidth <= 0 ||
+                                          _series.length < 2) {
+                                        return;
+                                      }
+                                      final index =
+                                          ((details.localPosition.dx /
+                                                          chartWidth) *
+                                                      (_series.length - 1))
+                                                  .round()
+                                                  .clamp(0, _series.length - 1)
+                                              as int;
+                                      setState(() => _selectedPoint = index);
+                                    },
+                                    child: const SizedBox.expand(),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                 ),
               ),
             ),
+            if (_selectedPoint != null &&
+                _selectedPoint! < _chartPoints.length) ...[
+              const SizedBox(height: 8),
+              _ChartSelectionLabel(point: _chartPoints[_selectedPoint!]),
+            ] else ...[
+              const SizedBox(height: 8),
+              Text(
+                'Нажмите на график, чтобы увидеть цену в этот момент',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.inter(
+                  color: mutedTextColor,
+                  fontSize: 12,
+                ),
+              ),
+            ],
             const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -809,13 +868,17 @@ class _ActionButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final background = filled ? const Color(0xFF4DE8A4) : Colors.transparent;
+    final background = filled
+        ? Theme.of(context).colorScheme.primary
+        : Colors.transparent;
     final borderColor = filled
         ? Colors.transparent
         : (isDark
               ? const Color(0xFF2E3654)
               : Colors.black.withValues(alpha: 0.12));
-    final textColor = filled ? const Color(0xFF0F172A) : primaryTextColor;
+    final textColor = filled
+        ? Theme.of(context).colorScheme.onPrimary
+        : primaryTextColor;
     return SizedBox(
       height: 48,
       child: OutlinedButton(
@@ -839,11 +902,94 @@ class _ActionButton extends StatelessWidget {
   }
 }
 
+class _ChartPoint {
+  const _ChartPoint({required this.time, required this.price});
+
+  final DateTime time;
+  final double price;
+}
+
+class _ChartSelectionLabel extends StatelessWidget {
+  const _ChartSelectionLabel({required this.point});
+
+  final _ChartPoint point;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final date =
+        '${point.time.day.toString().padLeft(2, '0')}.${point.time.month.toString().padLeft(2, '0')} '
+        '${point.time.hour.toString().padLeft(2, '0')}:${point.time.minute.toString().padLeft(2, '0')}';
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text(
+          date,
+          style: GoogleFonts.inter(
+            color: isDark ? const Color(0xFF9EA8C0) : const Color(0xFF64748B),
+            fontSize: 12,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(
+          '\$${_formatNumber(point.price, precision: point.price < 1 ? 6 : 2)}',
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white : const Color(0xFF0F172A),
+            fontSize: 13,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ChartYAxis extends StatelessWidget {
+  const _ChartYAxis({required this.data});
+
+  final List<double> data;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final mutedColor = isDark
+        ? const Color(0xFF7C86A8)
+        : const Color(0xFF64748B);
+    final minValue = data.reduce((a, b) => a < b ? a : b);
+    final maxValue = data.reduce((a, b) => a > b ? a : b);
+    final middleValue = (minValue + maxValue) / 2;
+    final labels = [
+      _formatChartPrice(maxValue),
+      _formatChartPrice(middleValue),
+      _formatChartPrice(minValue),
+    ];
+
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        for (final label in labels)
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.inter(color: mutedColor, fontSize: 10),
+          ),
+      ],
+    );
+  }
+}
+
 class _PriceChartPainter extends CustomPainter {
-  _PriceChartPainter({required this.data, required this.color});
+  _PriceChartPainter({
+    required this.data,
+    required this.color,
+    required this.selectedIndex,
+  });
 
   final List<double> data;
   final Color color;
+  final int? selectedIndex;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -853,15 +999,39 @@ class _PriceChartPainter extends CustomPainter {
     final range = (maxValue - minValue) == 0 ? 1 : (maxValue - minValue);
 
     final path = Path();
+    final fillPath = Path()..moveTo(0, size.height);
     for (var i = 0; i < data.length; i++) {
       final x = (i / (data.length - 1)) * size.width;
       final y = size.height - ((data[i] - minValue) / range) * size.height;
       if (i == 0) {
         path.moveTo(x, y);
+        fillPath.lineTo(x, y);
       } else {
         path.lineTo(x, y);
+        fillPath.lineTo(x, y);
       }
     }
+    fillPath
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    final gridPaint = Paint()
+      ..color = color.withValues(alpha: 0.12)
+      ..strokeWidth = 1;
+    for (final fraction in [0.0, 0.5, 1.0]) {
+      final y = size.height * fraction;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+
+    canvas.drawPath(
+      fillPath,
+      Paint()
+        ..shader = LinearGradient(
+          colors: [color.withValues(alpha: 0.20), color.withValues(alpha: 0)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(Offset.zero & size),
+    );
 
     final paint = Paint()
       ..color = color
@@ -870,11 +1040,31 @@ class _PriceChartPainter extends CustomPainter {
       ..isAntiAlias = true;
 
     canvas.drawPath(path, paint);
+
+    if (selectedIndex != null && selectedIndex! >= 0) {
+      final index = selectedIndex!.clamp(0, data.length - 1) as int;
+      final x = (index / (data.length - 1)) * size.width;
+      final y = size.height - ((data[index] - minValue) / range) * size.height;
+      final selectionPaint = Paint()
+        ..color = color.withValues(alpha: 0.55)
+        ..strokeWidth = 1;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), selectionPaint);
+      canvas.drawCircle(Offset(x, y), 5, Paint()..color = color);
+      canvas.drawCircle(
+        Offset(x, y),
+        8,
+        Paint()
+          ..color = color.withValues(alpha: 0.20)
+          ..style = PaintingStyle.fill,
+      );
+    }
   }
 
   @override
   bool shouldRepaint(covariant _PriceChartPainter oldDelegate) {
-    return oldDelegate.data != data || oldDelegate.color != color;
+    return oldDelegate.data != data ||
+        oldDelegate.color != color ||
+        oldDelegate.selectedIndex != selectedIndex;
   }
 }
 
@@ -882,6 +1072,10 @@ String _formatNumber(double value, {int precision = 2}) {
   final text = value.toStringAsFixed(precision);
   if (!text.contains('.')) return text;
   return text.replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '');
+}
+
+String _formatChartPrice(double value) {
+  return _formatNumber(value, precision: value.abs() < 1 ? 6 : 2);
 }
 
 String _formatHistorySubtitle(DateTime timestamp, String? note) {

@@ -50,7 +50,10 @@ class _LabeledField extends StatelessWidget {
             hintStyle: GoogleFonts.inter(color: hintColor),
             filled: true,
             fillColor: fillColor,
-            prefixIcon: Icon(prefixIcon, color: const Color(0xFF6FE1F5)),
+            prefixIcon: Icon(
+              prefixIcon,
+              color: Theme.of(context).colorScheme.primary,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(18),
               borderSide: BorderSide(color: borderColor),

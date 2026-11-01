@@ -102,7 +102,7 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
   @override
   Widget build(BuildContext context) {
     final colorSchemeDark = ColorScheme.fromSeed(
-      seedColor: const Color(0xFF14191E),
+      seedColor: const Color(0xFF4C6BFF),
       brightness: Brightness.dark,
     );
     final colorSchemeLight = ColorScheme.fromSeed(
@@ -136,6 +136,38 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
         color: const Color(0xFF14191E),
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFF4C6BFF),
+          foregroundColor: Colors.white,
+          disabledBackgroundColor: const Color(0xFF2A3040),
+          disabledForegroundColor: const Color(0xFF8E99C0),
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: Colors.white,
+          side: const BorderSide(color: Color(0xFF39445F)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: const Color(0xFF4C6BFF),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+        ),
       ),
     );
 
@@ -188,6 +220,25 @@ class _AtxWalletAppState extends State<AtxWalletApp> {
             borderRadius: BorderRadius.circular(16),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF0F172A),
+          side: const BorderSide(color: Color(0xFFD5DCEB)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+        ),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: colorSchemeLight.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
       textButtonTheme: TextButtonThemeData(

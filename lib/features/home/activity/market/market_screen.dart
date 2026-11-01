@@ -192,36 +192,28 @@ class _MarketRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDark ? Colors.white : const Color(0xFF0F172A);
-    final surfaceColor = isDark
-        ? const Color.fromARGB(20, 255, 255, 255)
-        : Colors.black.withValues(alpha: 0.03);
     final avatarBg = isDark ? const Color(0xFF151B2D) : Colors.white;
     final isNegative = coin.change24h < 0;
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CoinDetailPage(
-              symbol: coin.symbol,
-              name: coin.name,
-              coinId: coin.id,
-              priceUsd: coin.priceUsd,
-              change24h: coin.change24h,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(20),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => CoinDetailPage(
+                symbol: coin.symbol,
+                name: coin.name,
+                coinId: coin.id,
+                priceUsd: coin.priceUsd,
+                change24h: coin.change24h,
+              ),
             ),
-          ),
-        );
-      },
-      child: GlassCard(
-        borderRadius: 20,
-        padding: EdgeInsets.zero,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 4),
+          );
+        },
+        child: GlassCard(
+          borderRadius: 20,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(20),
-          ),
           child: Row(
           children: [
             CircleAvatar(

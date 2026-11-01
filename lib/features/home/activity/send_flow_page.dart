@@ -520,7 +520,7 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                     child: Text(
                       'Максимум',
                       style: GoogleFonts.inter(
-                        color: const Color(0xFF7A5AF8),
+                        color: Theme.of(context).colorScheme.primary,
                         fontSize: 12,
                       ),
                     ),
@@ -534,9 +534,9 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                 child: ElevatedButton(
                   onPressed: _loadingPreflight ? null : _goToConfirm,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFB8B8B8),
-                    foregroundColor: Colors.black,
-                    disabledBackgroundColor: const Color(0xFF8B8B8B),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                    disabledBackgroundColor: Theme.of(context).disabledColor,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
@@ -865,9 +865,11 @@ class _SendFlowPageState extends State<_SendFlowPage> {
                                       : null)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: preflight.canSend
-                            ? const Color(0xFF7A5AF8)
-                            : const Color(0xFF3A3A3A),
-                        foregroundColor: Colors.white,
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).disabledColor,
+                        foregroundColor: preflight.canSend
+                            ? Theme.of(context).colorScheme.onPrimary
+                            : Theme.of(context).colorScheme.onSurface,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
                         ),
